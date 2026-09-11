@@ -7,7 +7,7 @@ const SOURCE_LABELS = {
   ADVERSE_MEDIA: 'Adverse Media',
 }
 
-// Colors tuned for the light "paper" background — do not reuse these for
+// Colors tuned for the light "paper" background - do not reuse these for
 // text on the dark page background (see the *_DARK variants below).
 const STATUS_STYLE = {
   HIT: { color: 'var(--stamp-red)', label: 'HIT' },
@@ -122,7 +122,7 @@ function DataNoticeModal({ onClose }) {
     >
       <div className="policy-modal">
         <h2 id="data-notice-title">Data handling notice</h2>
-        <p>Internal reference for staff using this tool — not a public-facing legal document.</p>
+        <p>Internal reference for staff using this tool - not a public-facing legal document.</p>
 
         <h3>What this tool collects</h3>
         <p>
@@ -152,7 +152,7 @@ function DataNoticeModal({ onClose }) {
         <h3>Legal context</h3>
         <p>
           Pakistan does not yet have a comprehensive enacted data protection
-          law — the Personal Data Protection Bill remains in draft. The
+          law - the Personal Data Protection Bill remains in draft. The
           Prevention of Electronic Crimes Act 2016, along with SBP/SECP
           sector regulations, currently govern relevant data handling
           obligations. Confirm specific retention, storage, and disclosure
@@ -189,14 +189,14 @@ function AccessGate({ onUnlock }) {
         return
       }
       if (res.status === 503) {
-        setError('Server has no API_KEY configured — contact whoever deployed this.')
+        setError('Server has no API_KEY configured - contact whoever deployed this.')
         setChecking(false)
         return
       }
       sessionStorage.setItem('screening_api_key', value.trim())
       onUnlock()
     } catch (err) {
-      setError('Could not reach the backend — check the API URL is configured correctly.')
+      setError('Could not reach the backend - check the API URL is configured correctly.')
       setChecking(false)
     }
   }
@@ -281,7 +281,7 @@ export default function App() {
         </header>
 
         <p className="consent-notice">
-          Only the fields below are collected — full name is required; CNIC
+          Only the fields below are collected - full name is required; CNIC
           and father's/husband's name are optional and only help reduce
           false matches. Use this tool only for applicants who have already
           consented to KYC/AML screening as part of standard account-opening.{' '}
@@ -374,9 +374,7 @@ export default function App() {
       </div>
 
       <footer className="site-footer">
-        <span>Internal tool — IGI General Takaful, Finance dept.</span>
-        <span aria-hidden="true">·</span>
-        <span>[Add internal compliance contact here]</span>
+        <span>Internal tool - IGI Securites, Compliance dept.</span>
         <span aria-hidden="true">·</span>
         <button type="button" onClick={() => setShowDataNotice(true)}>Data handling notice</button>
       </footer>
