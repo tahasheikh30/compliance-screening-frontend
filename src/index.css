@@ -78,6 +78,14 @@ body {
   line-height: 1.15;
   margin: 10px 0 6px;
   color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.folder-header h1 svg {
+  flex-shrink: 0;
+  color: var(--brass);
 }
 
 .folder-meta {
@@ -414,4 +422,82 @@ input[type="password"]:focus-visible {
 
 .policy-modal .close-btn {
   margin-top: 20px;
+}
+
+/* Scanning-case-files loading animation — shown while a screening request
+   is in flight. This is the one deliberately animated moment in the app:
+   it's a direct response to the person's own action (submitting the
+   form), not ambient decoration, so it earns the motion. */
+
+.scan-scene-wrap {
+  padding: 36px 0 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.scan-scene {
+  width: 100%;
+  max-width: 380px;
+  height: auto;
+  overflow: visible;
+}
+
+.scan-page-rect {
+  fill: var(--paper-shadow);
+  stroke: var(--paper-line);
+  stroke-width: 1.5;
+  transition: fill 0.3s ease, stroke 0.3s ease;
+}
+
+.scan-page-line {
+  fill: #cfc6ae;
+}
+
+.scan-glass-group {
+  transform-origin: center;
+  transform: translate(50px, 68px);
+}
+
+.scan-glass-ring {
+  fill: rgba(245, 241, 232, 0.14);
+  stroke: var(--ink);
+  stroke-width: 4;
+}
+
+.scan-glass-handle {
+  stroke: var(--ink);
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.scan-status-text {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: #9aa0a8;
+}
+
+/* Motion only runs when the person hasn't asked the OS to reduce it —
+   with no-preference met, elements below sit static (glass centered over
+   the first page, no glow) rather than a half-animated fallback. */
+@media (prefers-reduced-motion: no-preference) {
+  .scan-glass-group {
+    animation: scan-sweep 2.2s ease-in-out infinite alternate;
+  }
+
+  .scan-page-rect[data-page="1"] { animation: scan-glow 4.4s ease-in-out infinite; animation-delay: 0s; }
+  .scan-page-rect[data-page="2"] { animation: scan-glow 4.4s ease-in-out infinite; animation-delay: 0.55s; }
+  .scan-page-rect[data-page="3"] { animation: scan-glow 4.4s ease-in-out infinite; animation-delay: 1.1s; }
+  .scan-page-rect[data-page="4"] { animation: scan-glow 4.4s ease-in-out infinite; animation-delay: 1.65s; }
+}
+
+@keyframes scan-sweep {
+  0%   { transform: translate(50px, 68px) translateY(0); }
+  100% { transform: translate(350px, 68px) translateY(0); }
+}
+
+@keyframes scan-glow {
+  0%, 82%, 100% { fill: var(--paper-shadow); stroke: var(--paper-line); }
+  8%, 20% { fill: #ece0bd; stroke: var(--brass); }
 }

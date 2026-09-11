@@ -29,6 +29,42 @@ function todayStr() {
   return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+function MagnifyingGlassIcon({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="2" />
+      <line x1="15.1" y1="15.1" x2="20.5" y2="20.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function ScanningAnimation() {
+  const pages = [15, 115, 215, 315]
+  return (
+    <div className="scan-scene-wrap" role="status" aria-live="polite">
+      <svg className="scan-scene" viewBox="0 0 400 140" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        {pages.map((x, i) => (
+          <g key={x}>
+            <rect
+              className="scan-page-rect"
+              data-page={i + 1}
+              x={x} y="25" width="70" height="90" rx="4"
+            />
+            <rect className="scan-page-line" x={x + 12} y="45" width="46" height="4" rx="2" />
+            <rect className="scan-page-line" x={x + 12} y="58" width="46" height="4" rx="2" />
+            <rect className="scan-page-line" x={x + 12} y="71" width="32" height="4" rx="2" />
+          </g>
+        ))}
+        <g className="scan-glass-group">
+          <circle className="scan-glass-ring" cx="0" cy="0" r="24" />
+          <line className="scan-glass-handle" x1="17" y1="17" x2="33" y2="33" />
+        </g>
+      </svg>
+      <span className="scan-status-text">Checking records…</span>
+    </div>
+  )
+}
+
 function Stamp({ status }) {
   const s = STATUS_STYLE[status] || { color: 'var(--stamp-amber)', label: status || 'UNKNOWN' }
   return (
@@ -240,7 +276,7 @@ export default function App() {
         <div className="folder-tab">Case File</div>
 
         <header className="folder-header">
-          <h1>Account-Opening Screening</h1>
+          <h1><MagnifyingGlassIcon size={22} /> Account-Opening Screening</h1>
           <p className="folder-meta">Opened {todayStr()}{caseNumber && <> &nbsp;&middot;&nbsp; Ref. {caseNumber}</>}</p>
         </header>
 
@@ -296,6 +332,8 @@ export default function App() {
         </form>
 
         {error && <div className="error-note" role="alert" aria-live="polite">{error}</div>}
+
+        {loading && <ScanningAnimation />}
 
         {caseData && (
           <section className="results" aria-live="polite">

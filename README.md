@@ -1,7 +1,10 @@
 # Account Screening — Frontend
 
 Vite + React console for submitting applicants and viewing screening
-results, with downloadable evidence PDFs for any hit.
+results, with downloadable evidence PDFs for any hit. Investigative
+case-file visual theme: manila-folder layout, ink stamps for statuses, a
+magnifying-glass favicon, and a "scanning case files" animation shown
+while a screening request is in flight.
 
 ## Access control
 
@@ -126,4 +129,15 @@ a consumer website):
 Nothing here should be read as a substitute for an actual legal/compliance
 review before this goes live with real applicant data — it's a good-faith
 technical pass, not a sign-off.
+
+## Theme notes
+
+The magnifying-glass motif (favicon, header icon, loading animation) is
+the one deliberately animated moment in the app — it plays only in
+response to submitting a screening (not on page load or idly in the
+background), and respects `prefers-reduced-motion` (verified: with reduced
+motion requested, the glass sits static over the first page rather than
+half-animating). Everything else in the UI stays quiet and undecorated by
+design, per the existing case-file aesthetic — the loading moment is where
+the visual personality lives, not scattered across every element.
 
