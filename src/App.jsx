@@ -7,6 +7,8 @@ const SOURCE_LABELS = {
   ADVERSE_MEDIA: 'Adverse Media',
 }
 
+// Colors tuned for the light "paper" background — do not reuse these for
+// text on the dark page background (see the *_DARK variants below).
 const STATUS_STYLE = {
   HIT: { color: 'var(--stamp-red)', label: 'HIT' },
   REVIEW: { color: 'var(--stamp-amber)', label: 'REVIEW' },
@@ -14,6 +16,13 @@ const STATUS_STYLE = {
   ERROR: { color: 'var(--stamp-amber)', label: 'ERROR' },
   NOT_CONFIGURED: { color: 'var(--stamp-amber)', label: 'NOT CHECKED' },
   SKIPPED: { color: 'var(--stamp-amber)', label: 'SKIPPED' },
+}
+
+function overallColor(status, dark = false) {
+  const suffix = dark ? '-dark' : ''
+  if (status === 'ESCALATE_TO_COMPLIANCE') return `var(--stamp-red${suffix})`
+  if (status === 'MANUAL_REVIEW') return `var(--stamp-amber${suffix})`
+  return `var(--stamp-green${suffix})`
 }
 
 function todayStr() {
@@ -48,10 +57,76 @@ function ResultRow({ result }) {
             type="button"
             className="evidence-link"
             onClick={() => downloadEvidence(result.id, result.evidence_file)}
+            aria-label={`Download evidence PDF for ${SOURCE_LABELS[result.source] || result.source} result`}
           >
             Download proof (PDF)
           </button>
         )}
+      </div>
+    </div>
+  )
+}
+
+function DataNoticeModal({ onClose }) {
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  return (
+    <div
+      className="policy-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="data-notice-title"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="policy-modal">
+        <h2 id="data-notice-title">Data handling notice</h2>
+        <p>Internal reference for staff using this tool — not a public-facing legal document.</p>
+
+        <h3>What this tool collects</h3>
+        <p>
+          Only what's needed to run a name-based screening check: the
+          applicant's full name, and optionally a CNIC and father's/husband's
+          name to reduce false matches. No other applicant details are
+          collected here.
+        </p>
+
+        <h3>What it's used for</h3>
+        <p>
+          Submitted names are checked against the UN Security Council
+          sanctions list, an uploaded FIA Red Book edition, and (if
+          configured) an adverse-media source, solely for account-opening
+          AML/KYC screening. Results and any generated evidence PDF are
+          stored so a compliance officer can review the finding later.
+        </p>
+
+        <h3>Consent</h3>
+        <p>
+          This tool assumes the applicant has already been informed and has
+          consented to KYC/AML screening as part of your organization's
+          standard account-opening process. Do not enter data for anyone
+          outside that process.
+        </p>
+
+        <h3>Legal context</h3>
+        <p>
+          Pakistan does not yet have a comprehensive enacted data protection
+          law — the Personal Data Protection Bill remains in draft. The
+          Prevention of Electronic Crimes Act 2016, along with SBP/SECP
+          sector regulations, currently govern relevant data handling
+          obligations. Confirm specific retention, storage, and disclosure
+          requirements with your compliance/legal team rather than relying
+          on this notice alone.
+        </p>
+
+        <button type="button" className="submit-btn close-btn" onClick={onClose} autoFocus>
+          Close
+        </button>
       </div>
     </div>
   )
@@ -99,9 +174,10 @@ function AccessGate({ onUnlock }) {
           <p className="folder-meta">Enter the access key to open the screening console</p>
         </header>
         <form onSubmit={handleSubmit} className="intake-form">
-          <label className="field">
+          <label className="field" htmlFor="access-key-input">
             <span>Access key</span>
             <input
+              id="access-key-input"
               type="password"
               value={value}
               onChange={(e) => setValue(e.target.value)}
@@ -113,7 +189,7 @@ function AccessGate({ onUnlock }) {
             {checking ? 'Checking…' : 'Unlock'}
           </button>
         </form>
-        {error && <div className="error-note">{error}</div>}
+        {error && <div className="error-note" role="alert" aria-live="polite">{error}</div>}
       </div>
     </div>
   )
@@ -128,6 +204,7 @@ export default function App() {
   const [error, setError] = useState(null)
   const [caseData, setCaseData] = useState(null)
   const [history, setHistory] = useState([])
+  const [showDataNotice, setShowDataNotice] = useState(false)
 
   useEffect(() => {
     if (!unlocked) return
@@ -157,6 +234,7 @@ export default function App() {
   }
 
   return (
+    <>
     <div className="page">
       <div className="folder">
         <div className="folder-tab">Case File</div>
@@ -166,28 +244,46 @@ export default function App() {
           <p className="folder-meta">Opened {todayStr()}{caseNumber && <> &nbsp;&middot;&nbsp; Ref. {caseNumber}</>}</p>
         </header>
 
+        <p className="consent-notice">
+          Only the fields below are collected — full name is required; CNIC
+          and father's/husband's name are optional and only help reduce
+          false matches. Use this tool only for applicants who have already
+          consented to KYC/AML screening as part of standard account-opening.{' '}
+          <button
+            type="button"
+            className="inline-link-btn"
+            onClick={() => setShowDataNotice(true)}
+          >
+            Read the full data handling notice
+          </button>.
+        </p>
+
         <form onSubmit={handleSubmit} className="intake-form">
-          <label className="field">
+          <label className="field" htmlFor="full-name-input">
             <span>Applicant full name</span>
             <input
+              id="full-name-input"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Muhammad Ahmed Khan"
               required
+              aria-required="true"
             />
           </label>
           <div className="field-row">
-            <label className="field">
+            <label className="field" htmlFor="cnic-input">
               <span>CNIC</span>
               <input
+                id="cnic-input"
                 value={cnic}
                 onChange={(e) => setCnic(e.target.value)}
                 placeholder="XXXXX-XXXXXXX-X"
               />
             </label>
-            <label className="field">
+            <label className="field" htmlFor="father-name-input">
               <span>Father's / husband's name</span>
               <input
+                id="father-name-input"
                 value={fatherName}
                 onChange={(e) => setFatherName(e.target.value)}
                 placeholder="Optional"
@@ -199,17 +295,13 @@ export default function App() {
           </button>
         </form>
 
-        {error && <div className="error-note">{error}</div>}
+        {error && <div className="error-note" role="alert" aria-live="polite">{error}</div>}
 
         {caseData && (
-          <section className="results">
+          <section className="results" aria-live="polite">
             <div className="results-heading">
               <h2>Findings</h2>
-              <span
-                className="overall-tag"
-                style={{ color: caseData.overall_status === 'ESCALATE_TO_COMPLIANCE' ? 'var(--stamp-red)'
-                  : caseData.overall_status === 'MANUAL_REVIEW' ? 'var(--stamp-amber)' : 'var(--stamp-green)' }}
-              >
+              <span className="overall-tag" style={{ color: overallColor(caseData.overall_status) }}>
                 {caseData.overall_status === 'ESCALATE_TO_COMPLIANCE' && 'Escalate to compliance'}
                 {caseData.overall_status === 'MANUAL_REVIEW' && 'Needs manual review'}
                 {caseData.overall_status === 'AUTO_CLEAR' && 'Cleared automatically'}
@@ -233,11 +325,7 @@ export default function App() {
             {history.map((h) => (
               <li key={h.id}>
                 <span className="history-name">{h.full_name}</span>
-                <span
-                  className="history-status"
-                  style={{ color: h.overall_status === 'ESCALATE_TO_COMPLIANCE' ? 'var(--stamp-red)'
-                    : h.overall_status === 'MANUAL_REVIEW' ? 'var(--stamp-amber)' : 'var(--stamp-green)' }}
-                >
+                <span className="history-status" style={{ color: overallColor(h.overall_status, true) }}>
                   {h.overall_status.replace(/_/g, ' ').toLowerCase()}
                 </span>
               </li>
@@ -245,6 +333,17 @@ export default function App() {
           </ul>
         </aside>
       )}
-    </div>
+      </div>
+
+      <footer className="site-footer">
+        <span>Internal tool — IGI General Takaful, Finance dept.</span>
+        <span aria-hidden="true">·</span>
+        <span>[Add internal compliance contact here]</span>
+        <span aria-hidden="true">·</span>
+        <button type="button" onClick={() => setShowDataNotice(true)}>Data handling notice</button>
+      </footer>
+
+      {showDataNotice && <DataNoticeModal onClose={() => setShowDataNotice(false)} />}
+    </>
   )
 }
