@@ -501,3 +501,555 @@ input[type="password"]:focus-visible {
   0%, 82%, 100% { fill: var(--paper-shadow); stroke: var(--paper-line); }
   8%, 20% { fill: #ece0bd; stroke: var(--brass); }
 }
+
+/* ===========================================================================
+   Additions: tab navigation, error banner, FIA Red Book tab, audit tab.
+   Reuses the existing paper/ink/brass tokens rather than introducing a new
+   palette, so the new screens read as part of the same tool.
+   =========================================================================== */
+
+.tab-nav {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 28px 24px 0;
+  display: flex;
+  gap: 4px;
+}
+
+.tab-nav-btn {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  letter-spacing: 0.03em;
+  color: #9aa0a8;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 10px 14px 12px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tab-nav-btn:hover { color: var(--paper); }
+
+.tab-nav-btn-active {
+  color: var(--paper);
+  border-bottom-color: var(--brass);
+}
+
+.tab-nav-btn:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+/* --- error banner --------------------------------------------------- */
+
+.error-banner {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 14px 16px;
+  background: #fbeceb;
+  border-left: 3px solid var(--stamp-red);
+  color: #5c2323;
+}
+
+.error-banner-title {
+  font-weight: 600;
+  font-size: 13.5px;
+  margin-bottom: 3px;
+}
+
+.error-banner-message {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.error-banner-hint {
+  font-size: 12.5px;
+  color: #7a3c3c;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+.error-banner-ref {
+  font-size: 11.5px;
+  color: #8a5252;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.error-banner-ref code {
+  background: rgba(0,0,0,0.06);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+.error-banner-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.error-banner-btn {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  background: var(--stamp-red);
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.error-banner-btn:hover { background: #6f2424; }
+
+.error-banner-btn-quiet {
+  background: none;
+  color: #8a5252;
+  text-decoration: underline;
+  padding: 4px 2px;
+}
+
+.field-error {
+  font-size: 12px;
+  color: var(--stamp-red);
+  margin-top: 2px;
+}
+
+.submit-btn-danger {
+  background: var(--stamp-red) !important;
+}
+
+/* --- FIA Red Book tab -------------------------------------------------- */
+
+.fia-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--paper-line);
+}
+
+.fia-section:first-of-type { margin-top: 24px; padding-top: 0; border-top: none; }
+
+.fia-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.fia-section h2 {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.fia-section-heading h2 { margin-bottom: 0; }
+
+.fia-btn-compact {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: var(--paper-shadow);
+  border: 1px solid var(--paper-line);
+  color: var(--ink);
+  padding: 7px 13px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.fia-btn-compact:hover:not(:disabled) { background: #e3dabd; }
+.fia-btn-compact:disabled { opacity: 0.5; cursor: default; }
+
+.fia-btn-danger {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background: none;
+  border: 1px solid var(--stamp-red);
+  color: var(--stamp-red);
+  padding: 9px 16px;
+  cursor: pointer;
+}
+
+.fia-btn-danger:hover { background: var(--stamp-red); color: #fff; }
+
+.fia-loading-note, .fia-no-warnings {
+  font-size: 13px;
+  color: #6b6455;
+}
+
+.fia-upload-hint {
+  font-size: 12px;
+  color: #6b6455;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+
+.fia-check-result {
+  font-size: 13px;
+  color: #4a4536;
+  background: var(--paper-shadow);
+  padding: 10px 14px;
+  border-left: 3px solid var(--brass);
+  margin-bottom: 14px;
+}
+
+/* dropzone */
+
+.fia-upload-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.fia-dropzone {
+  border: 2px dashed #b8ae8f;
+  padding: 32px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.fia-dropzone:hover, .fia-dropzone:focus-visible {
+  border-color: var(--brass);
+  outline: none;
+}
+
+.fia-dropzone-active {
+  border-color: var(--brass);
+  background: var(--paper-shadow);
+}
+
+.fia-dropzone-title {
+  font-size: 14.5px;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+
+.fia-dropzone-sub {
+  font-size: 12px;
+  color: #6b6455;
+}
+
+.fia-dropzone-filename {
+  font-family: var(--font-mono);
+  font-size: 13.5px;
+  color: var(--ink);
+}
+
+.fia-dropzone-filename span { color: #6b6455; }
+
+.fia-progress-track {
+  position: relative;
+  height: 22px;
+  background: var(--paper-shadow);
+  border: 1px solid var(--paper-line);
+  overflow: hidden;
+}
+
+.fia-progress-fill {
+  height: 100%;
+  background: var(--brass);
+  transition: width 0.2s ease;
+}
+
+.fia-progress-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink);
+  mix-blend-mode: difference;
+}
+
+/* edition list */
+
+.fia-edition-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.fia-edition-item {
+  border-top: 1px solid var(--paper-line);
+}
+
+.fia-edition-item:last-child { border-bottom: 1px solid var(--paper-line); }
+
+.fia-edition-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  color: var(--ink);
+}
+
+.fia-edition-row:hover { background: var(--paper-shadow); }
+
+.fia-edition-filename {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fia-edition-counts {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #6b6455;
+  flex-shrink: 0;
+}
+
+.fia-edition-date {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: #6b6455;
+  flex-shrink: 0;
+}
+
+.fia-edition-chevron {
+  color: #9aa0a8;
+  flex-shrink: 0;
+}
+
+.fia-warning-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--stamp-red);
+  flex-shrink: 0;
+}
+
+.edition-pill {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.edition-pill-active { background: #e2f0e6; color: var(--stamp-green); }
+.edition-pill-staged { background: #f5e9d6; color: var(--stamp-amber); }
+.edition-pill-archived { background: #ece9e0; color: #6b6455; }
+
+/* expanded panel */
+
+.fia-panel {
+  padding: 8px 4px 24px;
+  border-top: 1px dashed var(--paper-line);
+}
+
+.fia-panel-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 20px;
+  font-size: 13px;
+  color: #4a4536;
+  margin: 16px 0;
+}
+
+.fia-meta-label {
+  color: #6b6455;
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  display: block;
+}
+
+.fia-warning-list {
+  list-style: none;
+  margin: 0 0 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fia-warning {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 12.5px;
+  line-height: 1.5;
+  padding: 8px 12px;
+  border-left: 3px solid;
+}
+
+.fia-warning-severity {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+}
+
+.fia-warning-high { background: #fbeceb; border-left-color: var(--stamp-red); color: #5c2323; }
+.fia-warning-medium { background: #f8f0dc; border-left-color: var(--stamp-amber); color: #5c4415; }
+.fia-warning-info { background: var(--paper-shadow); border-left-color: #9aa0a8; color: #4a4536; }
+
+.fia-panel-tabs {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--paper-line);
+  margin-bottom: 16px;
+}
+
+.fia-panel-tabs button {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 12px;
+  color: #6b6455;
+  cursor: pointer;
+}
+
+.fia-panel-tabs button.active {
+  color: var(--ink);
+  border-bottom-color: var(--brass);
+}
+
+.fia-panel-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* entries browser */
+
+.fia-entries-search {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.fia-entries-search input[type="text"],
+.fia-entries-search > input:not([type]) {
+  flex: 1;
+  min-width: 180px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  padding: 8px 2px;
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px solid #b8ae8f;
+  color: var(--ink);
+  outline: none;
+}
+
+.fia-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #4a4536;
+  white-space: nowrap;
+}
+
+.fia-confirm-checkbox {
+  margin: 14px 0;
+  font-size: 13px;
+}
+
+.fia-entries-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.fia-entries-table th {
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #6b6455;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.fia-entries-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.fia-entries-empty {
+  text-align: center;
+  color: #6b6455;
+  padding: 20px 0 !important;
+}
+
+.fia-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #6b6455;
+}
+
+.fia-pagination div { display: flex; gap: 8px; }
+
+/* PDF page viewer */
+
+.fia-page-viewer { display: flex; flex-direction: column; gap: 12px; }
+
+.fia-page-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+.fia-page-image {
+  max-width: 100%;
+  border: 1px solid var(--paper-line);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+/* diff */
+
+.fia-diff p { font-size: 13.5px; color: #4a4536; }
+.fia-diff details { margin-top: 10px; font-size: 13px; }
+.fia-diff summary { cursor: pointer; color: var(--brass); font-size: 12.5px; }
+.fia-diff-list { columns: 2; margin: 8px 0 0; padding-left: 18px; font-size: 12.5px; color: #4a4536; }
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* --- Lists & Audit tab -------------------------------------------------- */
+
+.audit-refresh-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.audit-mono { font-family: var(--font-mono); font-size: 12px; color: #6b6455; }
+
+@media (max-width: 760px) {
+  .fia-panel-meta { grid-template-columns: 1fr; }
+  .fia-diff-list { columns: 1; }
+  .tab-nav { padding: 20px 16px 0; overflow-x: auto; }
+}

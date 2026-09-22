@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react'
-import { screenApplicant, listApplicants, downloadEvidence } from './api'
+import { screenApplicant, listApplicants, downloadEvidence, verifyApiKey } from './api'
+import { ApiError } from './lib/apiError'
+import ErrorBanner, { fieldError } from './components/ErrorBanner'
+import ErrorBoundary from './components/ErrorBoundary'
+import FiaRedbookTab from './components/FiaRedbookTab'
+import AuditTab from './components/AuditTab'
 
 const SOURCE_LABELS = {
   UNSC: 'UN Security Council Sanctions List',
+  OFAC: 'OFAC Sanctions List (US Treasury)',
+  UKSL: 'UK Sanctions List (FCDO)',
   FIA_REDBOOK: "FIA Red Book (Pakistan)",
   ADVERSE_MEDIA: 'Adverse Media',
 }
@@ -13,7 +20,7 @@ const STATUS_STYLE = {
   HIT: { color: 'var(--stamp-red)', label: 'HIT' },
   REVIEW: { color: 'var(--stamp-amber)', label: 'REVIEW' },
   CLEAR: { color: 'var(--stamp-green)', label: 'CLEAR' },
-  ERROR: { color: 'var(--stamp-amber)', label: 'ERROR' },
+  ERROR: { color: 'var(--stamp-red)', label: 'ERROR' },
   NOT_CONFIGURED: { color: 'var(--stamp-amber)', label: 'NOT CHECKED' },
   SKIPPED: { color: 'var(--stamp-amber)', label: 'SKIPPED' },
 }
@@ -75,6 +82,15 @@ function Stamp({ status }) {
 }
 
 function ResultRow({ result }) {
+  const [downloadError, setDownloadError] = useState(null)
+  async function onDownload() {
+    setDownloadError(null)
+    try {
+      await downloadEvidence(result.id, result.evidence_file)
+    } catch (err) {
+      setDownloadError(err)
+    }
+  }
   return (
     <div className="result-row">
       <div className="result-main">
@@ -85,6 +101,7 @@ function ResultRow({ result }) {
             : <>No matching record found.</>}
         </div>
         {result.detail && <div className="result-note">{result.detail}</div>}
+        {downloadError && <ErrorBanner error={downloadError} onRetry={onDownload} onDismiss={() => setDownloadError(null)} />}
       </div>
       <div className="result-side">
         <Stamp status={result.status} />
@@ -92,7 +109,7 @@ function ResultRow({ result }) {
           <button
             type="button"
             className="evidence-link"
-            onClick={() => downloadEvidence(result.id, result.evidence_file)}
+            onClick={onDownload}
             aria-label={`Download evidence PDF for ${SOURCE_LABELS[result.source] || result.source} result`}
           >
             Download proof (PDF)
@@ -134,11 +151,12 @@ function DataNoticeModal({ onClose }) {
 
         <h3>What it's used for</h3>
         <p>
-          Submitted names are checked against the UN Security Council
-          sanctions list, an uploaded FIA Red Book edition, and (if
-          configured) an adverse-media source, solely for account-opening
-          AML/KYC screening. Results and any generated evidence PDF are
-          stored so a compliance officer can review the finding later.
+          Submitted names are checked against the UN Security Council and UK
+          sanctions lists, the OFAC SDN/Consolidated lists, an uploaded FIA
+          Red Book edition, and (if configured) an adverse-media source,
+          solely for account-opening AML/KYC screening. Results and any
+          generated evidence PDF are stored so a compliance officer can
+          review the finding later.
         </p>
 
         <h3>Consent</h3>
@@ -173,30 +191,33 @@ function AccessGate({ onUnlock }) {
   const [checking, setChecking] = useState(false)
   const [error, setError] = useState(null)
 
+  // If we just got bounced here by a 401 on some other request, explain why
+  // instead of silently reappearing — see api.js's dropKeyOn401.
+  useEffect(() => {
+    const raw = sessionStorage.getItem('screening_last_auth_error')
+    if (raw) {
+      sessionStorage.removeItem('screening_last_auth_error')
+      try {
+        const { code, message } = JSON.parse(raw)
+        setError(new ApiError({ status: 401, code, message }))
+      } catch { /* ignore malformed */ }
+    }
+  }, [])
+
   async function handleSubmit(e) {
     e.preventDefault()
     if (!value.trim()) return
     setChecking(true)
     setError(null)
     try {
-      // Verify the key actually works before storing it, by hitting a cheap endpoint.
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || '/api'}/applicants`, {
-        headers: { 'X-API-Key': value.trim() },
-      })
-      if (res.status === 401) {
-        setError('That key was rejected.')
-        setChecking(false)
-        return
+      const ok = await verifyApiKey(value.trim())
+      if (ok) {
+        sessionStorage.setItem('screening_api_key', value.trim())
+        onUnlock()
       }
-      if (res.status === 503) {
-        setError('Server has no API_KEY configured - contact whoever deployed this.')
-        setChecking(false)
-        return
-      }
-      sessionStorage.setItem('screening_api_key', value.trim())
-      onUnlock()
     } catch (err) {
-      setError('Could not reach the backend - check the API URL is configured correctly.')
+      setError(err)
+    } finally {
       setChecking(false)
     }
   }
@@ -225,14 +246,13 @@ function AccessGate({ onUnlock }) {
             {checking ? 'Checking…' : 'Unlock'}
           </button>
         </form>
-        {error && <div className="error-note" role="alert" aria-live="polite">{error}</div>}
+        <ErrorBanner error={error} onRetry={value.trim() ? handleSubmit : undefined} onDismiss={() => setError(null)} />
       </div>
     </div>
   )
 }
 
-export default function App() {
-  const [unlocked, setUnlocked] = useState(() => !!sessionStorage.getItem('screening_api_key'))
+function ScreeningTab({ onShowDataNotice }) {
   const [fullName, setFullName] = useState('')
   const [cnic, setCnic] = useState('')
   const [fatherName, setFatherName] = useState('')
@@ -240,16 +260,16 @@ export default function App() {
   const [error, setError] = useState(null)
   const [caseData, setCaseData] = useState(null)
   const [history, setHistory] = useState([])
-  const [showDataNotice, setShowDataNotice] = useState(false)
+  const [historyError, setHistoryError] = useState(null)
 
-  useEffect(() => {
-    if (!unlocked) return
-    listApplicants().then(setHistory).catch(() => {})
-  }, [caseData, unlocked])
+  function loadHistory() {
+    setHistoryError(null)
+    listApplicants().then(setHistory).catch(setHistoryError)
+  }
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    if (!fullName.trim()) return
+  useEffect(() => { loadHistory() }, [caseData]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function doSubmit() {
     setLoading(true)
     setError(null)
     setCaseData(null)
@@ -257,13 +277,144 @@ export default function App() {
       const data = await screenApplicant({ full_name: fullName, cnic, father_name: fatherName })
       setCaseData(data)
     } catch (err) {
-      setError(err.message)
+      setError(err)
     } finally {
       setLoading(false)
     }
   }
 
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!fullName.trim()) return
+    doSubmit()
+  }
+
   const caseNumber = caseData ? String(caseData.applicant_id).padStart(5, '0') : null
+  const nameFieldError = fieldError(error, 'full_name')
+  const cnicFieldError = fieldError(error, 'cnic')
+
+  return (
+    <>
+      <div className="page">
+        <div className="folder">
+          <div className="folder-tab">Case File</div>
+
+          <header className="folder-header">
+            <h1><MagnifyingGlassIcon size={22} /> Account-Opening Screening</h1>
+            <p className="folder-meta">Opened {todayStr()}{caseNumber && <> &nbsp;&middot;&nbsp; Ref. {caseNumber}</>}</p>
+          </header>
+
+          <p className="consent-notice">
+            Only the fields below are collected - full name is required; CNIC
+            and father's/husband's name are optional and only help reduce
+            false matches. Use this tool only for applicants who have already
+            consented to KYC/AML screening as part of standard account-opening.{' '}
+            <button
+              type="button"
+              className="inline-link-btn"
+              onClick={onShowDataNotice}
+            >
+              Read the full data handling notice
+            </button>.
+          </p>
+
+          <form onSubmit={handleSubmit} className="intake-form">
+            <label className="field" htmlFor="full-name-input">
+              <span>Applicant full name</span>
+              <input
+                id="full-name-input"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="e.g. Muhammad Ahmed Khan"
+                required
+                aria-required="true"
+                aria-invalid={!!nameFieldError}
+              />
+              {nameFieldError && <span className="field-error">{nameFieldError}</span>}
+            </label>
+            <div className="field-row">
+              <label className="field" htmlFor="cnic-input">
+                <span>CNIC</span>
+                <input
+                  id="cnic-input"
+                  value={cnic}
+                  onChange={(e) => setCnic(e.target.value)}
+                  placeholder="XXXXX-XXXXXXX-X"
+                  aria-invalid={!!cnicFieldError}
+                />
+                {cnicFieldError && <span className="field-error">{cnicFieldError}</span>}
+              </label>
+              <label className="field" htmlFor="father-name-input">
+                <span>Father's / husband's name</span>
+                <input
+                  id="father-name-input"
+                  value={fatherName}
+                  onChange={(e) => setFatherName(e.target.value)}
+                  placeholder="Optional"
+                />
+              </label>
+            </div>
+            <button type="submit" className="submit-btn" disabled={loading}>
+              {loading ? 'Checking records…' : 'Run screening'}
+            </button>
+          </form>
+
+          <ErrorBanner error={error} onRetry={doSubmit} onDismiss={() => setError(null)} />
+
+          {loading && <ScanningAnimation />}
+
+          {caseData && (
+            <section className="results" aria-live="polite">
+              <div className="results-heading">
+                <h2>Findings</h2>
+                <span className="overall-tag" style={{ color: overallColor(caseData.overall_status) }}>
+                  {caseData.overall_status === 'ESCALATE_TO_COMPLIANCE' && 'Escalate to compliance'}
+                  {caseData.overall_status === 'MANUAL_REVIEW' && 'Needs manual review'}
+                  {caseData.overall_status === 'AUTO_CLEAR' && 'Cleared automatically'}
+                </span>
+              </div>
+              <div className="results-list">
+                {caseData.results.map((r) => <ResultRow key={r.id} result={r} />)}
+              </div>
+              <p className="disclaimer">
+                Automated fuzzy-name matching only. No adverse action should be taken
+                without a compliance officer confirming identity against the source record.
+              </p>
+            </section>
+          )}
+        </div>
+
+        <aside className="history">
+          <h3>Recent case files</h3>
+          <ErrorBanner error={historyError} onRetry={loadHistory} onDismiss={() => setHistoryError(null)} />
+          {history.length > 0 && (
+            <ul>
+              {history.map((h) => (
+                <li key={h.id}>
+                  <span className="history-name">{h.full_name}</span>
+                  <span className="history-status" style={{ color: overallColor(h.overall_status, true) }}>
+                    {h.overall_status.replace(/_/g, ' ').toLowerCase()}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
+      </div>
+    </>
+  )
+}
+
+const TABS = [
+  { id: 'screen', label: 'Screening' },
+  { id: 'fia', label: 'FIA Red Book' },
+  { id: 'audit', label: 'Lists & Audit' },
+]
+
+export default function App() {
+  const [unlocked, setUnlocked] = useState(() => !!sessionStorage.getItem('screening_api_key'))
+  const [tab, setTab] = useState('screen')
+  const [showDataNotice, setShowDataNotice] = useState(false)
 
   if (!unlocked) {
     return <AccessGate onUnlock={() => setUnlocked(true)} />
@@ -271,113 +422,31 @@ export default function App() {
 
   return (
     <>
-    <div className="page">
-      <div className="folder">
-        <div className="folder-tab">Case File</div>
+      <ErrorBoundary key={tab}>
+        <nav className="tab-nav" aria-label="Sections">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              className={`tab-nav-btn ${tab === t.id ? 'tab-nav-btn-active' : ''}`}
+              onClick={() => setTab(t.id)}
+              aria-current={tab === t.id ? 'page' : undefined}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
 
-        <header className="folder-header">
-          <h1><MagnifyingGlassIcon size={22} /> Account-Opening Screening</h1>
-          <p className="folder-meta">Opened {todayStr()}{caseNumber && <> &nbsp;&middot;&nbsp; Ref. {caseNumber}</>}</p>
-        </header>
+        {tab === 'screen' && <ScreeningTab onShowDataNotice={() => setShowDataNotice(true)} />}
+        {tab === 'fia' && <div className="page"><FiaRedbookTab /></div>}
+        {tab === 'audit' && <div className="page"><AuditTab /></div>}
 
-        <p className="consent-notice">
-          Only the fields below are collected - full name is required; CNIC
-          and father's/husband's name are optional and only help reduce
-          false matches. Use this tool only for applicants who have already
-          consented to KYC/AML screening as part of standard account-opening.{' '}
-          <button
-            type="button"
-            className="inline-link-btn"
-            onClick={() => setShowDataNotice(true)}
-          >
-            Read the full data handling notice
-          </button>.
-        </p>
-
-        <form onSubmit={handleSubmit} className="intake-form">
-          <label className="field" htmlFor="full-name-input">
-            <span>Applicant full name</span>
-            <input
-              id="full-name-input"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="e.g. Muhammad Ahmed Khan"
-              required
-              aria-required="true"
-            />
-          </label>
-          <div className="field-row">
-            <label className="field" htmlFor="cnic-input">
-              <span>CNIC</span>
-              <input
-                id="cnic-input"
-                value={cnic}
-                onChange={(e) => setCnic(e.target.value)}
-                placeholder="XXXXX-XXXXXXX-X"
-              />
-            </label>
-            <label className="field" htmlFor="father-name-input">
-              <span>Father's / husband's name</span>
-              <input
-                id="father-name-input"
-                value={fatherName}
-                onChange={(e) => setFatherName(e.target.value)}
-                placeholder="Optional"
-              />
-            </label>
-          </div>
-          <button type="submit" className="submit-btn" disabled={loading}>
-            {loading ? 'Checking records…' : 'Run screening'}
-          </button>
-        </form>
-
-        {error && <div className="error-note" role="alert" aria-live="polite">{error}</div>}
-
-        {loading && <ScanningAnimation />}
-
-        {caseData && (
-          <section className="results" aria-live="polite">
-            <div className="results-heading">
-              <h2>Findings</h2>
-              <span className="overall-tag" style={{ color: overallColor(caseData.overall_status) }}>
-                {caseData.overall_status === 'ESCALATE_TO_COMPLIANCE' && 'Escalate to compliance'}
-                {caseData.overall_status === 'MANUAL_REVIEW' && 'Needs manual review'}
-                {caseData.overall_status === 'AUTO_CLEAR' && 'Cleared automatically'}
-              </span>
-            </div>
-            <div className="results-list">
-              {caseData.results.map((r) => <ResultRow key={r.id} result={r} />)}
-            </div>
-            <p className="disclaimer">
-              Automated fuzzy-name matching only. No adverse action should be taken
-              without a compliance officer confirming identity against the source record.
-            </p>
-          </section>
-        )}
-      </div>
-
-      {history.length > 0 && (
-        <aside className="history">
-          <h3>Recent case files</h3>
-          <ul>
-            {history.map((h) => (
-              <li key={h.id}>
-                <span className="history-name">{h.full_name}</span>
-                <span className="history-status" style={{ color: overallColor(h.overall_status, true) }}>
-                  {h.overall_status.replace(/_/g, ' ').toLowerCase()}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </aside>
-      )}
-      </div>
-
-      <footer className="site-footer">
-        <span>Internal tool - IGI Securites, Compliance dept.</span>
-        <span aria-hidden="true">·</span>
-        <button type="button" onClick={() => setShowDataNotice(true)}>Data handling notice</button>
-      </footer>
+        <footer className="site-footer">
+          <span>Internal tool · IGI General Takaful, Compliance dept.</span>
+          <span aria-hidden="true">·</span>
+          <button type="button" onClick={() => setShowDataNotice(true)}>Data handling notice</button>
+        </footer>
+      </ErrorBoundary>
 
       {showDataNotice && <DataNoticeModal onClose={() => setShowDataNotice(false)} />}
     </>
