@@ -25,24 +25,18 @@ export default class ErrorBoundary extends Component {
   render() {
     if (!this.state.error) return this.props.children
     return (
-      <div className="page">
-        <div className="folder">
-          <div className="folder-tab">Case File</div>
-          <header className="folder-header">
-            <h1>Something went wrong displaying this</h1>
-            <p className="folder-meta">The rest of the tool is unaffected — your access key is still valid.</p>
-          </header>
-          <p className="consent-notice" style={{ borderLeftColor: 'var(--stamp-red)' }}>
-            {this.state.error?.message || String(this.state.error)}
-          </p>
-          <button
-            type="button"
-            className="submit-btn"
-            onClick={() => this.setState({ error: null })}
-          >
-            Try again
-          </button>
-        </div>
+      <div className="workspace workspace-single">
+        <section className="sheet" role="alert">
+          <div className="folder-tab">Error</div>
+          <h1>Something went wrong displaying this</h1>
+          <p className="lead">The rest of the tool is unaffected, and your access key is still valid.</p>
+          <p className="notice notice-bad">{this.state.error?.message || String(this.state.error)}</p>
+          <div className="form-actions">
+            <button type="button" className="btn btn-primary" onClick={() => this.setState({ error: null })}>
+              Try again
+            </button>
+          </div>
+        </section>
       </div>
     )
   }

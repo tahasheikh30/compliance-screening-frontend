@@ -13,10 +13,10 @@ function authHeaders() {
 }
 
 // Any 401 means the stored key no longer works (rejected, or the backend
-// restarted with no API_KEY at all) — in every case the right move is the
+// restarted with no API_KEY at all). In every case the right move is the
 // same: drop it and show the access gate again, with the specific reason
-// carried along so the gate can explain what happened instead of just
-// silently reappearing.
+// carried along so the gate can explain what happened instead of silently
+// reappearing.
 function dropKeyOn401(err) {
   if (err instanceof ApiError && err.status === 401) {
     sessionStorage.removeItem('screening_api_key')
@@ -43,13 +43,20 @@ async function apiJson(path, options = {}) {
 // Screening
 // ---------------------------------------------------------------------------
 
-export async function screenApplicant({ full_name, cnic, father_name }) {
-  // Screening can involve a live web search (adverse media) — give it real room.
+// The backend downloads the sanctions lists live and runs a news search, which
+// takes 20 to 40 seconds when the lists are not already cached. Give it room.
+export const SCREEN_TIMEOUT_MS = 120000
+
+export async function screenApplicant({ full_name, dob, nationality, threshold }) {
+  const body = { full_name }
+  if (dob) body.dob = dob
+  if (nationality) body.nationality = nationality
+  if (threshold != null) body.threshold = Number(threshold)
   return apiJson('/screen', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ full_name, cnic, father_name }),
-    timeoutMs: 45000,
+    body: JSON.stringify(body),
+    timeoutMs: SCREEN_TIMEOUT_MS,
   })
 }
 
@@ -62,14 +69,14 @@ export async function getApplicant(id) {
 }
 
 export function evidenceUrl(resultId) {
-  // Evidence downloads also need the key — handled via a fetch+blob helper
-  // instead of a plain <a href>, since we can't attach a header to a direct link.
+  // Evidence downloads also need the key, so they go through a fetch+blob
+  // helper instead of a plain <a href> (a direct link can't carry a header).
   return `${BASE}/evidence/${resultId}`
 }
 
 export async function downloadEvidence(resultId, filename) {
   try {
-    const res = await apiFetch(evidenceUrl(resultId), { headers: authHeaders() })
+    const res = await apiFetch(evidenceUrl(resultId), { headers: authHeaders(), timeoutMs: 60000 })
     const blob = await res.blob()
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -94,125 +101,14 @@ export async function verifyApiKey(key) {
 }
 
 // ---------------------------------------------------------------------------
-// FIA Red Book — edition registry
+// Lists (live downloads, kept in the backend's memory for a while)
 // ---------------------------------------------------------------------------
 
-export async function listFiaEditions() {
-  return apiJson('/admin/fia-redbook/editions')
+export async function getListsStatus() {
+  return apiJson('/admin/lists')
 }
 
-export async function getFiaEdition(id) {
-  return apiJson(`/admin/fia-redbook/editions/${id}`)
-}
-
-export async function uploadFiaEdition(file, notes, { onProgress } = {}) {
-  // Uses XMLHttpRequest instead of fetch purely for upload progress events —
-  // fetch has no stable cross-browser upload-progress API yet. Kept separate
-  // from apiFetch's timeout/offline handling since XHR needs its own.
-  const key = sessionStorage.getItem('screening_api_key')
-  return new Promise((resolve, reject) => {
-    const form = new FormData()
-    form.append('file', file)
-    if (notes) form.append('notes', notes)
-    const xhr = new XMLHttpRequest()
-    xhr.open('POST', `${BASE}/admin/fia-redbook/editions`)
-    if (key) xhr.setRequestHeader('X-API-Key', key)
-    xhr.timeout = 60000
-    if (onProgress) {
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
-      }
-    }
-    xhr.onload = () => {
-      let body = null
-      try { body = JSON.parse(xhr.responseText) } catch { /* handled below */ }
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(body)
-      } else if (body && body.error) {
-        const err = new ApiError({
-          status: xhr.status, code: body.error.code, message: body.error.message || body.detail,
-          hint: body.error.hint, requestId: body.error.request_id || xhr.getResponseHeader('X-Request-ID'),
-          fields: body.error.fields,
-        })
-        if (xhr.status === 401) { sessionStorage.removeItem('screening_api_key'); window.location.reload() }
-        reject(err)
-      } else {
-        reject(new ApiError({ status: xhr.status, code: `HTTP_${xhr.status}`, message: 'Upload failed.' }))
-      }
-    }
-    xhr.onerror = () => reject(new ApiError({
-      code: 'NETWORK_ERROR', message: 'Could not reach the backend while uploading.',
-      hint: 'Check your connection and that the backend is reachable, then try again.',
-    }))
-    xhr.ontimeout = () => reject(new ApiError({
-      code: 'TIMEOUT', message: 'The upload took too long and was cancelled.',
-      hint: 'Large or slow connections can time out — try again, or on a faster connection.',
-    }))
-    xhr.send(form)
-  })
-}
-
-export async function deleteFiaEdition(id) {
-  return apiJson(`/admin/fia-redbook/editions/${id}`, { method: 'DELETE' })
-}
-
-export async function browseFiaEntries(id, { q, cnicOnly, offset = 0, limit = 50 } = {}) {
-  const params = new URLSearchParams({ offset: String(offset), limit: String(limit) })
-  if (q) params.set('q', q)
-  if (cnicOnly) params.set('cnic_only', 'true')
-  return apiJson(`/admin/fia-redbook/editions/${id}/entries?${params}`)
-}
-
-export async function diffFiaEdition(id) {
-  return apiJson(`/admin/fia-redbook/editions/${id}/diff`)
-}
-
-export async function activateFiaEdition(id, { confirmReviewed, note } = {}) {
-  return apiJson(`/admin/fia-redbook/editions/${id}/activate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ confirm_reviewed: !!confirmReviewed, note: note || null }),
-  })
-}
-
-export async function checkFiaWebsite() {
-  return apiJson('/admin/fia-redbook/check', { method: 'POST', timeoutMs: 30000 })
-}
-
-export async function getFiaStatus() {
-  return apiJson('/admin/fia-redbook/status')
-}
-
-// Returns a blob: URL for one PDF page image (caller must revokeObjectURL when done).
-export async function fetchFiaPageImageUrl(editionId, pageNumber) {
-  try {
-    const res = await apiFetch(`${BASE}/admin/fia-redbook/editions/${editionId}/page/${pageNumber}`, {
-      headers: authHeaders(),
-    })
-    const blob = await res.blob()
-    return window.URL.createObjectURL(blob)
-  } catch (err) {
-    dropKeyOn401(err)
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Audit
-// ---------------------------------------------------------------------------
-
-export async function listNearMisses(limit = 200) {
-  return apiJson(`/admin/near-misses?limit=${limit}`)
-}
-
-export async function listAdminActivity(limit = 100) {
-  return apiJson(`/admin/activity?limit=${limit}`)
-}
-
-export async function refreshList(source) {
-  // source: 'unsc' | 'ofac' | 'uksl'
-  return apiJson(`/admin/refresh-${source}`, { method: 'POST', timeoutMs: 60000 })
-}
-
-export async function refreshAll() {
-  return apiJson('/admin/refresh', { method: 'POST', timeoutMs: 90000 })
+// Downloads every list again. Takes as long as a screening's list download.
+export async function reloadLists() {
+  return apiJson('/admin/refresh', { method: 'POST', timeoutMs: SCREEN_TIMEOUT_MS })
 }

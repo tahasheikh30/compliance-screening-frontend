@@ -1,143 +1,129 @@
-# Account Screening — Frontend
+# Case File: Applicant Screening Frontend
 
-Vite + React console for submitting applicants and viewing screening
-results, with downloadable evidence PDFs for any hit. Investigative
-case-file visual theme: manila-folder layout, ink stamps for statuses, a
-magnifying-glass favicon, and a "scanning case files" animation shown
-while a screening request is in flight.
+Vite + React console for screening an applicant against the UN, OFAC, UK and
+FIA Red Book watch lists plus an open news search, reading the findings, and
+downloading the evidence PDF. It talks to the screening backend
+(`compliance-screening-backend`).
+
+## What it does
+
+**Screening.** Enter a full name (required), plus an optional date of birth,
+nationality and match threshold (50 to 100, default 85). The result is a
+stamped verdict (Escalate, Review or Clear), the number of watch-list
+matches and news leads, a next step, and one card per source. Each match
+shows its score, reference, programme, listed date of birth (flagged when
+the birth year matches), nationality, aliases and the source's remarks.
+News leads link out to the article. The evidence PDF downloads from the
+verdict.
+
+A source that could not be downloaded or read is shown as **Not screened**
+and makes the verdict at best Review. It is never shown as clear.
+
+**History.** Every past screening, searchable by name and filterable by
+outcome. Opening one shows the same full report and evidence download.
+
+**Lists.** Which watch lists the backend currently holds in memory, how old
+they are, and a button to reload them all now. Normally unnecessary: the
+backend downloads the lists live and reuses them for a while.
+
+A screening takes 20 to 40 seconds when the lists are not already loaded,
+because the backend downloads them live. The loading panel says what is
+being checked and how long it has been running. It does not show a progress
+bar, because the backend does not report progress.
 
 ## Access control
 
 The app shows an access-key gate on load. Enter the same value as the
-backend's `API_KEY` — it's verified against the backend before being stored
+backend's `API_KEY`. It is verified against the backend before being stored
 (in `sessionStorage`, so it clears when the tab closes) and sent as
-`X-API-Key` on every request, including evidence downloads. There's no
+`X-API-Key` on every request, including evidence downloads. There is no
 separate frontend secret; the backend is what actually enforces this.
 
 ## Local development
 
 ```bash
 npm install
-npm run dev
+npm run dev      # http://localhost:5173
+npm test         # unit and component tests (vitest)
+npm run build
 ```
 
-Open http://localhost:5173 — in dev, Vite's proxy (see `vite.config.js`)
-forwards `/api` calls to a backend running on `localhost:8000`.
+In dev, Vite's proxy (see `vite.config.js`) forwards `/api` to a backend on
+`localhost:8000`. Start the backend with `API_KEY=dev uvicorn app.main:app`
+and enter `dev` at the gate.
 
 ## Deploying to Vercel
 
-1. Push this folder as its own repo, import it into Vercel (it auto-detects
-   Vite).
-2. In the Vercel project's Environment Variables, set:
+1. Push this folder as its own repo and import it into Vercel (it
+   auto-detects Vite).
+2. Set this environment variable (see `.env.example`):
 
    ```
    VITE_API_BASE_URL=https://your-backend.onrender.com/api
    ```
 
-   (See `.env.example`.) Without this, the app will try to call `/api` on
-   Vercel's own domain, which doesn't exist — the proxy in `vite.config.js`
-   only works for local dev.
+   Without it the app calls `/api` on Vercel's own domain, which does not
+   exist. The dev proxy only works locally.
+3. Deploy (`npm run build`, output `dist/`).
 
-3. Deploy. Build command and output directory are auto-detected
-   (`npm run build`, `dist/`).
+The backend's `ALLOWED_ORIGINS` must include the Vercel URL, or the browser
+blocks the requests with a CORS error. `vercel.json` rewrites all paths to
+`/index.html`, which stops a hard reload of a shared URL returning a 404.
 
-Make sure the backend's `ALLOWED_ORIGINS` env var (on Render) includes this
-Vercel URL, or the browser will block the requests with a CORS error.
+## Design
 
-## 404 on page reload
+The case-file idea is kept, with different materials: a slate desk, white
+bond-paper sheets with a manila spine and tab, and rubber-stamp verdicts.
+Headings use a Charter/Palatino serif stack, the interface uses the system
+sans, and references, scores and dates use tabular monospace.
 
-`vercel.json` rewrites all paths to `/index.html`, which is what fixes the
-404-on-reload issue for single-page apps on Vercel — without it, a hard
-reload (or someone opening a bookmarked/shared URL directly) hits Vercel's
-static file server looking for a matching file, finds none, and 404s. This
-app currently only has one route, so the practical impact today is small,
-but it's the standard fix and future-proofs against adding routes later.
+Two moments are animated, both only in response to an action and both
+switched off under `prefers-reduced-motion` (checked in a browser with
+reduced motion requested): the magnifying glass while a screening runs, and
+the stamp landing when a result arrives.
 
-## Compliance & accessibility checklist
+## Compliance and accessibility checklist
 
-This is an internal, authenticated B2B tool (a compliance analyst screening
-account applicants) — not a consumer-facing website. A lot of standard
-website-launch checklist items genuinely don't apply here; this section
-says explicitly what was checked and why each item does or doesn't apply,
-rather than silently skipping any of them.
+This is an internal, authenticated tool for a compliance analyst, not a
+consumer website. Items below say what was checked and what was not.
 
-**Applies, and fixed:**
-- **Colour contrast** — every text/background pairing in `index.css` was
-  checked against WCAG AA (4.5:1 normal text, 3:1 large text/UI) with an
-  actual contrast calculation, not eyeballed. This caught three real
-  failures: placeholder text (2.36:1), the muted disclaimer text (3.35:1),
-  and the amber "REVIEW" stamp on the light background (3.47:1) — all
-  fixed. It also caught a subtler bug: the same status colors were being
-  reused for the sidebar's dark background where they measured as low as
-  2.01:1 — that needed separate `-dark` color variants, not just a fix in
-  one place.
-- **Fix accessibility** — visible `:focus-visible` outlines on every
-  interactive element (previously relying on browser defaults, which are
-  easy to lose against a custom dark background), `role="alert"` +
-  `aria-live="polite"` on error messages so screen readers announce them
-  without requiring focus to move, `aria-live="polite"` on the results
-  section, explicit `id`/`htmlFor` label associations, `aria-modal` +
-  `aria-labelledby` + Escape-to-close on the data notice dialog.
-- **Check 3rd-party embeds / check tracking** — the app previously loaded
-  fonts from Google Fonts, which sends every visitor's IP address to
-  Google on page load. Removed entirely; fonts are now system fonts
-  (`Georgia`/`ui-monospace`/system sans stack) styled to match the
-  original look. The app now makes zero third-party network requests.
-- **Form consent** — a notice sits directly above the form stating what's
-  collected and why, plus a fuller "data handling notice" modal (data
-  collected, purpose, the assumption that applicant consent already exists
-  from your standard account-opening process, and a note on Pakistan's
-  current legal landscape — Personal Data Protection Bill still in draft,
-  PECA 2016 and SBP/SECP regulations currently applicable). This is
-  internal-facing language, not lawyered public policy text — have
-  compliance/legal review it before treating it as your actual policy.
-- **Only collect necessary data** — audited: the form collects exactly
-  three fields (name required, CNIC and father's/husband's name optional,
-  both solely to reduce false-positive matches). Nothing else is asked
-  for. Stated explicitly in the consent notice.
-- **Keyboard-friendly forms** — all inputs are native `<input>` elements
-  inside a `<form>` (Enter submits, native Tab order), verified end-to-end
-  with a keyboard-only pass through the whole flow including the modal.
-- **Clear button labels** — reviewed: "Run screening", "Unlock", "Download
-  proof (PDF)" are unambiguous; added `aria-label` on the evidence download
-  button since its visible text doesn't say *which* result it's for.
-- **Add real business details** — added a footer identifying this as an
-  internal IGI General Takaful tool. Left the actual contact line as a
-  placeholder (`[Add internal compliance contact here]`) rather than
-  inventing one — fill that in with a real internal contact.
-- **Check local laws** — noted in the data handling notice (see above).
-  I'm not a lawyer and this isn't legal advice — confirm specifics with
-  your compliance/legal team.
-- **Remove unsupported claims** — audited all UI copy; the existing
-  language was already appropriately hedged ("automated fuzzy-name
-  matching only," "no adverse action without a compliance officer
-  confirming identity"). No overclaiming found, no changes needed.
+**Checked:**
+- **Colour contrast.** Every text and background pairing in `index.css` was
+  computed against WCAG AA (4.5:1 for normal text). Status colours have
+  separate `-dark` variants for the dark desk, because the paper variants
+  fail on dark backgrounds.
+- **Keyboard.** The whole flow works without a mouse: Enter submits the form,
+  the threshold slider responds to arrow keys, history rows open with Enter,
+  and focus moves to the verdict heading when a result appears. Visible
+  `:focus-visible` outlines on every interactive element.
+- **Dialog.** The data notice is a native `<dialog>` opened with
+  `showModal()`: the browser traps focus and handles Escape, and it opens
+  at the top with focus on its heading. Clicking outside closes it.
+- **Third-party requests.** None from the browser. Fonts are system fonts, and
+  a browser-level check of every request during a full session found none to
+  any host other than the app itself. Note that the **backend** sends the
+  applicant's name to Google News for the adverse media check. The data
+  notice says so.
+- **Links.** News links open only if they are `http` or `https`, with
+  `rel="noopener noreferrer"`. Anything else is shown as plain text.
+- **Only collect necessary data.** The form collects a name (required), and
+  an optional date of birth and nationality. These are shown next to each
+  match as supporting evidence and never filter matches. CNIC and
+  father's/husband's name are no longer asked for, because the screening
+  does not use them.
+- **Consent.** A notice sits beside the form, and a fuller data handling
+  notice is one click away. This is internal-facing language, not lawyered
+  policy text. Have compliance or legal review it.
+- **Narrow screens.** Checked at 390px wide: layout stacks and nothing
+  scrolls sideways.
+- **Footer.** Identifies this as an internal IGI General Takaful tool.
 
-**Checked and confirmed not applicable** (this is an internal KYC tool, not
-a consumer website):
-- **Alt text on images** — there are no `<img>` elements anywhere in this
-  app (the design is CSS-only). Nothing to add alt text to. If a logo
-  image is added later, give it real alt text then.
-- **Refund policy / T&Cs page** — no payments, no consumer transactions.
-- **Remove fake reviews** — no reviews feature exists.
-- **Check copyright on images** — no images used.
-- **Cookies policy / cookie consent** — the app sets no cookies. The
-  access key lives in `sessionStorage`, which isn't cookie-based and isn't
-  subject to cookie-consent rules the same way; it also isn't tracking —
-  it's the user's own session convenience, cleared when the tab closes.
+**Not done:** a screen reader pass, and testing in browsers other than
+Chromium. Both are worth doing before relying on this with real applicants.
 
-Nothing here should be read as a substitute for an actual legal/compliance
-review before this goes live with real applicant data — it's a good-faith
-technical pass, not a sign-off.
+**Not applicable:** alt text (no images), refund policy and T&Cs (no
+payments), reviews, image copyright, and cookie consent (no cookies; the
+access key is in `sessionStorage`).
 
-## Theme notes
-
-The magnifying-glass motif (favicon, header icon, loading animation) is
-the one deliberately animated moment in the app — it plays only in
-response to submitting a screening (not on page load or idly in the
-background), and respects `prefers-reduced-motion` (verified: with reduced
-motion requested, the glass sits static over the first page rather than
-half-animating). Everything else in the UI stays quiet and undecorated by
-design, per the existing case-file aesthetic — the loading moment is where
-the visual personality lives, not scattered across every element.
-
+None of this replaces a legal or compliance review before this is used with
+real applicant data. It is a technical pass, not a sign-off.

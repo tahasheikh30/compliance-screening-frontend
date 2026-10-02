@@ -77,7 +77,7 @@ export async function apiFetch(url, { timeoutMs = DEFAULT_TIMEOUT_MS, ...init } 
     if (err.name === 'AbortError') {
       throw new ApiError({
         code: 'TIMEOUT', message: `The request took longer than ${Math.round(timeoutMs / 1000)}s and was cancelled.`,
-        hint: 'The server may be under load, or a slow external check (e.g. adverse media search) is taking a while. Try again.',
+        hint: 'The server may be under load, or the lists are slow to download right now. Try again.',
       })
     }
     // fetch() itself throwing (not an HTTP error status) means the request
