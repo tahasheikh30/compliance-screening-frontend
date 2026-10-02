@@ -157,7 +157,6 @@ ul { padding: 0; list-style: none; }
 }
 .workspace-history { grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); }
 .workspace-single { grid-template-columns: minmax(0, 760px); justify-content: center; }
-.intake { position: sticky; top: 24px; }
 
 /* --- the sheet: bond paper in a manila folder --------------------------- */
 
@@ -598,7 +597,6 @@ span.article-title { color: var(--ink); }
 
 @media (max-width: 960px) {
   .workspace, .workspace-history { grid-template-columns: minmax(0, 1fr); gap: 36px; }
-  .intake { position: static; }
   .tally { grid-template-columns: repeat(2, 1fr); }
   .tally > div:nth-child(2) { border-right: 0; }
   .tally > div:nth-child(-n + 2) { border-bottom: 1px solid var(--rule); }
