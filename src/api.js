@@ -47,10 +47,12 @@ async function apiJson(path, options = {}) {
 // takes 20 to 40 seconds when the lists are not already cached. Give it room.
 export const SCREEN_TIMEOUT_MS = 120000
 
-export async function screenApplicant({ full_name, dob, nationality, threshold }) {
+export async function screenApplicant({ full_name, dob, nationality, threshold, cnic, father_name }) {
   const body = { full_name }
   if (dob) body.dob = dob
   if (nationality) body.nationality = nationality
+  if (cnic) body.cnic = cnic
+  if (father_name) body.father_name = father_name
   if (threshold != null) body.threshold = Number(threshold)
   return apiJson('/screen', {
     method: 'POST',
@@ -111,4 +113,28 @@ export async function getListsStatus() {
 // Downloads every list again. Takes as long as a screening's list download.
 export async function reloadLists() {
   return apiJson('/admin/refresh', { method: 'POST', timeoutMs: SCREEN_TIMEOUT_MS })
+}
+
+// ---------------------------------------------------------------------------
+// NACTA Proscribed Persons (Fourth Schedule)
+// ---------------------------------------------------------------------------
+
+export async function getNactaStatus() {
+  return apiJson('/admin/nacta')
+}
+
+// NACTA publishes this list only through a web app, so it is loaded from an exported
+// CSV or JSON file. The file is sent as the raw request body, not a multipart form.
+export async function uploadNacta(file) {
+  try {
+    const res = await apiFetch(`${BASE}/admin/nacta?filename=${encodeURIComponent(file.name)}`, {
+      method: 'POST',
+      headers: { ...authHeaders(), 'Content-Type': file.type || 'application/octet-stream' },
+      body: file,
+      timeoutMs: 120000,
+    })
+    return await res.json()
+  } catch (err) {
+    dropKeyOn401(err)
+  }
 }

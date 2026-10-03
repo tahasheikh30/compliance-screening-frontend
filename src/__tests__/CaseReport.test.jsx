@@ -102,4 +102,74 @@ describe('CaseReport', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Download evidence PDF' }))
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy())
   })
+
+  it('shows which FIA books were screened and flags the one that could not be read', () => {
+    const lists = [
+      { list: 'FIA Red Book 2026', records: 143, published: null, status: 'OK' },
+      { list: 'FIA Red Book Most Wanted Terrorists', records: 0, published: null, status: 'Downloaded, but no records could be read (layout may have changed)' },
+    ]
+    const data = base([
+      result('FIA_REDBOOK', 'PARTIAL', { lists, detail: 'Partly screened. ...' }),
+      result('UNSC', 'CLEAR'),
+    ], 'MANUAL_REVIEW')
+    render(<CaseReport caseData={data} applicant={{}} />)
+    expect(screen.getByText('Incomplete', { selector: '.pill' })).toBeTruthy()
+    expect(screen.getByText('Lists screened')).toBeTruthy()
+    expect(screen.getByText('FIA Red Book 2026')).toBeTruthy()
+    expect(screen.getByText('143 records')).toBeTruthy()
+    expect(screen.getByText('FIA Red Book Most Wanted Terrorists')).toBeTruthy()
+    expect(screen.getByText(/Not screened: Downloaded, but no records could be read/)).toBeTruthy()
+    expect(screen.getByText(/were not fully screened|incomplete/i, { selector: '.notice' })).toBeTruthy()
+    expect(screen.queryByText('Clear', { selector: '.stamp' })).toBeNull()
+  })
+
+  it('lists both books when both were read, and stays quiet for single-list sources', () => {
+    const both = [
+      { list: 'FIA Red Book 2026', records: 143, status: 'OK' },
+      { list: 'FIA Red Book Most Wanted Terrorists', records: 1331, status: 'OK' },
+    ]
+    const data = base([
+      result('FIA_REDBOOK', 'CLEAR', { lists: both }),
+      result('UNSC', 'CLEAR', { lists: [{ list: 'UN Security Council Consolidated List', records: 100, status: 'OK' }] }),
+    ], 'AUTO_CLEAR')
+    render(<CaseReport caseData={data} applicant={{}} />)
+    expect(screen.getAllByText('Lists screened').length).toBe(1)      // only the FIA card
+    expect(screen.getByText('1,331 records')).toBeTruthy()
+  })
+
+  it('calls out a CNIC match prominently and shows the father and CNIC evidence', () => {
+    const m = match({
+      list: 'NACTA Proscribed Persons (Fourth Schedule)', id: 'NACTA-1', primary_name: 'Muhammad Shakir', matched_name: 'Muhammad Shakir',
+      score: 40, dob: '', dob_year_match: 'n/a', cnic: '3740565359881', cnic_match: true, father_name: 'Qabil Khan', father_match: false, aliases: [],
+    })
+    const data = base([result('NACTA', 'HIT', { matches: [m], match_count: 1, evidence_file: 'e.pdf', id: 9 })], 'ESCALATE_TO_COMPLIANCE')
+    render(<CaseReport caseData={data} applicant={{}} />)
+    expect(screen.getByRole('alert').textContent).toMatch(/CNIC matches a listed person: Muhammad Shakir on NACTA/)
+    expect(screen.getByText('CNIC matches')).toBeTruthy()
+    expect(screen.getByText('Matched on CNIC')).toBeTruthy()
+    expect(screen.getByText('Name similarity 40')).toBeTruthy()          // the weak name score is shown honestly, not as the headline
+    expect(screen.queryByRole('img', { name: /Name similarity/ })).toBeNull()
+    expect(screen.getByText('3740565359881')).toBeTruthy()
+    expect(screen.getByText('Qabil Khan')).toBeTruthy()
+    expect(screen.getByText("Father's name differs")).toBeTruthy()
+  })
+
+  it('shows no CNIC callout or flags when the applicant gave no CNIC', () => {
+    const m = match({ cnic: '3740565359881', cnic_match: null, father_name: 'Qabil Khan', father_match: null })
+    const data = base([result('NACTA', 'HIT', { matches: [m], match_count: 1 })], 'ESCALATE_TO_COMPLIANCE')
+    render(<CaseReport caseData={data} applicant={{}} />)
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.queryByText('CNIC matches')).toBeNull()
+    expect(screen.queryByText('CNIC differs')).toBeNull()
+    expect(screen.getByText('3740565359881')).toBeTruthy()      // the listed CNIC is still shown
+  })
+
+  it('says an out of date NACTA list is incomplete', () => {
+    const lists = [{ list: 'NACTA Proscribed Persons (Fourth Schedule)', records: 5000, status: 'Out of date: this copy was loaded 45 days ago (limit 30). Upload a fresh export' }]
+    const data = base([result('NACTA', 'PARTIAL', { lists, detail: 'Incomplete screening.' })], 'MANUAL_REVIEW')
+    render(<CaseReport caseData={data} applicant={{}} />)
+    expect(screen.getByText('Incomplete', { selector: '.pill' })).toBeTruthy()
+    expect(screen.getByText(/Not screened: Out of date/)).toBeTruthy()
+  })
 })
+

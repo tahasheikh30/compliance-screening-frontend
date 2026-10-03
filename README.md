@@ -1,14 +1,18 @@
 # Case File: Applicant Screening Frontend
 
-Vite + React console for screening an applicant against the UN, OFAC, UK and
-FIA Red Book watch lists plus an open news search, reading the findings, and
-downloading the evidence PDF. It talks to the screening backend
+Vite + React console for screening an applicant against the UN, OFAC, UK,
+FIA Red Book and NACTA watch lists plus an open news search, reading the
+findings, and downloading the evidence PDF. It talks to the screening backend
 (`compliance-screening-backend`).
 
 ## What it does
 
 **Screening.** Enter a full name (required), plus an optional date of birth,
-nationality and match threshold (50 to 100, default 85). The result is a
+nationality, CNIC, father's or husband's name and match threshold (50 to 100,
+default 85). A CNIC is checked for 13 digits when you leave the field. The FIA
+Red Book and NACTA publish CNICs, so a CNIC that equals a listed one is
+reported as a match whatever the name looks like, and is called out above the
+sources. A matching father's name is shown as supporting evidence. The result is a
 stamped verdict (Escalate, Review or Clear), the number of watch-list
 matches and news leads, a next step, and one card per source. Each match
 shows its score, reference, programme, listed date of birth (flagged when
@@ -17,7 +21,10 @@ News leads link out to the article. The evidence PDF downloads from the
 verdict.
 
 A source that could not be downloaded or read is shown as **Not screened**
-and makes the verdict at best Review. It is never shown as clear.
+and makes the verdict at best Review. It is never shown as clear. A source
+made of several lists (the FIA publishes more than one Red Book) shows each
+list with its record count, and is marked **Incomplete** if one could not be
+read, or if the NACTA copy is out of date.
 
 **History.** Every past screening, searchable by name and filterable by
 outcome. Opening one shows the same full report and evidence download.
@@ -25,6 +32,13 @@ outcome. Opening one shows the same full report and evidence download.
 **Lists.** Which watch lists the backend currently holds in memory, how old
 they are, and a button to reload them all now. Normally unnecessary: the
 backend downloads the lists live and reuses them for a while.
+
+The same page loads the **NACTA Proscribed Persons** list. NACTA publishes it
+only through its web portal, so it cannot be downloaded automatically: upload
+it as a CSV or JSON file. The page shows which file is loaded and how old it
+is, warns when a file looks like a partial export, and the screening reports
+NACTA as incomplete once the copy is older than the backend's limit (30 days
+by default).
 
 A screening takes 20 to 40 seconds when the lists are not already loaded,
 because the backend downloads them live. The loading panel says what is
@@ -107,10 +121,12 @@ consumer website. Items below say what was checked and what was not.
 - **Links.** News links open only if they are `http` or `https`, with
   `rel="noopener noreferrer"`. Anything else is shown as plain text.
 - **Only collect necessary data.** The form collects a name (required), and
-  an optional date of birth and nationality. These are shown next to each
-  match as supporting evidence and never filter matches. CNIC and
-  father's/husband's name are no longer asked for, because the screening
-  does not use them.
+  an optional date of birth, nationality, CNIC and father's or husband's
+  name. Each is used: date of birth and nationality, and a father's name, are
+  shown next to matches as supporting evidence and never remove one, and a CNIC
+  that equals a listed CNIC is reported as a match. They are all optional.
+  The CNIC is a national identity number, so treat the stored screening
+  history and evidence PDFs accordingly.
 - **Consent.** A notice sits beside the form, and a fuller data handling
   notice is one click away. This is internal-facing language, not lawyered
   policy text. Have compliance or legal review it.

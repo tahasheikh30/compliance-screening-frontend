@@ -1,7 +1,7 @@
 import { forwardRef, useState } from 'react'
 import { downloadEvidence } from '../api'
 import { fmtDate, fmtNum, caseRef, safeUrl, listDateLabel, plural } from '../lib/format'
-import { SOURCES, overallInfo, nextStep, resultStatus, summarize, orderedResults } from '../lib/status'
+import { SOURCES, overallInfo, nextStep, resultStatus, summarize, orderedResults, cnicMatches } from '../lib/status'
 import ErrorBanner from './ErrorBanner'
 import { Stamp, Pill } from './ui'
 
@@ -36,7 +36,14 @@ function MatchItem({ match, applicantHasDob }) {
           <div className="match-name">{match.primary_name}</div>
           {aliasMatched && <div className="match-alias">Matched on the alias {match.matched_name}</div>}
         </div>
-        <ScoreMeter score={match.score} />
+        {match.cnic_match === true
+          ? (
+            <div className="match-cnic-flag">
+              <Pill tone="bad">Matched on CNIC</Pill>
+              <span className="match-name-score">Name similarity {match.score}</span>
+            </div>
+          )
+          : <ScoreMeter score={match.score} />}
       </div>
       <dl className="facts">
         <Fact label="Reference"><span className="mono">{match.id}</span></Fact>
@@ -49,6 +56,16 @@ function MatchItem({ match, applicantHasDob }) {
           {applicantHasDob && match.dob_year_match === 'No' && <> <Pill tone="good">Birth year differs</Pill></>}
         </Fact>
         <Fact label="Nationality">{match.nationality}</Fact>
+        <Fact label="Father or husband">
+          {match.father_name}
+          {match.father_match === true && <> <Pill tone="warn">Father's name matches</Pill></>}
+          {match.father_match === false && <> <Pill tone="good">Father's name differs</Pill></>}
+        </Fact>
+        <Fact label="CNIC">
+          {match.cnic && <span className="mono">{match.cnic}</span>}
+          {match.cnic_match === true && <> <Pill tone="bad">CNIC matches</Pill></>}
+          {match.cnic_match === false && <> <Pill tone="good">CNIC differs</Pill></>}
+        </Fact>
         <Fact label="Listed on">{match.listed_on}</Fact>
       </dl>
       {match.aliases?.length > 0 && (
@@ -75,6 +92,32 @@ function ArticleItem({ article }) {
         {[article.source, article.published, article.keyword && `keyword: ${article.keyword}`].filter(Boolean).join(' | ')}
       </div>
     </li>
+  )
+}
+
+// Which lists sit behind a source, and whether each could be read. Shown whenever a source
+// has more than one list (OFAC, and FIA which publishes several books) or any list is a problem,
+// so it is always visible which books were actually screened.
+function ListsScreened({ lists }) {
+  const problem = lists.some((l) => l.status && l.status !== 'OK')
+  if (lists.length < 2 && !problem) return null
+  return (
+    <div className="lists-screened">
+      <p className="lists-screened-title">Lists screened</p>
+      <ul>
+        {lists.map((l) => {
+          const ok = !l.status || l.status === 'OK'
+          return (
+            <li key={l.list} className={ok ? '' : 'lists-screened-bad'}>
+              <span className="lists-screened-name">{l.list}</span>
+              <span className="lists-screened-state">
+                {ok ? plural(l.records, 'record', 'records') : `Not screened: ${l.status}`}
+              </span>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 
@@ -105,6 +148,7 @@ function SourceCard({ result, applicantHasDob }) {
         <Pill tone={st.tone}>{st.label}</Pill>
       </header>
       {showDetail && <p className="source-detail">{result.detail}</p>}
+      <ListsScreened lists={result.lists || []} />
 
       {matches.length > 0 && (
         <details className="source-matches" open={result.status === 'HIT'}>
@@ -145,6 +189,7 @@ const CaseReport = forwardRef(function CaseReport({ caseData, applicant }, headi
   const sum = summarize(caseData)
   const results = orderedResults(caseData.results)
   const applicantHasDob = !!applicant?.dob
+  const cnicHits = cnicMatches(caseData)
 
   async function onDownload() {
     if (!sum.evidenceResult) return
@@ -183,6 +228,19 @@ const CaseReport = forwardRef(function CaseReport({ caseData, applicant }, headi
         <div><dt>Match threshold</dt><dd>{caseData.threshold != null ? `${caseData.threshold}%` : 'n/a'}</dd></div>
       </dl>
 
+      {cnicHits.length > 0 && (
+        <p className="notice notice-bad" role="alert">
+          The applicant's CNIC matches a listed person: {cnicHits[0].primary_name} on {cnicHits[0].list}
+          {cnicHits.length > 1 ? ` (and ${cnicHits.length - 1} more)` : ''}. An identity number match is the strongest
+          signal this tool gives. Confirm against the source record.
+        </p>
+      )}
+      {sum.partial > 0 && sum.notScreened === 0 && (
+        <p className="notice notice-warn" role="note">
+          {sum.partial === 1 ? 'One source was' : `${sum.partial} sources were`} incomplete: some of its
+          lists were not fully screened. Check the cards below to see which, then screen again.
+        </p>
+      )}
       {sum.notScreened > 0 && (
         <p className="notice notice-warn" role="note">
           {sum.notScreened === 1 ? 'One source was' : `${sum.notScreened} sources were`} not screened, so this result

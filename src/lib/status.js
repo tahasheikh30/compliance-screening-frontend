@@ -5,16 +5,18 @@ export const SOURCES = {
   UNSC: { name: 'UN Security Council', short: 'UN', long: 'UN Security Council Consolidated List' },
   OFAC: { name: 'OFAC (US Treasury)', short: 'OFAC', long: 'OFAC SDN and Consolidated (Non-SDN) lists' },
   UKSL: { name: 'UK Sanctions List', short: 'UK', long: 'UK Sanctions List (FCDO)' },
-  FIA_REDBOOK: { name: 'FIA Red Book', short: 'FIA', long: 'FIA Red Book (Pakistan, most wanted)' },
+  FIA_REDBOOK: { name: 'FIA Red Books', short: 'FIA', long: 'FIA Red Books (Pakistan, most wanted)' },
+  NACTA: { name: 'NACTA', short: 'NACTA', long: 'NACTA Proscribed Persons (Fourth Schedule, Pakistan)' },
   ADVERSE_MEDIA: { name: 'Adverse media', short: 'News', long: 'Open news search (Google News)' },
 }
 
-export const SOURCE_ORDER = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'ADVERSE_MEDIA']
+export const SOURCE_ORDER = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA', 'ADVERSE_MEDIA']
 
 // tone drives colour: 'bad' red, 'warn' amber, 'good' green
 export const RESULT_STATUS = {
   HIT: { label: 'Match', tone: 'bad' },
   REVIEW: { label: 'Review', tone: 'warn' },
+  PARTIAL: { label: 'Incomplete', tone: 'warn' },
   CLEAR: { label: 'Clear', tone: 'good' },
   ERROR: { label: 'Not screened', tone: 'bad' },
   NOT_CONFIGURED: { label: 'Not screened', tone: 'bad' },
@@ -57,6 +59,9 @@ export function nextStep(overall, sum) {
   if (sum.notScreened > 0) {
     parts.push('At least one list could not be screened, so this is not a clearance. Screen again once the cause below is fixed.')
   }
+  if (sum.partial > 0) {
+    parts.push('Part of a source was not fully screened (a list could not be read, or is out of date). See which below. This is not a clearance.')
+  }
   return parts.length ? parts.join(' ') : overallInfo(overall).next
 }
 
@@ -67,16 +72,29 @@ export function summarize(caseData) {
   let sanctions = 0
   let news = 0
   let notScreened = 0
+  let partial = 0
   for (const r of rows) {
     if (r.source === 'ADVERSE_MEDIA') news += (r.articles || []).length
     else sanctions += r.match_count ?? (r.matches || []).length
     if (r.status === 'ERROR' || r.status === 'NOT_CONFIGURED') notScreened += 1
+    if (r.status === 'PARTIAL') partial += 1
   }
   const withEvidence = rows.find((r) => r.evidence_file)
-  return { sanctions, news, notScreened, evidenceResult: withEvidence || null }
+  return { sanctions, news, notScreened, partial, evidenceResult: withEvidence || null }
 }
 
 export function orderedResults(results) {
   const rank = (s) => { const i = SOURCE_ORDER.indexOf(s); return i === -1 ? 99 : i }
   return [...(results || [])].sort((a, b) => rank(a.source) - rank(b.source))
+}
+
+// Matches whose CNIC equals the applicant's: the strongest signal this tool can give.
+export function cnicMatches(caseData) {
+  const out = []
+  for (const r of caseData?.results || []) {
+    for (const m of r.matches || []) {
+      if (m.cnic_match === true) out.push({ ...m, source: r.source })
+    }
+  }
+  return out
 }

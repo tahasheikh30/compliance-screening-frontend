@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { summarize, nextStep, overallInfo, resultStatus, orderedResults } from '../lib/status'
+import { summarize, nextStep, overallInfo, resultStatus, orderedResults, cnicMatches, SOURCES, SOURCE_ORDER } from '../lib/status'
 import { listDateLabel, plural, safeUrl, dateOrNull, caseRef, fmtAge } from '../lib/format'
 
 const row = (source, status, extra = {}) => ({ id: Math.random(), source, status, matches: [], articles: [], ...extra })
@@ -25,6 +25,21 @@ describe('summarize', () => {
   })
   it('handles an empty or missing case', () => {
     expect(summarize(null)).toMatchObject({ sanctions: 0, news: 0, notScreened: 0, evidenceResult: null })
+  })
+})
+
+describe('partly screened sources', () => {
+  it('counts them separately from sources that did not run at all', () => {
+    const s = summarize({ results: [row('FIA_REDBOOK', 'PARTIAL'), row('OFAC', 'ERROR'), row('UNSC', 'CLEAR')] })
+    expect(s.partial).toBe(1)
+    expect(s.notScreened).toBe(1)
+  })
+  it('is never presented as clear', () => {
+    expect(resultStatus('PARTIAL').tone).toBe('warn')
+    expect(resultStatus('PARTIAL').label).toBe('Incomplete')
+  })
+  it('tells the reviewer that some lists were not checked', () => {
+    expect(nextStep('MANUAL_REVIEW', { news: 0, notScreened: 0, partial: 1 })).toMatch(/Part of a source was not fully screened/)
   })
 })
 
@@ -92,5 +107,27 @@ describe('format helpers', () => {
     expect(fmtAge(30)).toBe('30 s ago')
     expect(fmtAge(600)).toBe('10 min ago')
     expect(fmtAge(7200)).toBe('2 h ago')
+  })
+})
+
+
+describe('NACTA and CNIC', () => {
+  it('has NACTA as a source, shown before the news search', () => {
+    expect(SOURCES.NACTA.long).toMatch(/NACTA Proscribed Persons/)
+    expect(SOURCE_ORDER.indexOf('NACTA')).toBeGreaterThan(SOURCE_ORDER.indexOf('FIA_REDBOOK'))
+    expect(SOURCE_ORDER.indexOf('NACTA')).toBeLessThan(SOURCE_ORDER.indexOf('ADVERSE_MEDIA'))
+    const out = orderedResults([row('ADVERSE_MEDIA', 'CLEAR'), row('NACTA', 'CLEAR'), row('UNSC', 'CLEAR')])
+    expect(out.map((r) => r.source)).toEqual(['UNSC', 'NACTA', 'ADVERSE_MEDIA'])
+  })
+  it('finds matches whose CNIC equals the applicant\'s, and ignores unknown or differing ones', () => {
+    const hits = cnicMatches({
+      results: [
+        row('NACTA', 'HIT', { matches: [{ primary_name: 'A', cnic_match: true }, { primary_name: 'B', cnic_match: false }, { primary_name: 'C', cnic_match: null }] }),
+        row('UNSC', 'HIT', { matches: [{ primary_name: 'D' }] }),
+      ],
+    })
+    expect(hits.map((h) => h.primary_name)).toEqual(['A'])
+    expect(hits[0].source).toBe('NACTA')
+    expect(cnicMatches(null)).toEqual([])
   })
 })

@@ -45,16 +45,16 @@ export default function DataNoticeDialog({ onClose }) {
 
         <h3>What this tool collects</h3>
         <p>
-          The applicant's full name, and optionally a date of birth and nationality. Nothing else about the
-          applicant is collected here. The date of birth and nationality are only compared against listed
-          records and shown as supporting evidence.
+          The applicant's full name, and optionally a date of birth, nationality, CNIC and father's or husband's
+          name. Nothing else about the applicant is collected here. These are only compared against listed
+          records and shown as supporting evidence, except that a CNIC equal to a listed CNIC is reported as a match.
         </p>
 
         <h3>What it is used for</h3>
         <p>
-          The name is checked against the UN Security Council list, the OFAC SDN and Consolidated lists, the
-          UK Sanctions List and the FIA Red Book, all downloaded from their publishers, solely for
-          account-opening AML/KYC screening. The result and any evidence PDF are stored on the server so a
+          The applicant is checked against the UN Security Council list, the OFAC SDN and Consolidated lists, the
+          UK Sanctions List, the FIA Red Books and the NACTA Proscribed Persons list, solely for
+          account-opening AML/KYC screening. The NACTA list is a file that staff upload to the server. The result and any evidence PDF are stored on the server so a
           compliance officer can review the finding later.
         </p>
 

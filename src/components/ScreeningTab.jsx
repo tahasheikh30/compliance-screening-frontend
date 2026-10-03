@@ -35,6 +35,9 @@ export default function ScreeningTab() {
   const [fullName, setFullName] = useState('')
   const [dob, setDob] = useState('')
   const [nationality, setNationality] = useState('')
+  const [cnic, setCnic] = useState('')
+  const [cnicTouched, setCnicTouched] = useState(false)
+  const [fatherName, setFatherName] = useState('')
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -49,8 +52,16 @@ export default function ScreeningTab() {
     if (caseData) headingRef.current?.focus({ preventScroll: false })
   }, [caseData])
 
+  // A CNIC has 13 digits. Dashes and spaces are fine; anything else is rejected here
+  // rather than silently ignored by the server.
+  const cnicDigits = cnic.replace(/\D/g, '')
+  const cnicInvalid = !!cnic.trim() && cnicDigits.length !== 13
+  // only complain once they have left the field (or typed too many digits), not mid-typing
+  const cnicProblem = cnicInvalid && (cnicTouched || cnicDigits.length > 13) ? 'A CNIC has 13 digits (dashes are optional).' : null
+
   async function doSubmit() {
-    const run = { full_name: fullName.trim(), dob, nationality: nationality.trim(), threshold }
+    const run = { full_name: fullName.trim(), dob, nationality: nationality.trim(), threshold,
+      cnic: cnicDigits, father_name: fatherName.trim() }
     setLoading(true)
     setError(null)
     setCaseData(null)
@@ -69,6 +80,7 @@ export default function ScreeningTab() {
   function handleSubmit(e) {
     e.preventDefault()
     if (!fullName.trim() || loading) return
+    if (cnicInvalid) { setCnicTouched(true); return }
     doSubmit()
   }
 
@@ -76,6 +88,9 @@ export default function ScreeningTab() {
     setFullName('')
     setDob('')
     setNationality('')
+    setCnic('')
+    setCnicTouched(false)
+    setFatherName('')
     setThreshold(DEFAULT_THRESHOLD)
     setError(null)
     setCaseData(null)
@@ -133,9 +148,37 @@ export default function ScreeningTab() {
               />
             </label>
           </div>
-          <p className="field-hint field-hint-block">
-            Date of birth and nationality are optional. They are shown next to each match as supporting
-            evidence and never remove a match.
+          <div className="field-row field-row-cnic">
+            <label className="field" htmlFor="cnic-input">
+              <span className="field-label">CNIC</span>
+              <input
+                id="cnic-input"
+                value={cnic}
+                onChange={(e) => setCnic(e.target.value)}
+                onBlur={() => setCnicTouched(true)}
+                placeholder="35202-1234567-1"
+                inputMode="numeric"
+                autoComplete="off"
+                aria-invalid={!!cnicProblem}
+                aria-describedby="cnic-hint"
+              />
+              {cnicProblem && <span className="field-error">{cnicProblem}</span>}
+            </label>
+            <label className="field" htmlFor="father-input">
+              <span className="field-label">Father or husband</span>
+              <input
+                id="father-input"
+                value={fatherName}
+                onChange={(e) => setFatherName(e.target.value)}
+                placeholder="Name"
+                autoComplete="off"
+              />
+            </label>
+          </div>
+          <p id="cnic-hint" className="field-hint field-hint-block">
+            All of these except the name are optional. A CNIC that equals a CNIC on the NACTA or FIA Red Book lists
+            is reported as a match whatever the name looks like, so enter it whenever you have it. The others are
+            shown next to each match as supporting evidence and never remove one.
           </p>
 
           <div className="field">
@@ -160,7 +203,7 @@ export default function ScreeningTab() {
           </div>
 
           <div className="form-actions">
-            <button type="submit" className="btn btn-primary" disabled={loading || !fullName.trim()}>
+            <button type="submit" className="btn btn-primary" disabled={loading || !fullName.trim() || cnicInvalid}>
               {loading ? 'Screening...' : 'Run screening'}
             </button>
             <button type="button" className="btn btn-quiet" onClick={clearForm} disabled={loading}>Clear</button>
