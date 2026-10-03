@@ -509,8 +509,9 @@ span.article-title { color: var(--ink); }
   padding: 5px 14px;
   cursor: pointer;
 }
-.filter-btn:hover { background: var(--sheet-2); }
-.filter-btn-on { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+/* the hover tint is only for buttons that are not selected, otherwise it turns the selected one cream on cream */
+.filter-btn:not(.filter-btn-on):hover { background: var(--sheet-2); }
+.filter-btn-on, .filter-btn-on:hover { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
 
 .table-wrap { overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: 14px; }
