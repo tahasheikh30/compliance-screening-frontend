@@ -29,13 +29,18 @@ read, or if the NACTA copy is out of date.
 **History.** Every past screening, searchable by name and filterable by
 outcome. Opening one shows the same full report and evidence download.
 
-**Lists.** Which watch lists the backend currently holds in memory, how old
-they are, and a button to reload them all now. Normally unnecessary: the
+**Lists.** Every list on its own row (the FIA Red Books and the two OFAC lists
+are shown one by one), with whether it could be read, its record count and how
+old it is. A list that failed is highlighted with the reason and a link to its
+source file, and a PDF that downloaded but gave no people offers the text that
+was read from it, so an unsupported layout can be diagnosed from the screen.
+There is also a button to reload everything now. Normally unnecessary: the
 backend downloads the lists live and reuses them for a while.
 
-The same page loads the **NACTA Proscribed Persons** list. NACTA publishes it
-only through its web portal, so it cannot be downloaded automatically: upload
-it as a CSV or JSON file. The page shows which file is loaded and how old it
+The same page loads the **NACTA Proscribed Persons** list. NACTA's portal has no
+download address (it is a Blazor Server app), so the list is a file: click JSON
+on the portal and upload it here. The backend repo's `scripts/fetch_nacta.py`
+does the same with a browser on a schedule, so nobody has to. The page shows which file is loaded and how old it
 is, warns when a file looks like a partial export, and the screening reports
 NACTA as incomplete once the copy is older than the backend's limit (30 days
 by default).

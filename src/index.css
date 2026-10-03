@@ -546,6 +546,22 @@ span.article-title { color: var(--ink); }
 .nacta-upload { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 14px; margin-top: 14px; }
 .nacta-upload .field { flex: 1 1 260px; }
 input[type='file'] { font: inherit; font-size: 14px; max-width: 100%; }
+.list-name { display: block; }
+.list-reason { display: block; margin-top: 2px; font-size: 13.5px; font-weight: 600; color: var(--red); overflow-wrap: anywhere; }
+.list-note { display: block; margin-top: 2px; font-size: 13px; color: var(--amber); overflow-wrap: anywhere; }
+.list-link { display: block; margin-top: 2px; font-size: 13px; }
+.list-link a { color: var(--link); }
+.row-problem { background: var(--red-bg); }
+.list-sample { margin-top: 6px; font-size: 13.5px; }
+.list-sample summary { cursor: pointer; color: var(--link); }
+.list-sample p { margin: 6px 0; color: var(--ink-soft); }
+.list-sample pre {
+  max-height: 240px; overflow: auto; margin: 6px 0 8px; padding: 10px 12px;
+  background: var(--ink); color: var(--sheet); font-family: var(--font-mono); font-size: 12.5px;
+  white-space: pre-wrap; overflow-wrap: anywhere; user-select: all;
+}
+.btn-small { min-height: 34px; padding: 5px 12px; font-size: 13px; }
+.reload-summary { margin-top: 14px; font-size: 14px; color: var(--ink-soft); }
 .reload-result { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); }
 .reload-result h2 { font-family: var(--font-serif); font-size: 18px; margin-bottom: 8px; }
 .reload-result li { padding: 6px 0; overflow-wrap: anywhere; }

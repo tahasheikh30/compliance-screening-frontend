@@ -2,11 +2,54 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getListsStatus, reloadLists, getNactaStatus, uploadNacta } from '../api'
 import ErrorBanner from './ErrorBanner'
 import { Pill } from './ui'
-import { fmtAge, fmtNum, fmtDateTime, dateOrNull, plural } from '../lib/format'
+import { fmtAge, fmtNum, fmtDateTime, plural, safeUrl } from '../lib/format'
 import { SOURCES } from '../lib/status'
 
 const LIST_KEYS = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA']
 
+
+/** One row per list. A source made of several lists (the FIA Red Books, the two OFAC lists) gets a row for each. */
+function listRows(key, s) {
+  const source = SOURCES[key]
+  const lists = s?.lists || []
+  if (lists.length === 0) {
+    return [{
+      id: key,
+      name: source.long,
+      ok: false,
+      pill: { tone: 'warn', label: 'Not loaded yet' },
+      records: null,
+      loaded: key === 'NACTA' ? 'Loads from the uploaded file' : 'Downloads on the next screening',
+    }]
+  }
+  return lists.map((l) => {
+    const ok = !l.status || l.status === 'OK'
+    return {
+      id: `${key}-${l.list}`,
+      name: l.list === key ? source.long : l.list,
+      ok,
+      pill: ok ? { tone: 'good', label: 'Ready' } : { tone: 'bad', label: 'Problem' },
+      reason: ok ? null : l.status,
+      note: l.note || null,
+      source: safeUrl(l.source),
+      sample: l.sample || null,
+      records: ok ? l.records : 0,
+      loaded: s.cached ? fmtAge(s.age_seconds) : 'Not loaded',
+    }
+  })
+}
+
+function CopyButton({ text }) {
+  const [done, setDone] = useState(false)
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(text)
+      setDone(true)
+      setTimeout(() => setDone(false), 2000)
+    } catch { /* clipboard blocked: the text is still selectable */ }
+  }
+  return <button type="button" className="btn btn-quiet btn-small" onClick={copy}>{done ? 'Copied' : 'Copy text'}</button>
+}
 
 /**
  * NACTA publishes the Fourth Schedule only through a web app, so it cannot be downloaded
@@ -54,7 +97,17 @@ function NactaPanel({ onChanged }) {
   let summary = null
   if (status) {
     if (status.source === 'url') {
-      summary = <p>Downloaded live from <span className="mono">{status.url}</span> when a screening runs.</p>
+      summary = (
+        <>
+          <p>Downloaded automatically from <span className="mono">{status.url}</span> whenever the lists are loaded.</p>
+          {status.loaded && status.live_copy && (
+            <p>
+              Last good copy: {plural(status.records, 'person', 'people')}, saved {fmtDateTime(status.uploaded_at)}. It is
+              used if NACTA cannot be reached, as long as it is not older than {status.max_age_days} days.
+            </p>
+          )}
+        </>
+      )
     } else if (!status.loaded) {
       summary = (
         <p className="notice notice-warn">
@@ -84,16 +137,15 @@ function NactaPanel({ onChanged }) {
     <div className="nacta-panel">
       <h2>NACTA Proscribed Persons</h2>
       <p className="lead">
-        NACTA publishes the Fourth Schedule only through its web portal (nfs.nacta.gov.pk), so it cannot be downloaded
-        automatically like the other lists. Upload it as a CSV or JSON file with a header row that includes the name
-        column. A CNIC and father's name column make matching far more precise. The list changes every few weeks, so
-        upload a fresh copy regularly.
+        {status?.source === 'url'
+          ? 'The list is downloaded automatically from the configured address. You can still upload a file by hand, which is used if the download has never worked.'
+          : 'NACTA\'s portal (nfs.nacta.gov.pk) has no download address, so the list is loaded from a file. On the portal, click the JSON button to save the list, then upload that file here. Your administrator can also schedule an automatic refresh. A CNIC and father\'s name column make matching far more precise, and the list changes every few weeks, so keep it fresh.'}
       </p>
       <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
       {summary}
       <form onSubmit={upload} className="nacta-upload">
         <label className="field" htmlFor="nacta-file">
-          <span className="field-label">NACTA list file</span>
+          <span className="field-label">{status?.source === 'url' ? 'Or upload a NACTA list file by hand' : 'NACTA list file'}</span>
           <input
             id="nacta-file"
             ref={inputRef}
@@ -152,6 +204,9 @@ export default function ListsTab() {
     }
   }
 
+  // names of the lists that have a problem, taken from the same rows the table shows
+  const problems = status ? LIST_KEYS.flatMap((k) => listRows(k, status[k])).filter((r) => !r.ok && r.reason).map((r) => r.name) : []
+
   return (
     <div className="workspace workspace-single">
       <section className="sheet" aria-labelledby="lists-heading">
@@ -170,20 +225,38 @@ export default function ListsTab() {
           <div className="table-wrap">
             <table className="table">
               <thead>
-                <tr><th scope="col">List</th><th scope="col">In memory</th><th scope="col">Records</th><th scope="col">Loaded</th></tr>
+                <tr><th scope="col">List</th><th scope="col">Status</th><th scope="col">Records</th><th scope="col">Loaded</th></tr>
               </thead>
               <tbody>
-                {LIST_KEYS.map((k) => {
-                  const s = status[k] || {}
-                  return (
-                    <tr key={k}>
-                      <td>{SOURCES[k].long}</td>
-                      <td>{s.cached ? <Pill tone="good">Ready</Pill> : <Pill tone="warn">Not loaded</Pill>}</td>
-                      <td className="num">{s.cached ? fmtNum(s.records) : 'n/a'}</td>
-                      <td className="nowrap">{s.cached ? fmtAge(s.age_seconds) : (k === 'NACTA' ? 'Loads from the uploaded file' : 'Downloads on the next screening')}</td>
-                    </tr>
-                  )
-                })}
+                {LIST_KEYS.flatMap((k) => listRows(k, status[k]).map((r) => (
+                  <tr key={r.id} className={r.ok ? '' : 'row-problem'}>
+                    <td>
+                      <span className="list-name">{r.name}</span>
+                      {r.reason && <span className="list-reason">{r.reason}</span>}
+                      {r.note && <span className="list-note">{r.note}</span>}
+                      {r.source && (
+                        <span className="list-link">
+                          <a href={r.source} target="_blank" rel="noopener noreferrer">Open the source file</a>
+                        </span>
+                      )}
+                      {r.sample && (
+                        <details className="list-sample">
+                          <summary>Show the text read from this PDF</summary>
+                          <p>
+                            The file downloaded but no people could be found in it, so its layout is probably one the
+                            reader does not understand. Copy this text and send it to whoever maintains the screening
+                            tool so the layout can be added.
+                          </p>
+                          <pre>{r.sample}</pre>
+                          <CopyButton text={r.sample} />
+                        </details>
+                      )}
+                    </td>
+                    <td><Pill tone={r.pill.tone}>{r.pill.label}</Pill></td>
+                    <td className="num">{r.records == null ? 'n/a' : fmtNum(r.records)}</td>
+                    <td className="nowrap">{r.loaded}</td>
+                  </tr>
+                )))}
               </tbody>
             </table>
           </div>
@@ -200,37 +273,11 @@ export default function ListsTab() {
         <NactaPanel onChanged={load} />
 
         {reloaded && (
-          <div className="reload-result" role="status">
-            <h2>Reload result</h2>
-            <ul>
-              {LIST_KEYS.map((k) => {
-                const r = reloaded[k]
-                if (!r) return null
-                return (
-                  <li key={k}>
-                    <strong>{SOURCES[k].name}</strong>{' '}
-                    {r.error
-                      ? <span className="reload-bad">Could not be loaded. {r.error}</span>
-                      : <span>{plural(r.records, 'record', 'records')} in total</span>}
-                    {r.lists?.length > 0 && (
-                      <ul className="reload-lists">
-                        {r.lists.map((l) => {
-                          const ok = !l.status || l.status === 'OK'
-                          const d = dateOrNull(l.published)
-                          return (
-                            <li key={l.list} className={ok ? '' : 'reload-bad'}>
-                              {l.list}: {ok ? plural(l.records, 'record', 'records') : `not screened: ${l.status}`}
-                              {ok && d ? `, dated ${d}` : ''}
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
-          </div>
+          <p className="reload-summary" role="status">
+            {problems.length === 0
+              ? 'Reloaded. Every list loaded.'
+              : `Reloaded, but ${plural(problems.length, 'list has', 'lists have')} a problem: ${problems.join('; ')}. The reason is shown in the table above.`}
+          </p>
         )}
       </section>
     </div>
