@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { verifyApiKey } from './api'
+import { verifyApiKey, getStoredKey, storeKey, clearKey, isValidKeyFormat, takeLastAuthError, SIGNED_OUT_EVENT } from './api'
 import { ApiError } from './lib/apiError'
 import ErrorBanner from './components/ErrorBanner'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -12,36 +12,40 @@ import { MagnifyingGlassIcon } from './components/ui'
 function AccessGate({ onUnlock }) {
   const [value, setValue] = useState('')
   const [checking, setChecking] = useState(false)
+  const [waking, setWaking] = useState(false)
   const [error, setError] = useState(null)
 
-  // If we were just bounced here by a 401 on some other request, explain why
-  // instead of silently reappearing (see api.js dropKeyOn401).
+  // If we were just sent back here by a rejected request, explain why instead of
+  // silently reappearing (see api.js handleAuthFailure).
   useEffect(() => {
-    const raw = sessionStorage.getItem('screening_last_auth_error')
-    if (raw) {
-      sessionStorage.removeItem('screening_last_auth_error')
-      try {
-        const { code, message } = JSON.parse(raw)
-        setError(new ApiError({ status: 401, code, message }))
-      } catch { /* ignore malformed */ }
-    }
+    const last = takeLastAuthError()
+    if (last) setError(last)
   }, [])
 
   async function handleSubmit(e) {
-    e.preventDefault()
-    if (!value.trim()) return
+    e?.preventDefault?.()
+    const key = value.trim()
+    if (!key) return
+    if (!isValidKeyFormat(key)) {
+      setError(new ApiError({
+        code: 'AUTH_INVALID_KEY',
+        message: 'That does not look like an access key.',
+        hint: 'It contains spaces or unusual characters, often from copying it with a line break or a smart quote. Paste it again.',
+      }))
+      return
+    }
     setChecking(true)
+    setWaking(false)
     setError(null)
     try {
-      const ok = await verifyApiKey(value.trim())
-      if (ok) {
-        sessionStorage.setItem('screening_api_key', value.trim())
-        onUnlock()
-      }
+      await verifyApiKey(key, { onWaking: () => setWaking(true) })
+      storeKey(key)
+      onUnlock()
     } catch (err) {
       setError(err)
     } finally {
       setChecking(false)
+      setWaking(false)
     }
   }
 
@@ -69,6 +73,13 @@ function AccessGate({ onUnlock }) {
             </button>
           </div>
         </form>
+        {checking && (
+          <p className="muted" role="status">
+            {waking
+              ? 'The server was asleep and is starting up. This can take up to a minute. Keep this page open.'
+              : 'Connecting to the server...'}
+          </p>
+        )}
         <ErrorBanner error={error} onRetry={value.trim() ? handleSubmit : undefined} onDismiss={() => setError(null)} />
       </section>
     </main>
@@ -82,14 +93,21 @@ const TABS = [
 ]
 
 export default function App() {
-  const [unlocked, setUnlocked] = useState(() => !!sessionStorage.getItem('screening_api_key'))
+  const [unlocked, setUnlocked] = useState(() => !!getStoredKey())
   const [tab, setTab] = useState('screen')
   const [showNotice, setShowNotice] = useState(false)
+
+  // Any request the backend refuses because of the key (see api.js) sends us back to the gate.
+  useEffect(() => {
+    const onSignedOut = () => setUnlocked(false)
+    window.addEventListener(SIGNED_OUT_EVENT, onSignedOut)
+    return () => window.removeEventListener(SIGNED_OUT_EVENT, onSignedOut)
+  }, [])
 
   if (!unlocked) return <AccessGate onUnlock={() => setUnlocked(true)} />
 
   function lock() {
-    sessionStorage.removeItem('screening_api_key')
+    clearKey()
     setUnlocked(false)
   }
 

@@ -7,7 +7,11 @@ const CODE_COPY = {
   TIMEOUT: { title: 'That took too long' },
   AUTH_MISSING_KEY: { title: 'Access key needed' },
   AUTH_INVALID_KEY: { title: 'Access key rejected' },
+  AUTH_REQUIRED: { title: 'Access key needed' },
   AUTH_NOT_CONFIGURED: { title: 'Backend not configured' },
+  API_KEY_NOT_ACCEPTED: { title: 'Server not set up for the access key' },
+  DATABASE_UNAVAILABLE: { title: 'Database unavailable' },
+  DATABASE_NOT_CONFIGURED: { title: 'Backend not configured' },
   RATE_LIMITED: { title: 'Slow down a moment' },
   VALIDATION_ERROR: { title: 'Check the form' },
 }

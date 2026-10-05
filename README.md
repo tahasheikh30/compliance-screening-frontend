@@ -53,10 +53,38 @@ bar, because the backend does not report progress.
 ## Access control
 
 The app shows an access-key gate on load. Enter the same value as the
-backend's `API_KEY`. It is verified against the backend before being stored
-(in `sessionStorage`, so it clears when the tab closes) and sent as
-`X-API-Key` on every request, including evidence downloads. There is no
-separate frontend secret; the backend is what actually enforces this.
+backend's `API_KEY`. Unlocking does three checks in order: it wakes the
+backend if Render has put it to sleep (the gate says so and waits, up to about
+a minute), confirms the backend can reach its Supabase database, then confirms
+the backend accepts the key (`GET /api/me`). Only then is the key stored (in
+`sessionStorage`, so it clears when the tab closes) and sent as `X-API-Key` on
+every request, including evidence downloads and the NACTA upload. There is no
+separate frontend secret, and the key is never built into the bundle.
+
+**Backend setting required.** The backend now has Supabase sign in, and by
+default it accepts `API_KEY` only for the scheduled NACTA upload. For this
+console to work with the key, set this on the backend (Render) and redeploy:
+
+```
+ALLOW_API_KEY_FULL_ACCESS=true
+```
+
+With it on, everyone who has the key shares one identity: the key gives full
+admin access, screenings are not attributed to a person, History shows every
+screening, and the rate limits (10 screenings a minute) are shared. If the
+setting is off, the gate says exactly this instead of a generic error.
+
+**Connection behaviour.**
+- `VITE_API_BASE_URL` may be given as a bare host, with `https://` or with a
+  trailing slash. `/api` is added if missing.
+- Reads are retried up to three times on temporary trouble (server asleep, a
+  502/503/504, a dropped connection), honouring the server's `Retry-After`.
+- A screening is never retried. The server is woken first, and if a screening
+  times out the error says it may still have finished and to check History.
+- Every request carries an `X-Request-ID`, shown as the Reference on errors, so
+  a timed out request can still be found in the server log.
+- If the backend refuses the key later (rotated, or key access switched off),
+  the app returns to the gate and says why.
 
 ## Local development
 
@@ -68,7 +96,8 @@ npm run build
 ```
 
 In dev, Vite's proxy (see `vite.config.js`) forwards `/api` to a backend on
-`localhost:8000`. Start the backend with `API_KEY=dev uvicorn app.main:app`
+`localhost:8000`. Start the backend with
+`API_KEY=dev ALLOW_API_KEY_FULL_ACCESS=true DATABASE_URL=... SUPABASE_URL=... uvicorn app.main:app`
 and enter `dev` at the gate.
 
 ## Deploying to Vercel
@@ -82,7 +111,7 @@ and enter `dev` at the gate.
    ```
 
    Without it the app calls `/api` on Vercel's own domain, which does not
-   exist. The dev proxy only works locally.
+   exist. The key is not an environment variable: people type it at the gate. The dev proxy only works locally.
 3. Deploy (`npm run build`, output `dist/`).
 
 The backend's `ALLOWED_ORIGINS` must include the Vercel URL, or the browser
