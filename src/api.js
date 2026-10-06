@@ -4,6 +4,7 @@
 import { apiFetch, ApiError } from './lib/apiError'
 import { config } from './lib/config'
 import { getSupabase } from './lib/supabase'
+import { beginActivity } from './lib/activity'
 
 export { ApiError }
 
@@ -111,10 +112,15 @@ const AWAKE_WINDOW_MS = 10 * 60 * 1000
 /** Make sure the backend is awake (and, with deep, that it can reach its database). Resolves when it is. */
 export async function wakeBackend({ deep = false, force = false, onRetry } = {}) {
   if (!force && !deep && Date.now() - lastContact < AWAKE_WINDOW_MS) return
-  await withRetry(
-    () => apiFetch(`${BASE}/health${deep ? '?deep=true' : ''}`, { timeoutMs: 25000 }),
-    { onRetry },
-  )
+  const end = beginActivity()
+  try {
+    await withRetry(
+      () => apiFetch(`${BASE}/health${deep ? '?deep=true' : ''}`, { timeoutMs: 25000 }),
+      { onRetry },
+    )
+  } finally {
+    end()
+  }
   lastContact = Date.now()
 }
 
@@ -122,7 +128,18 @@ export async function wakeBackend({ deep = false, force = false, onRetry } = {})
 // Requests
 // ---------------------------------------------------------------------------
 
-async function request(path, options = {}) {
+// `track: false` keeps a call out of the global loader: background polling, and screenings, which
+// show their own progress.
+async function request(path, { track = true, ...options } = {}) {
+  const end = track ? beginActivity() : null
+  try {
+    return await run(path, options)
+  } finally {
+    end?.()
+  }
+}
+
+async function run(path, options) {
   const method = (options.method || 'GET').toUpperCase()
   const send = (token) => apiFetch(`${BASE}${path}`, {
     ...options,
@@ -170,8 +187,8 @@ export async function getMe() {
   return apiJson('/me')
 }
 
-export async function listUsers(status) {
-  return apiJson(`/admin/users${status ? `?status=${encodeURIComponent(status)}` : ''}`)
+export async function listUsers(status, { background = false } = {}) {
+  return apiJson(`/admin/users${status ? `?status=${encodeURIComponent(status)}` : ''}`, { track: !background })
 }
 
 export async function setUserStatus(id, status) {
@@ -214,6 +231,7 @@ export async function screenApplicant({ full_name, dob, nationality, threshold, 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       timeoutMs: SCREEN_TIMEOUT_MS,
+      track: false,
     })
   } catch (err) {
     if (err instanceof ApiError && (err.code === 'TIMEOUT' || err.code === 'NETWORK_ERROR')) {

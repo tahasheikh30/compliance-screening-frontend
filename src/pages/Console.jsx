@@ -4,12 +4,19 @@ import { listUsers } from '../api'
 import ErrorBoundary from '../components/ErrorBoundary'
 import DataNoticeDialog from '../components/DataNoticeDialog'
 import { MagnifyingGlassIcon } from '../components/ui'
+import { useActivity } from '../lib/activity'
 import ScreeningTab from './console/ScreeningTab'
 
 // The first tab is needed immediately; the rest are fetched the first time they are opened.
 const HistoryTab = lazy(() => import('./console/HistoryTab'))
 const ListsTab = lazy(() => import('./console/ListsTab'))
 const UsersTab = lazy(() => import('./console/UsersTab'))
+
+// Shown while a tab's code is being fetched; the global loader does the visible work.
+function TabLoading() {
+  useActivity()
+  return null
+}
 
 const BASE_TABS = [
   { id: 'screen', label: 'Screening' },
@@ -31,7 +38,7 @@ export default function Console() {
     let active = true
     const look = async () => {
       try {
-        const waiting = await listUsers('pending')
+        const waiting = await listUsers('pending', { background: true })
         if (active) setPending(waiting.length)
       } catch { /* the People tab shows the error if it persists */ }
     }
@@ -76,7 +83,7 @@ export default function Console() {
 
       <main className="main">
         <ErrorBoundary key={tab}>
-          <Suspense fallback={<p className="muted" role="status">Loading...</p>}>
+          <Suspense fallback={<TabLoading />}>
             {tab === 'screen' && <ScreeningTab />}
             {tab === 'history' && <HistoryTab isAdmin={isAdmin} />}
             {tab === 'lists' && <ListsTab isAdmin={isAdmin} />}
