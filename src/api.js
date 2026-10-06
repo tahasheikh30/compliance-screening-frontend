@@ -2,6 +2,8 @@
 // In production (Vercel), set VITE_API_BASE_URL to your Render backend URL,
 // e.g. https://your-backend.onrender.com (the /api part is added if you leave it out).
 import { apiFetch, ApiError } from './lib/apiError'
+import { config } from './lib/config'
+import { getSupabase } from './lib/supabase'
 
 export { ApiError }
 
@@ -22,75 +24,50 @@ export function normalizeBase(raw) {
 const BASE = normalizeBase(import.meta.env.VITE_API_BASE_URL)
 
 // ---------------------------------------------------------------------------
-// Access key
+// Who is calling: the app (its key) and the person (their access token)
 //
-// The console is opened with the backend's API_KEY. It is kept in sessionStorage (cleared when the
-// tab closes) and sent as X-API-Key on every request, evidence downloads and the NACTA upload included.
-// The backend must run with ALLOW_API_KEY_FULL_ACCESS=true for the key to open anything but the
-// NACTA upload (see README).
+// Every request carries both:
+//   X-API-Key: <VITE_API_KEY>            which app is calling. Not a secret: it is built into the page.
+//   Authorization: Bearer <access token> who is using it, from their Supabase sign in. This is what
+//                                        protects the data; the backend checks it on every request.
 // ---------------------------------------------------------------------------
 
-const KEY_STORAGE = 'screening_api_key'
-const LAST_AUTH_ERROR = 'screening_last_auth_error'
-export const SIGNED_OUT_EVENT = 'screening:signed-out'
+export const SESSION_ENDED_EVENT = 'screening:session-ended'     // the backend no longer accepts this sign in
+export const ACCOUNT_CHANGED_EVENT = 'screening:account-changed'  // approval status changed under us
 
-export function getStoredKey() {
-  return sessionStorage.getItem(KEY_STORAGE)
-}
-
-export function storeKey(key) {
-  sessionStorage.setItem(KEY_STORAGE, key)
-}
-
-export function clearKey() {
-  sessionStorage.removeItem(KEY_STORAGE)
-}
-
-/** True when `key` can be sent as an HTTP header value. A pasted smart quote or space makes fetch() throw. */
-export function isValidKeyFormat(key) {
-  return /^[\x21-\x7E]+$/.test(key)
-}
-
-function authHeaders() {
-  const key = getStoredKey()
-  return key ? { 'X-API-Key': key } : {}
-}
-
-// The backend says "Sign in with your account" when it is not set to accept the access key. This
-// console has no account sign in, so say what actually needs to change.
-function explainKeyProblem(err) {
-  if (err instanceof ApiError && err.code === 'API_KEY_NOT_ACCEPTED') {
-    err.message = 'The server is not set up to accept the access key for this console.'
-    err.hint = 'On the backend (Render), set ALLOW_API_KEY_FULL_ACCESS=true and redeploy, then unlock again.'
+async function accessToken({ forceRefresh = false } = {}) {
+  const { auth } = getSupabase()
+  if (forceRefresh) {
+    const { data } = await auth.refreshSession()
+    return data?.session?.access_token || null
   }
+  const { data } = await auth.getSession()     // refreshes a token that is about to expire
+  return data?.session?.access_token || null
+}
+
+const TOKEN_CODES = new Set(['AUTH_REQUIRED', 'AUTH_INVALID_TOKEN', 'AUTH_TOKEN_EXPIRED'])
+const isTokenProblem = (err) => err instanceof ApiError && err.status === 401 && TOKEN_CODES.has(err.code)
+const isAppKeyProblem = (err) => err instanceof ApiError && err.status === 401
+  && (err.code === 'AUTH_MISSING_KEY' || err.code === 'AUTH_INVALID_KEY')
+
+// The app's own key is wrong: nothing the person can fix, and signing them out would not help. Say who can.
+function explainAppKeyProblem(err) {
+  err.message = 'This app is not set up correctly: the server does not accept its access key.'
+  err.hint = 'An administrator needs to check that VITE_API_KEY on the frontend matches APP_API_KEY on the backend, '
+    + 'then redeploy the frontend.'
   return err
 }
 
-// A 401 means the stored key no longer works (rejected, or the backend restarted with no API_KEY).
-// API_KEY_NOT_ACCEPTED means the backend stopped accepting keys. Either way the right move is the
-// same: drop the key and show the access gate again, carrying the reason so the gate can explain
-// what happened instead of silently reappearing.
-function handleAuthFailure(err) {
-  explainKeyProblem(err)
-  if (err instanceof ApiError && (err.status === 401 || err.code === 'API_KEY_NOT_ACCEPTED')) {
-    clearKey()
-    sessionStorage.setItem(LAST_AUTH_ERROR, JSON.stringify({
-      status: err.status, code: err.code, message: err.message, hint: err.hint,
-    }))
-    window.dispatchEvent(new Event(SIGNED_OUT_EVENT))
+function handleFailure(err) {
+  if (isAppKeyProblem(err)) {
+    explainAppKeyProblem(err)
+  } else if (isTokenProblem(err)) {
+    // a fresh token was already tried (see request): this sign in is over
+    window.dispatchEvent(new CustomEvent(SESSION_ENDED_EVENT, { detail: { code: err.code } }))
+  } else if (err instanceof ApiError && err.status === 403 && (err.code === 'ACCOUNT_PENDING' || err.code === 'ACCOUNT_REJECTED')) {
+    window.dispatchEvent(new Event(ACCOUNT_CHANGED_EVENT))
   }
   throw err
-}
-
-export function takeLastAuthError() {
-  const raw = sessionStorage.getItem(LAST_AUTH_ERROR)
-  if (!raw) return null
-  sessionStorage.removeItem(LAST_AUTH_ERROR)
-  try {
-    return new ApiError(JSON.parse(raw))
-  } catch {
-    return null
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -147,16 +124,34 @@ export async function wakeBackend({ deep = false, force = false, onRetry } = {})
 
 async function request(path, options = {}) {
   const method = (options.method || 'GET').toUpperCase()
-  const attempt = () => apiFetch(`${BASE}${path}`, {
+  const send = (token) => apiFetch(`${BASE}${path}`, {
     ...options,
-    headers: { ...authHeaders(), ...(options.headers || {}) },
+    headers: {
+      ...(config.apiKey ? { 'X-API-Key': config.apiKey } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.headers || {}),
+    },
   })
+  const attempt = async () => {
+    const token = await accessToken()
+    try {
+      return await send(token)
+    } catch (err) {
+      // An expired or revoked token is refused before anything runs, so trying once more with a fresh one is
+      // safe even for a write.
+      if (isTokenProblem(err)) {
+        const fresh = await accessToken({ forceRefresh: true })
+        if (fresh && fresh !== token) return send(fresh)
+      }
+      throw err
+    }
+  }
   try {
     const res = method === 'GET' ? await withRetry(attempt) : await attempt()
     lastContact = Date.now()
     return res
   } catch (err) {
-    return handleAuthFailure(err)
+    return handleFailure(err)
   }
 }
 
@@ -167,32 +162,28 @@ async function apiJson(path, options = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// Access key verification (used by the access gate)
+// The signed in person, and (for administrators) who has signed up
 // ---------------------------------------------------------------------------
 
-/**
- * Wake the backend, confirm it can reach its database, then confirm it accepts `key`.
- * Resolves true, or throws an ApiError that says which of those failed. Nothing is stored here.
- */
-export async function verifyApiKey(key, { onWaking } = {}) {
-  await wakeBackend({ deep: true, force: true, onRetry: onWaking })
-  const headers = { 'X-API-Key': key }
-  try {
-    await apiFetch(`${BASE}/me`, { headers })
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      // a backend from before /api/me existed: the history list is the lightest call that checks the key
-      try {
-        await apiFetch(`${BASE}/applicants`, { headers })
-      } catch (inner) {
-        throw explainKeyProblem(inner)
-      }
-    } else {
-      throw explainKeyProblem(err)
-    }
-  }
-  lastContact = Date.now()
-  return true
+/** { id, email, role: 'user' | 'admin', status: 'pending' | 'approved' | 'rejected' } */
+export async function getMe() {
+  return apiJson('/me')
+}
+
+export async function listUsers(status) {
+  return apiJson(`/admin/users${status ? `?status=${encodeURIComponent(status)}` : ''}`)
+}
+
+export async function setUserStatus(id, status) {
+  return apiJson(`/admin/users/${encodeURIComponent(id)}/status`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }),
+  })
+}
+
+export async function setUserRole(id, role) {
+  return apiJson(`/admin/users/${encodeURIComponent(id)}/role`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role }),
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -232,8 +223,9 @@ export async function screenApplicant({ full_name, dob, nationality, threshold, 
   }
 }
 
-export async function listApplicants() {
-  return apiJson('/applicants')
+// Everyone sees their own screenings. An administrator sees everyone's, or only their own with mine.
+export async function listApplicants({ mine = false } = {}) {
+  return apiJson(`/applicants${mine ? '?mine=true' : ''}`)
 }
 
 export async function getApplicant(id) {

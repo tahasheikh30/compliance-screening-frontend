@@ -1,25 +1,36 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { json, apiErr, makeSupabase, sessionFor } from './helpers'
 
-const json = (body, status = 200, headers = {}) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...headers } })
-
-const apiError = (status, code, message, hint = null, headers = {}) =>
-  json({ detail: message, error: { code, message, hint, request_id: 'req-from-server' } }, status, headers)
+const h = vi.hoisted(() => ({ supabase: null }))
+vi.mock('../lib/supabase', () => ({ getSupabase: () => h.supabase }))
 
 let api
 let fetchMock
+let events
+
+const listen = (name) => {
+  const seen = []
+  const fn = (e) => seen.push(e)
+  window.addEventListener(name, fn)
+  events.push(() => window.removeEventListener(name, fn))
+  return seen
+}
 
 beforeEach(async () => {
   vi.resetModules()
-  sessionStorage.clear()
+  vi.stubEnv('VITE_API_KEY', 'test-app-key')
+  events = []
+  h.supabase = makeSupabase({ session: sessionFor('ana@example.com', 'tok-1') })
   fetchMock = vi.fn()
   vi.stubGlobal('fetch', fetchMock)
   api = await import('../api')
 })
 
 afterEach(() => {
+  events.forEach((off) => off())
   vi.useRealTimers()
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
 })
 
 describe('normalizeBase', () => {
@@ -39,32 +50,23 @@ describe('normalizeBase', () => {
   })
 })
 
-describe('isValidKeyFormat', () => {
-  it('rejects anything that cannot be an HTTP header value', () => {
-    expect(api.isValidKeyFormat('abc-DEF_123.xyz~')).toBe(true)
-    expect(api.isValidKeyFormat('has space')).toBe(false)
-    expect(api.isValidKeyFormat('line\nbreak')).toBe(false)
-    expect(api.isValidKeyFormat('smart\u201Cquote')).toBe(false)
-  })
-})
-
-describe('sending the access key', () => {
-  it('sends X-API-Key and a request id on every call', async () => {
-    api.storeKey('secret-key')
+describe('who is calling', () => {
+  it('sends the app key AND the signed in person on every call, plus a request id', async () => {
     fetchMock.mockResolvedValue(json([]))
     await api.listApplicants()
     const [url, init] = fetchMock.mock.calls[0]
     expect(url).toBe('/api/applicants')
-    expect(init.headers['X-API-Key']).toBe('secret-key')
+    expect(init.headers['X-API-Key']).toBe('test-app-key')
+    expect(init.headers.Authorization).toBe('Bearer tok-1')
     expect(init.headers['X-Request-ID']).toMatch(/^[A-Za-z0-9._-]{8,64}$/)
   })
 
-  it('sends the key on the NACTA upload and the evidence download too', async () => {
-    api.storeKey('secret-key')
+  it('sends both on the NACTA upload and the evidence download too', async () => {
     fetchMock.mockResolvedValueOnce(json({ records: 3 }))
     await api.uploadNacta(new File(['name\nA'], 'nacta.csv', { type: 'text/csv' }))
     expect(fetchMock.mock.calls[0][0]).toBe('/api/admin/nacta?filename=nacta.csv')
-    expect(fetchMock.mock.calls[0][1].headers['X-API-Key']).toBe('secret-key')
+    expect(fetchMock.mock.calls[0][1].headers['X-API-Key']).toBe('test-app-key')
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBe('Bearer tok-1')
     expect(fetchMock.mock.calls[0][1].headers['Content-Type']).toBe('text/csv')
 
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
@@ -73,79 +75,102 @@ describe('sending the access key', () => {
     fetchMock.mockResolvedValueOnce(new Response('%PDF-1.4', { status: 200 }))
     await api.downloadEvidence(7, 'e.pdf')
     expect(fetchMock.mock.calls[1][0]).toBe('/api/evidence/7')
-    expect(fetchMock.mock.calls[1][1].headers['X-API-Key']).toBe('secret-key')
+    expect(fetchMock.mock.calls[1][1].headers['X-API-Key']).toBe('test-app-key')
+    expect(fetchMock.mock.calls[1][1].headers.Authorization).toBe('Bearer tok-1')
+  })
+
+  it('wakes the server with no credentials at all (the health check is public)', async () => {
+    fetchMock.mockResolvedValue(json({ status: 'ok' }))
+    await api.wakeBackend({ force: true })
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/health')
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined()
+    expect(fetchMock.mock.calls[0][1].headers['X-API-Key']).toBeUndefined()
+  })
+
+  it('reads who the person is, and lets administrators list and decide on users', async () => {
+    fetchMock.mockImplementation(async () => json({ ok: true }))
+    await api.getMe()
+    await api.listUsers('pending')
+    await api.listUsers()
+    await api.setUserStatus('abc-1', 'approved')
+    await api.setUserRole('abc-1', 'admin')
+    await api.listApplicants({ mine: true })
+    const calls = fetchMock.mock.calls.map(([u, i]) => `${i.method || 'GET'} ${u}`)
+    expect(calls).toEqual([
+      'GET /api/me', 'GET /api/admin/users?status=pending', 'GET /api/admin/users',
+      'POST /api/admin/users/abc-1/status', 'POST /api/admin/users/abc-1/role', 'GET /api/applicants?mine=true',
+    ])
+    expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toEqual({ status: 'approved' })
+    expect(JSON.parse(fetchMock.mock.calls[4][1].body)).toEqual({ role: 'admin' })
   })
 })
 
-describe('verifyApiKey', () => {
-  it('wakes the backend, checks the database, then checks the key against /me', async () => {
+describe('an expired or refused sign in', () => {
+  it('refreshes the token and tries once more, even for a write', async () => {
+    h.supabase.state.refreshed = sessionFor('ana@example.com', 'tok-2')
+    const ended = listen(api.SESSION_ENDED_EVENT)
+    fetchMock.mockResolvedValueOnce(json({ status: 'ok' }))
+    await api.wakeBackend({ force: true })                       // marks the server as awake, so only /api/screen is sent
+    fetchMock.mockReset()
     fetchMock
-      .mockResolvedValueOnce(json({ status: 'ok' }))
-      .mockResolvedValueOnce(json({ id: null, email: 'api-key', role: 'admin', status: 'approved' }))
-    await expect(api.verifyApiKey('k1')).resolves.toBe(true)
-    expect(fetchMock.mock.calls[0][0]).toBe('/api/health?deep=true')
-    expect(fetchMock.mock.calls[1][0]).toBe('/api/me')
-    expect(fetchMock.mock.calls[1][1].headers['X-API-Key']).toBe('k1')
+      .mockResolvedValueOnce(apiErr(401, 'AUTH_TOKEN_EXPIRED', 'Your session has expired.'))
+      .mockResolvedValueOnce(json({ applicant_id: 9 }))
+    await expect(api.screenApplicant({ full_name: 'A B' })).resolves.toEqual({ applicant_id: 9 })
+    const posts = fetchMock.mock.calls.filter(([u]) => u === '/api/screen')
+    expect(posts).toHaveLength(2)
+    expect(posts[0][1].headers.Authorization).toBe('Bearer tok-1')
+    expect(posts[1][1].headers.Authorization).toBe('Bearer tok-2')
+    expect(ended).toHaveLength(0)
   })
 
-  it('falls back to the history list on a backend that has no /api/me', async () => {
-    fetchMock
-      .mockResolvedValueOnce(json({ status: 'ok' }))
-      .mockResolvedValueOnce(apiError(404, 'NOT_FOUND', 'That endpoint does not exist.'))
-      .mockResolvedValueOnce(json([]))
-    await expect(api.verifyApiKey('k1')).resolves.toBe(true)
-    expect(fetchMock.mock.calls[2][0]).toBe('/api/applicants')
+  it('ends the session when a fresh token is refused too', async () => {
+    const ended = listen(api.SESSION_ENDED_EVENT)
+    h.supabase.state.refreshed = sessionFor('ana@example.com', 'tok-2')
+    fetchMock.mockImplementation(async () => apiErr(401, 'AUTH_INVALID_TOKEN', 'That sign in is not valid.'))
+    await expect(api.getMe()).rejects.toMatchObject({ status: 401, code: 'AUTH_INVALID_TOKEN' })
+    expect(ended).toHaveLength(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2)       // the first try, and one with the refreshed token
   })
 
-  it('reports a wrong key as a rejected key', async () => {
-    fetchMock
-      .mockResolvedValueOnce(json({ status: 'ok' }))
-      .mockResolvedValueOnce(apiError(401, 'AUTH_INVALID_KEY', 'That access key was rejected.'))
-    await expect(api.verifyApiKey('bad')).rejects.toMatchObject({ status: 401, code: 'AUTH_INVALID_KEY' })
+  it('ends the session when there is no token to refresh to', async () => {
+    const ended = listen(api.SESSION_ENDED_EVENT)
+    h.supabase.state.session = null
+    h.supabase.state.refreshed = null
+    fetchMock.mockResolvedValue(apiErr(401, 'AUTH_REQUIRED', 'Sign in to continue.'))
+    await expect(api.getMe()).rejects.toMatchObject({ code: 'AUTH_REQUIRED' })
+    expect(ended).toHaveLength(1)
+    expect(fetchMock.mock.calls[0][1].headers.Authorization).toBeUndefined()
   })
 
-  it('explains what to change when the backend is not set to accept the key', async () => {
-    fetchMock
-      .mockResolvedValueOnce(json({ status: 'ok' }))
-      .mockResolvedValueOnce(apiError(403, 'API_KEY_NOT_ACCEPTED', 'An access key cannot be used for this request.', 'Sign in with your account.'))
-    await expect(api.verifyApiKey('k1')).rejects.toMatchObject({
-      code: 'API_KEY_NOT_ACCEPTED',
-      hint: expect.stringContaining('ALLOW_API_KEY_FULL_ACCESS=true'),
+  it('does not sign the person out when the APP key is wrong, and says who must fix it', async () => {
+    const ended = listen(api.SESSION_ENDED_EVENT)
+    fetchMock.mockResolvedValue(apiErr(401, 'AUTH_INVALID_KEY', 'The app\'s access key was rejected.'))
+    await expect(api.getMe()).rejects.toMatchObject({
+      code: 'AUTH_INVALID_KEY',
+      message: expect.stringContaining('not set up correctly'),
+      hint: expect.stringContaining('VITE_API_KEY'),
     })
+    expect(ended).toHaveLength(0)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  it('tells the user when the database cannot be reached instead of unlocking', async () => {
-    vi.useFakeTimers()
-    fetchMock.mockImplementation(() => Promise.resolve(
-      apiError(503, 'DATABASE_UNAVAILABLE', 'The database cannot be reached right now.', null, { 'Retry-After': '1' })))
-    const p = api.verifyApiKey('k1')
-    const assertion = expect(p).rejects.toMatchObject({ code: 'DATABASE_UNAVAILABLE' })
-    await vi.advanceTimersByTimeAsync(60000)
-    await assertion
-    expect(fetchMock.mock.calls.every(([url]) => url === '/api/health?deep=true')).toBe(true)
-  })
-
-  it('reports a sleeping server through onWaking and succeeds once it answers', async () => {
-    vi.useFakeTimers()
-    fetchMock
-      .mockResolvedValueOnce(apiError(503, 'HTTP_503', 'Service unavailable'))
-      .mockResolvedValueOnce(json({ status: 'ok' }))
-      .mockResolvedValueOnce(json({ id: null, email: 'api-key', role: 'admin', status: 'approved' }))
-    const onWaking = vi.fn()
-    const p = api.verifyApiKey('k1', { onWaking })
-    await vi.advanceTimersByTimeAsync(5000)
-    await expect(p).resolves.toBe(true)
-    expect(onWaking).toHaveBeenCalledTimes(1)
+  it('tells the app when the approval status changed under it, but not for other refusals', async () => {
+    const changed = listen(api.ACCOUNT_CHANGED_EVENT)
+    fetchMock.mockResolvedValueOnce(apiErr(403, 'ACCOUNT_REJECTED', 'Your account request was declined.'))
+    await expect(api.listApplicants()).rejects.toMatchObject({ code: 'ACCOUNT_REJECTED' })
+    expect(changed).toHaveLength(1)
+    fetchMock.mockResolvedValueOnce(apiErr(403, 'ADMIN_ONLY', 'Only an administrator can do this.'))
+    await expect(api.getListsStatus()).rejects.toMatchObject({ code: 'ADMIN_ONLY' })
+    expect(changed).toHaveLength(1)
   })
 })
 
 describe('retries', () => {
   it('retries a read on a temporary server error and then succeeds', async () => {
     vi.useFakeTimers()
-    api.storeKey('k')
     fetchMock
-      .mockResolvedValueOnce(apiError(503, 'DATABASE_UNAVAILABLE', 'down', null, { 'Retry-After': '1' }))
-      .mockResolvedValueOnce(apiError(502, 'HTTP_502', 'bad gateway'))
+      .mockResolvedValueOnce(apiErr(503, 'DATABASE_UNAVAILABLE', 'down', null, { 'Retry-After': '1' }))
+      .mockResolvedValueOnce(apiErr(502, 'HTTP_502', 'bad gateway'))
       .mockResolvedValueOnce(json([{ id: 1 }]))
     const p = api.listApplicants()
     await vi.advanceTimersByTimeAsync(10000)
@@ -154,16 +179,14 @@ describe('retries', () => {
   })
 
   it('does not retry an answer that will not change', async () => {
-    api.storeKey('k')
-    fetchMock.mockResolvedValue(apiError(404, 'NOT_FOUND', 'Applicant not found'))
+    fetchMock.mockResolvedValue(apiErr(404, 'NOT_FOUND', 'Applicant not found'))
     await expect(api.getApplicant(9)).rejects.toMatchObject({ status: 404 })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
   it('gives up after a few attempts and surfaces the error', async () => {
     vi.useFakeTimers()
-    api.storeKey('k')
-    fetchMock.mockImplementation(() => Promise.resolve(apiError(503, 'DATABASE_UNAVAILABLE', 'down')))
+    fetchMock.mockImplementation(() => Promise.resolve(apiErr(503, 'DATABASE_UNAVAILABLE', 'down')))
     const p = api.listApplicants()
     const assertion = expect(p).rejects.toMatchObject({ code: 'DATABASE_UNAVAILABLE' })
     await vi.advanceTimersByTimeAsync(60000)
@@ -174,7 +197,6 @@ describe('retries', () => {
 
 describe('screening', () => {
   it('wakes the server first, then posts once', async () => {
-    api.storeKey('k')
     fetchMock
       .mockResolvedValueOnce(json({ status: 'ok' }))
       .mockResolvedValueOnce(json({ applicant_id: 5 }))
@@ -187,7 +209,6 @@ describe('screening', () => {
   })
 
   it('skips the wake-up call when the server answered a moment ago', async () => {
-    api.storeKey('k')
     fetchMock.mockResolvedValue(json([]))
     await api.listApplicants()
     fetchMock.mockResolvedValueOnce(json({ applicant_id: 6 }))
@@ -197,8 +218,7 @@ describe('screening', () => {
 
   it('never posts to a server that will not wake up', async () => {
     vi.useFakeTimers()
-    api.storeKey('k')
-    fetchMock.mockImplementation(() => Promise.resolve(apiError(503, 'HTTP_503', 'asleep')))
+    fetchMock.mockImplementation(() => Promise.resolve(apiErr(503, 'HTTP_503', 'asleep')))
     const p = api.screenApplicant({ full_name: 'A B' })
     const assertion = expect(p).rejects.toMatchObject({ status: 503 })
     await vi.advanceTimersByTimeAsync(60000)
@@ -207,7 +227,6 @@ describe('screening', () => {
   })
 
   it('does not retry a timed out screening and warns that it may have finished', async () => {
-    api.storeKey('k')
     fetchMock
       .mockResolvedValueOnce(json({ status: 'ok' }))
       .mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }))
@@ -217,35 +236,5 @@ describe('screening', () => {
       requestId: expect.any(String),
     })
     expect(fetchMock).toHaveBeenCalledTimes(2)
-  })
-})
-
-describe('a key the backend refuses', () => {
-  it('drops the key, signs out and remembers why on a 401', async () => {
-    api.storeKey('stale')
-    const signedOut = vi.fn()
-    window.addEventListener(api.SIGNED_OUT_EVENT, signedOut)
-    fetchMock.mockResolvedValue(apiError(401, 'AUTH_INVALID_KEY', 'That access key was rejected.'))
-    await expect(api.listApplicants()).rejects.toMatchObject({ status: 401 })
-    window.removeEventListener(api.SIGNED_OUT_EVENT, signedOut)
-    expect(api.getStoredKey()).toBeNull()
-    expect(signedOut).toHaveBeenCalledTimes(1)
-    expect(api.takeLastAuthError()).toMatchObject({ code: 'AUTH_INVALID_KEY' })
-    expect(api.takeLastAuthError()).toBeNull()
-  })
-
-  it('signs out when the backend stops accepting keys mid session', async () => {
-    api.storeKey('k')
-    fetchMock.mockResolvedValue(apiError(403, 'API_KEY_NOT_ACCEPTED', 'An access key cannot be used for this request.'))
-    await expect(api.getListsStatus()).rejects.toMatchObject({ code: 'API_KEY_NOT_ACCEPTED' })
-    expect(api.getStoredKey()).toBeNull()
-    expect(api.takeLastAuthError().hint).toContain('ALLOW_API_KEY_FULL_ACCESS=true')
-  })
-
-  it('keeps the key on an ordinary forbidden answer', async () => {
-    api.storeKey('k')
-    fetchMock.mockResolvedValue(apiError(403, 'ADMIN_ONLY', 'Only an administrator can do this.'))
-    await expect(api.reloadLists()).rejects.toMatchObject({ code: 'ADMIN_ONLY' })
-    expect(api.getStoredKey()).toBe('k')
   })
 })

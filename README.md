@@ -52,39 +52,76 @@ bar, because the backend does not report progress.
 
 ## Access control
 
-The app shows an access-key gate on load. Enter the same value as the
-backend's `API_KEY`. Unlocking does three checks in order: it wakes the
-backend if Render has put it to sleep (the gate says so and waits, up to about
-a minute), confirms the backend can reach its Supabase database, then confirms
-the backend accepts the key (`GET /api/me`). Only then is the key stored (in
-`sessionStorage`, so it clears when the tab closes) and sent as `X-API-Key` on
-every request, including evidence downloads and the NACTA upload. There is no
-separate frontend secret, and the key is never built into the bundle.
+People sign in with their own account (email and password, through Supabase Auth). Nobody types a key.
 
-**Backend setting required.** The backend now has Supabase sign in, and by
-default it accepts `API_KEY` only for the scheduled NACTA upload. For this
-console to work with the key, set this on the backend (Render) and redeploy:
+**Two credentials travel with every request**, and the backend requires both:
+
+| Header | What it says | Where it comes from |
+|---|---|---|
+| `X-API-Key` | which app is calling | `VITE_API_KEY`, the same value as `APP_API_KEY` on the backend |
+| `Authorization: Bearer ...` | who is using it | the person's Supabase session, refreshed automatically |
+
+The app key is built into the page, so anyone who opens the app can read it. It is an app identifier, not
+a secret, and on its own it opens nothing. The person's sign in is what protects the data. The backend's
+**secret** `API_KEY` (the scheduled NACTA upload) must never be put in the frontend, and must be a different
+value from `VITE_API_KEY`.
+
+**The flow**
+1. Sign in, or request an account (password of at least 12 characters). Supabase may ask the person to confirm
+   their email first.
+2. A new account is **pending** and sees a waiting screen that updates by itself. An administrator approves
+   or declines it on the **People** tab (administrators see a badge with the number waiting).
+3. Approved people can screen applicants and see **their own** history. Administrators also see everyone's
+   (with who ran each screening, or just their own), manage the lists and the NACTA file, and manage people.
+4. Declining or approving takes effect on the person's very next action.
+
+**Session handling**
+- The session is kept in this browser (so a visit does not start with a sign in) and is cleared after
+  **30 minutes without activity**, in any tab, including when the browser is reopened later.
+- An expired token is refreshed and the request tried once more. If the backend still refuses it, the
+  person is signed out with a message, not left on a broken page.
+- A wrong `VITE_API_KEY` is reported as a setup problem (it is not the person's fault) and does not sign
+  anyone out.
+- If a required setting is missing, or `VITE_SUPABASE_PUBLISHABLE_KEY` holds a **secret** key, the app shows
+  what to fix instead of a login, and never starts.
+
+**Connection behaviour**
+- `VITE_API_BASE_URL` may be given as a bare host, with `https://` or with a trailing slash. `/api` is added
+  if missing.
+- The server is woken while the person types their password. Reads are retried up to three times on
+  temporary trouble (asleep, 502/503/504, a dropped connection), honouring the server's `Retry-After`.
+- A screening is never retried. The server is woken first, and if a screening times out the error says it may
+  still have finished and to check History.
+- Every request carries an `X-Request-ID`, shown as the Reference on errors, so a timed out request can still
+  be found in the server log.
+
+**Browser protections** (`vercel.json`): a strict Content Security Policy (scripts only from this site; network
+calls only to this site, `*.onrender.com` and `*.supabase.co`; no framing), `nosniff`, no referrer, HSTS and a
+locked down Permissions-Policy. If your backend is on its own domain, add it to `connect-src` there.
+
+## Setup checklist
+
+Backend (Render): set `APP_API_KEY` (generate one: `python3 -c "import secrets; print(secrets.token_urlsafe(32))"`),
+keep `API_KEY` as a different secret value, and redeploy. Frontend (Vercel) environment variables:
 
 ```
-ALLOW_API_KEY_FULL_ACCESS=true
+VITE_API_BASE_URL=https://<your-backend>.onrender.com
+VITE_API_KEY=<the same value as APP_API_KEY>
+VITE_SUPABASE_URL=https://<project>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=<the project's publishable key>
 ```
 
-With it on, everyone who has the key shares one identity: the key gives full
-admin access, screenings are not attributed to a person, History shows every
-screening, and the rate limits (10 screenings a minute) are shared. If the
-setting is off, the gate says exactly this instead of a generic error.
+Supabase dashboard (Authentication): add the deployed frontend address to **URL Configuration** (Site URL and
+Redirect URLs) so the confirmation email links back to the app, turn on **Confirm email**, and set the minimum
+password length to 12 (turn on leaked password protection if your plan has it).
 
-**Connection behaviour.**
-- `VITE_API_BASE_URL` may be given as a bare host, with `https://` or with a
-  trailing slash. `/api` is added if missing.
-- Reads are retried up to three times on temporary trouble (server asleep, a
-  502/503/504, a dropped connection), honouring the server's `Retry-After`.
-- A screening is never retried. The server is woken first, and if a screening
-  times out the error says it may still have finished and to check History.
-- Every request carries an `X-Request-ID`, shown as the Reference on errors, so
-  a timed out request can still be found in the server log.
-- If the backend refuses the key later (rotated, or key access switched off),
-  the app returns to the gate and says why.
+**The first administrator.** Sign up in the app, then in the Supabase SQL editor:
+
+```sql
+update public.profiles set status = 'approved', role = 'admin' where email = 'you@example.com';
+```
+
+After that, administrators approve everyone else in the app.
 
 ## Local development
 
@@ -96,9 +133,9 @@ npm run build
 ```
 
 In dev, Vite's proxy (see `vite.config.js`) forwards `/api` to a backend on
-`localhost:8000`. Start the backend with
-`API_KEY=dev ALLOW_API_KEY_FULL_ACCESS=true DATABASE_URL=... SUPABASE_URL=... uvicorn app.main:app`
-and enter `dev` at the gate.
+`localhost:8000`. Copy `.env.example` to `.env.local`, fill in `VITE_API_KEY` (any value), and start the backend with the
+matching `APP_API_KEY=<that value> DATABASE_URL=... SUPABASE_URL=... uvicorn app.main:app`.
+Then sign in through the app as usual.
 
 ## Deploying to Vercel
 
@@ -111,7 +148,7 @@ and enter `dev` at the gate.
    ```
 
    Without it the app calls `/api` on Vercel's own domain, which does not
-   exist. The key is not an environment variable: people type it at the gate. The dev proxy only works locally.
+   exist. Also set the other three variables listed under Setup checklist below. The dev proxy only works locally.
 3. Deploy (`npm run build`, output `dist/`).
 
 The backend's `ALLOWED_ORIGINS` must include the Vercel URL, or the browser
@@ -173,7 +210,7 @@ Chromium. Both are worth doing before relying on this with real applicants.
 
 **Not applicable:** alt text (no images), refund policy and T&Cs (no
 payments), reviews, image copyright, and cookie consent (no cookies; the
-access key is in `sessionStorage`).
+sign in session is kept in `localStorage`).
 
 None of this replaces a legal or compliance review before this is used with
 real applicant data. It is a technical pass, not a sign-off.

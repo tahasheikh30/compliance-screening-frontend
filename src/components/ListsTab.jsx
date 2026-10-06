@@ -55,7 +55,7 @@ function CopyButton({ text }) {
  * NACTA publishes the Fourth Schedule only through a web app, so it cannot be downloaded
  * like the other lists. It is loaded from an exported CSV or JSON file instead.
  */
-function NactaPanel({ onChanged }) {
+function NactaPanel({ onChanged, isAdmin }) {
   const [status, setStatus] = useState(null)
   const [error, setError] = useState(null)
   const [file, setFile] = useState(null)
@@ -99,7 +99,7 @@ function NactaPanel({ onChanged }) {
     if (status.source === 'url') {
       summary = (
         <>
-          <p>Downloaded automatically from <span className="mono">{status.url}</span> whenever the lists are loaded.</p>
+          <p>Downloaded automatically from <span className="mono">{status.url_host || 'the configured address'}</span> whenever the lists are loaded.</p>
           {status.loaded && status.live_copy && (
             <p>
               Last good copy: {plural(status.records, 'person', 'people')}, saved {fmtDateTime(status.uploaded_at)}. It is
@@ -143,22 +143,28 @@ function NactaPanel({ onChanged }) {
       </p>
       <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
       {summary}
-      <form onSubmit={upload} className="nacta-upload">
-        <label className="field" htmlFor="nacta-file">
-          <span className="field-label">{status?.source === 'url' ? 'Or upload a NACTA list file by hand' : 'NACTA list file'}</span>
-          <input
-            id="nacta-file"
-            ref={inputRef}
-            type="file"
-            accept=".csv,.json,.txt,text/csv,application/json,text/plain"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-          />
-        </label>
-        <button type="submit" className="btn btn-primary" disabled={!file || busy}>
-          {busy ? 'Uploading...' : 'Upload NACTA list'}
-        </button>
-      </form>
-      <ErrorBanner error={uploadError} onDismiss={() => setUploadError(null)} />
+      {isAdmin ? (
+        <>
+        <form onSubmit={upload} className="nacta-upload">
+          <label className="field" htmlFor="nacta-file">
+            <span className="field-label">{status?.source === 'url' ? 'Or upload a NACTA list file by hand' : 'NACTA list file'}</span>
+            <input
+              id="nacta-file"
+              ref={inputRef}
+              type="file"
+              accept=".csv,.json,.txt,text/csv,application/json,text/plain"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+            />
+          </label>
+          <button type="submit" className="btn btn-primary" disabled={!file || busy}>
+            {busy ? 'Uploading...' : 'Upload NACTA list'}
+          </button>
+        </form>
+        <ErrorBanner error={uploadError} onDismiss={() => setUploadError(null)} />
+        </>
+      ) : (
+        <p className="field-hint">An administrator uploads and refreshes this list.</p>
+      )}
       {result && (
         <div className="reload-result" role="status">
           <p>
@@ -172,7 +178,7 @@ function NactaPanel({ onChanged }) {
   )
 }
 
-export default function ListsTab() {
+export default function ListsTab({ isAdmin = true }) {
   const [status, setStatus] = useState(null)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -215,7 +221,7 @@ export default function ListsTab() {
         <p className="lead">
           Lists are downloaded live from the publishers when a screening runs, then kept in the server's memory
           for a while (an hour by default) so repeated screenings are quick. You normally never need to touch
-          this page. Reload only if you want to be certain the next screening uses lists fetched right now.
+          this page.{isAdmin ? ' Reload only if you want to be certain the next screening uses lists fetched right now.' : ''}
         </p>
 
         <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
@@ -262,15 +268,17 @@ export default function ListsTab() {
           </div>
         )}
 
-        <div className="form-actions form-actions-spaced">
-          <button type="button" className="btn btn-primary" onClick={reload} disabled={busy}>
-            {busy ? 'Reloading lists...' : 'Reload all lists now'}
-          </button>
-          <span className="field-hint">Takes up to 40 seconds. Limited to 5 reloads an hour.</span>
-        </div>
+        {isAdmin && (
+          <div className="form-actions form-actions-spaced">
+            <button type="button" className="btn btn-primary" onClick={reload} disabled={busy}>
+              {busy ? 'Reloading lists...' : 'Reload all lists now'}
+            </button>
+            <span className="field-hint">Takes up to 40 seconds. Limited to 5 reloads an hour.</span>
+          </div>
+        )}
         <ErrorBanner error={reloadError} onDismiss={() => setReloadError(null)} />
 
-        <NactaPanel onChanged={load} />
+        <NactaPanel onChanged={load} isAdmin={isAdmin} />
 
         {reloaded && (
           <p className="reload-summary" role="status">

@@ -1,2 +1,7 @@
 node_modules/
 dist/
+# local settings and anything that could hold a key: never commit these (.env.example is the template)
+.env
+.env.*
+!.env.example
+*.local

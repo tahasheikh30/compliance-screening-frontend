@@ -1,115 +1,90 @@
-import { useState, useEffect } from 'react'
-import { verifyApiKey, getStoredKey, storeKey, clearKey, isValidKeyFormat, takeLastAuthError, SIGNED_OUT_EVENT } from './api'
-import { ApiError } from './lib/apiError'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AuthProvider, useAuth } from './auth/AuthContext'
+import { listUsers } from './api'
+import { config, configProblems } from './lib/config'
 import ErrorBanner from './components/ErrorBanner'
 import ErrorBoundary from './components/ErrorBoundary'
+import LoginScreen from './components/LoginScreen'
+import WaitingScreen from './components/WaitingScreen'
 import ScreeningTab from './components/ScreeningTab'
 import HistoryTab from './components/HistoryTab'
 import ListsTab from './components/ListsTab'
+import UsersTab from './components/UsersTab'
 import DataNoticeDialog from './components/DataNoticeDialog'
 import { MagnifyingGlassIcon } from './components/ui'
 
-function AccessGate({ onUnlock }) {
-  const [value, setValue] = useState('')
-  const [checking, setChecking] = useState(false)
-  const [waking, setWaking] = useState(false)
-  const [error, setError] = useState(null)
-
-  // If we were just sent back here by a rejected request, explain why instead of
-  // silently reappearing (see api.js handleAuthFailure).
-  useEffect(() => {
-    const last = takeLastAuthError()
-    if (last) setError(last)
-  }, [])
-
-  async function handleSubmit(e) {
-    e?.preventDefault?.()
-    const key = value.trim()
-    if (!key) return
-    if (!isValidKeyFormat(key)) {
-      setError(new ApiError({
-        code: 'AUTH_INVALID_KEY',
-        message: 'That does not look like an access key.',
-        hint: 'It contains spaces or unusual characters, often from copying it with a line break or a smart quote. Paste it again.',
-      }))
-      return
-    }
-    setChecking(true)
-    setWaking(false)
-    setError(null)
-    try {
-      await verifyApiKey(key, { onWaking: () => setWaking(true) })
-      storeKey(key)
-      onUnlock()
-    } catch (err) {
-      setError(err)
-    } finally {
-      setChecking(false)
-      setWaking(false)
-    }
-  }
-
+/** The app was built without what it needs to reach the backend or Supabase. Say exactly what. */
+function SetupProblem({ problems }) {
   return (
     <main className="gate">
-      <section className="sheet gate-sheet" aria-labelledby="gate-heading">
-        <div className="folder-tab">Restricted</div>
-        <h1 id="gate-heading"><MagnifyingGlassIcon size={22} /> Screening console</h1>
-        <p className="lead">Enter the access key to open the console. Authorized personnel only.</p>
-        <form onSubmit={handleSubmit} className="form">
-          <label className="field" htmlFor="access-key-input">
-            <span className="field-label">Access key</span>
-            <input
-              id="access-key-input"
-              type="password"
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              autoComplete="current-password"
-              autoFocus
-            />
-          </label>
-          <div className="form-actions">
-            <button type="submit" className="btn btn-primary" disabled={checking || !value.trim()}>
-              {checking ? 'Checking...' : 'Unlock'}
-            </button>
-          </div>
-        </form>
-        {checking && (
-          <p className="muted" role="status">
-            {waking
-              ? 'The server was asleep and is starting up. This can take up to a minute. Keep this page open.'
-              : 'Connecting to the server...'}
-          </p>
-        )}
-        <ErrorBanner error={error} onRetry={value.trim() ? handleSubmit : undefined} onDismiss={() => setError(null)} />
+      <section className="sheet gate-sheet" aria-labelledby="setup-heading">
+        <div className="folder-tab">Setup</div>
+        <h1 id="setup-heading"><MagnifyingGlassIcon size={22} /> This app is not set up yet</h1>
+        <p className="lead">An administrator needs to fix the following in the frontend's environment settings, then redeploy it.</p>
+        <ul className="setup-list">
+          {problems.map((p) => <li key={p}>{p}</li>)}
+        </ul>
       </section>
     </main>
   )
 }
 
-const TABS = [
+function Splash({ children }) {
+  return (
+    <main className="gate">
+      <section className="sheet gate-sheet">
+        <p className="muted" role="status">{children}</p>
+      </section>
+    </main>
+  )
+}
+
+/** Signed in, and the backend has not answered yet (often because it was asleep). */
+function Connecting() {
+  const { meError, refresh, signOut } = useAuth()
+  return (
+    <main className="gate">
+      <section className="sheet gate-sheet" aria-labelledby="connect-heading">
+        <h1 id="connect-heading"><MagnifyingGlassIcon size={22} /> Connecting to the server</h1>
+        <p className="lead" role="status">
+          {meError ? 'The server did not answer.' : 'Signing you in. If the server was asleep this can take up to a minute.'}
+        </p>
+        <ErrorBanner error={meError} onRetry={refresh} />
+        <div className="form-actions"><button type="button" className="btn btn-quiet" onClick={signOut}>Sign out</button></div>
+      </section>
+    </main>
+  )
+}
+
+const BASE_TABS = [
   { id: 'screen', label: 'Screening' },
   { id: 'history', label: 'History' },
   { id: 'lists', label: 'Lists' },
 ]
 
-export default function App() {
-  const [unlocked, setUnlocked] = useState(() => !!getStoredKey())
+function Console() {
+  const { me, isAdmin, signOut } = useAuth()
   const [tab, setTab] = useState('screen')
   const [showNotice, setShowNotice] = useState(false)
+  const [pending, setPending] = useState(0)
 
-  // Any request the backend refuses because of the key (see api.js) sends us back to the gate.
+  // administrators see how many people are waiting, whichever tab they are on
   useEffect(() => {
-    const onSignedOut = () => setUnlocked(false)
-    window.addEventListener(SIGNED_OUT_EVENT, onSignedOut)
-    return () => window.removeEventListener(SIGNED_OUT_EVENT, onSignedOut)
-  }, [])
+    if (!isAdmin) return undefined
+    let active = true
+    const look = async () => {
+      try {
+        const waiting = await listUsers('pending')
+        if (active) setPending(waiting.length)
+      } catch { /* the People tab shows the error if it persists */ }
+    }
+    look()
+    const timer = setInterval(look, 60000)
+    return () => { active = false; clearInterval(timer) }
+  }, [isAdmin])
 
-  if (!unlocked) return <AccessGate onUnlock={() => setUnlocked(true)} />
-
-  function lock() {
-    clearKey()
-    setUnlocked(false)
-  }
+  const tabs = useMemo(() => (isAdmin ? [...BASE_TABS, { id: 'people', label: 'People' }] : BASE_TABS), [isAdmin])
+  const onPendingCount = useCallback((n) => setPending(n), [])
 
   return (
     <div className="app">
@@ -122,7 +97,7 @@ export default function App() {
           </span>
         </div>
         <nav className="tabs" aria-label="Sections">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.id}
               type="button"
@@ -131,17 +106,23 @@ export default function App() {
               aria-current={tab === t.id ? 'page' : undefined}
             >
               {t.label}
+              {t.id === 'people' && pending > 0 && <span className="tab-badge" aria-label={`${pending} waiting`}>{pending}</span>}
             </button>
           ))}
         </nav>
-        <button type="button" className="btn btn-ghost" onClick={lock}>Lock</button>
+        <div className="whoami">
+          <span className="whoami-email" title={me.email}>{me.email}</span>
+          <span className="whoami-role">{isAdmin ? 'Administrator' : 'User'}</span>
+        </div>
+        <button type="button" className="btn btn-ghost" onClick={signOut}>Sign out</button>
       </header>
 
       <main className="main">
         <ErrorBoundary key={tab}>
           {tab === 'screen' && <ScreeningTab />}
-          {tab === 'history' && <HistoryTab />}
-          {tab === 'lists' && <ListsTab />}
+          {tab === 'history' && <HistoryTab isAdmin={isAdmin} />}
+          {tab === 'lists' && <ListsTab isAdmin={isAdmin} />}
+          {tab === 'people' && isAdmin && <UsersTab selfId={me.id} onPendingCount={onPendingCount} />}
         </ErrorBoundary>
       </main>
 
@@ -152,5 +133,24 @@ export default function App() {
 
       {showNotice && <DataNoticeDialog onClose={() => setShowNotice(false)} />}
     </div>
+  )
+}
+
+function Router() {
+  const { phase, me } = useAuth()
+  if (phase === 'loading') return <Splash>Loading...</Splash>
+  if (phase === 'signed-out') return <LoginScreen />
+  if (phase === 'checking' || !me) return <Connecting />
+  if (me.status !== 'approved') return <WaitingScreen />
+  return <Console />
+}
+
+export default function App() {
+  const problems = useMemo(() => configProblems(config), [])
+  if (problems.length > 0) return <SetupProblem problems={problems} />
+  return (
+    <AuthProvider>
+      <Router />
+    </AuthProvider>
   )
 }

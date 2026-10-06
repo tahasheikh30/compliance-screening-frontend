@@ -13,11 +13,12 @@ const FILTERS = [
   { id: 'AUTO_CLEAR', label: 'Clear' },
 ]
 
-export default function HistoryTab() {
+export default function HistoryTab({ isAdmin = false }) {
   const [rows, setRows] = useState(null)
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('all')
+  const [mine, setMine] = useState(false)           // administrators: only my own screenings
   const [selected, setSelected] = useState(null) // list row being viewed
   const [caseData, setCaseData] = useState(null)
   const [caseError, setCaseError] = useState(null)
@@ -27,11 +28,11 @@ export default function HistoryTab() {
   const load = useCallback(async () => {
     setError(null)
     try {
-      setRows(await listApplicants())
+      setRows(await listApplicants({ mine }))
     } catch (err) {
       setError(err)
     }
-  }, [])
+  }, [mine])
 
   useEffect(() => { load() }, [load])
 
@@ -56,8 +57,9 @@ export default function HistoryTab() {
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase()
     return (rows || []).filter((r) =>
-      (filter === 'all' || r.overall_status === filter) && (!q || r.full_name.toLowerCase().includes(q)))
-  }, [rows, query, filter])
+      (filter === 'all' || r.overall_status === filter)
+      && (!q || r.full_name.toLowerCase().includes(q) || (isAdmin && (r.screened_by || '').toLowerCase().includes(q))))
+  }, [rows, query, filter, isAdmin])
 
   return (
     <div className="workspace workspace-history">
@@ -67,7 +69,7 @@ export default function HistoryTab() {
 
         <div className="history-tools">
           <label className="field" htmlFor="history-search">
-            <span className="field-label">Search by name</span>
+            <span className="field-label">{isAdmin ? 'Search by name or screener' : 'Search by name'}</span>
             <input id="history-search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
           </label>
           <div className="filter-group" role="group" aria-label="Filter by outcome">
@@ -83,11 +85,19 @@ export default function HistoryTab() {
               </button>
             ))}
           </div>
+          {isAdmin && (
+            <div className="filter-group" role="group" aria-label="Whose screenings">
+              <button type="button" className={`filter-btn ${!mine ? 'filter-btn-on' : ''}`} aria-pressed={!mine}
+                onClick={() => { setMine(false); setSelected(null); setCaseData(null) }}>Everyone's</button>
+              <button type="button" className={`filter-btn ${mine ? 'filter-btn-on' : ''}`} aria-pressed={mine}
+                onClick={() => { setMine(true); setSelected(null); setCaseData(null) }}>Mine</button>
+            </div>
+          )}
         </div>
 
         <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
         {rows === null && !error && <p className="muted">Loading...</p>}
-        {rows && rows.length === 0 && <p className="muted">No screenings yet. Run one from the Screening tab and it will appear here.</p>}
+        {rows && rows.length === 0 && <p className="muted">{mine || !isAdmin ? 'You have not screened anyone yet. Run one from the Screening tab and it will appear here.' : 'No screenings yet.'}</p>}
         {rows && rows.length > 0 && shown.length === 0 && <p className="muted">No screenings match this search and filter.</p>}
 
         {shown.length > 0 && (
@@ -108,6 +118,7 @@ export default function HistoryTab() {
                         </button>
                         <span className="row-sub">{fmtDateTime(r.submitted_at)}</span>
                         <span className="row-sub mono">#{String(r.id).padStart(5, '0')}</span>
+                        {isAdmin && <span className="row-sub">Screened by {r.screened_by || 'a removed account'}</span>}
                       </td>
                       <td><Pill tone={info.tone}>{info.stamp}</Pill></td>
                     </tr>

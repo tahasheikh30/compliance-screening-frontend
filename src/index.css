@@ -653,3 +653,43 @@ input[type='file'] { font: inherit; font-size: 14px; max-width: 100%; }
   .error-banner { flex-direction: column; }
   .notice-body { padding: 22px 18px 20px 16px; }
 }
+/* --- sign in, waiting, people ------------------------------------------- */
+
+.notice-line { margin: 0 0 14px; padding: 10px 14px; background: var(--amber-bg); border-left: 5px solid var(--amber); color: var(--ink); }
+.check-line { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-soft); }
+.check-line input { width: 18px; height: 18px; }
+.sent-panel h2 { font-family: var(--font-serif); font-size: 20px; margin-bottom: 6px; }
+.setup-list { margin: 8px 0 0 20px; list-style: disc; }
+.setup-list li { padding: 5px 0; overflow-wrap: anywhere; }
+
+.whoami { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.2; min-width: 0; max-width: 220px; }
+.whoami-email { font-size: 13px; color: var(--on-desk); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+.whoami-role { font-size: 12px; color: var(--on-desk); opacity: 0.7; }
+.tab-badge {
+  display: inline-block; min-width: 20px; margin-left: 7px; padding: 1px 6px; border-radius: 10px;
+  background: var(--manila); color: var(--ink); font-size: 12px; font-weight: 700; text-align: center;
+}
+.users { max-width: 920px; }
+.users .filter-group { margin: 14px 0 6px; }
+.user-email { overflow-wrap: anywhere; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn-danger { background: var(--red); color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #7d2a2a; }
+.sheet .link-btn { color: var(--link); text-decoration: underline; }
+.sheet .link-btn:hover { color: var(--ink); }
+
+/* confirmation dialog */
+.policy-overlay {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px;
+  background: rgba(14, 20, 24, 0.72);
+}
+.policy-modal {
+  width: 100%; max-width: 480px; padding: 24px 26px; background: var(--sheet); color: var(--ink);
+  border-left: 12px solid var(--manila); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.policy-modal h2 { font-family: var(--font-serif); font-size: 21px; margin-bottom: 8px; }
+.confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+@media (max-width: 760px) {
+  .whoami { display: none; }
+}
