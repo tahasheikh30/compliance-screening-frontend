@@ -4,12 +4,16 @@ import { wakeBackend } from '../api'
 import ErrorBanner from './ErrorBanner'
 import { ApiError } from '../lib/apiError'
 import { MagnifyingGlassIcon } from './ui'
+import { Link, ROUTES } from '../lib/nav'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-export default function LoginScreen() {
+/**
+ * mode: 'signin' | 'signup', chosen by the address (/sign-in or /request-access).
+ * onSwitchMode(next): asked to change it, so the address follows.
+ */
+export default function LoginScreen({ mode = 'signin', onSwitchMode = () => {} }) {
   const { signIn, signUp, notice, clearNotice } = useAuth()
-  const [mode, setMode] = useState('signin')            // 'signin' | 'signup'
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
@@ -21,13 +25,15 @@ export default function LoginScreen() {
   // The backend is on a plan that sleeps when idle. Wake it while the person types, so signing in is quick.
   useEffect(() => { wakeBackend().catch(() => {}) }, [])
 
-  function switchMode(next) {
-    setMode(next)
+  // whichever way the mode changes (the link below, or the browser's back button), start the form clean
+  useEffect(() => {
     setError(null)
     setSent(null)
     setPassword('')
     setConfirm('')
-  }
+  }, [mode])
+
+  const switchMode = onSwitchMode
 
   function problem(message, hint) {
     setError(new ApiError({ code: 'SIGN_IN_FAILED', message, hint }))
@@ -126,6 +132,10 @@ export default function LoginScreen() {
 
         {busy && <p className="muted" role="status">{signup ? 'Sending your request...' : 'Signing you in...'}</p>}
         <ErrorBanner error={error} onDismiss={() => setError(null)} />
+
+        <p className="gate-foot">
+          <Link to={ROUTES.landing} className="gate-back" onClick={clearNotice}>Back to overview</Link>
+        </p>
       </section>
     </main>
   )

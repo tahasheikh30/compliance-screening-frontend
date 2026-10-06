@@ -20,6 +20,8 @@ const health = { 'GET /api/health': { status: 'ok' } }
 
 beforeEach(() => {
   localStorage.clear()
+  // these tests are about the sign in screen, which has its own address (the landing page is at /)
+  window.history.replaceState(null, '', '/sign-in')
   h.supabase = makeSupabase()
   fetchMock = vi.fn()
   vi.stubGlobal('fetch', fetchMock)

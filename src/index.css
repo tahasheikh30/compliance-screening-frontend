@@ -204,7 +204,7 @@ ul { padding: 0; list-style: none; }
 .field-hint-block { margin-top: -6px; }
 .field-error { font-size: 13px; color: var(--red); font-weight: 600; }
 
-input[type='text'], input[type='password'], input[type='search'], input[type='date'], input:not([type]) {
+input[type='text'], input[type='email'], input[type='password'], input[type='search'], input[type='date'], input:not([type]) {
   font: inherit;
   color: var(--ink);
   background: #fff;
@@ -573,6 +573,9 @@ input[type='file'] { font: inherit; font-size: 14px; max-width: 100%; }
 
 .gate { min-height: 100vh; display: grid; place-items: center; padding: 56px 20px; }
 .gate-sheet { width: 100%; max-width: 440px; }
+.gate-foot { margin-top: 24px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 14px; }
+.gate-back { color: var(--link); text-underline-offset: 2px; }
+.gate-back:hover { color: var(--ink); }
 
 /* --- data notice dialog ------------------------------------------------- */
 

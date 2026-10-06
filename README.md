@@ -99,6 +99,25 @@ value from `VITE_API_KEY`.
 calls only to this site, `*.onrender.com` and `*.supabase.co`; no framing), `nosniff`, no referrer, HSTS and a
 locked down Permissions-Policy. If your backend is on its own domain, add it to `connect-src` there.
 
+## Public screens and addresses
+
+Signed out, the app has three addresses (small history-based routing in `src/lib/nav.jsx`, no router library):
+
+| Address | Screen |
+|---|---|
+| `/` | Landing page (`LandingPage.jsx`, `landing.css`) |
+| `/sign-in` | Sign in |
+| `/request-access` | Request an account |
+
+Signed in, there is one screen (the console) at `/`. Signing in moves the address back to `/`. Signing out, or a
+session ending, lands on `/sign-in` so the message ("signed out after 30 minutes...") is seen. Unknown addresses go
+to `/`. `vercel.json` already rewrites every path to `index.html`, so a reload or bookmark of `/sign-in` works.
+
+The landing page follows the same rules as the rest of the app: system fonts, no web fonts, no remote images, no
+CDN scripts (the Content Security Policy allows only this site's own files), and it makes no request to the backend.
+`Landing.test.jsx` fails if a page element ever points off-site. The sample panel is labelled as an illustration; keep
+the copy limited to what the app does.
+
 ## Setup checklist
 
 Backend (Render): set `APP_API_KEY` (generate one: `python3 -c "import secrets; print(secrets.token_urlsafe(32))"`),

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { listUsers } from './api'
 import { config, configProblems } from './lib/config'
 import ErrorBanner from './components/ErrorBanner'
 import ErrorBoundary from './components/ErrorBoundary'
+import LandingPage from './components/LandingPage'
 import LoginScreen from './components/LoginScreen'
 import WaitingScreen from './components/WaitingScreen'
 import ScreeningTab from './components/ScreeningTab'
@@ -12,6 +13,7 @@ import ListsTab from './components/ListsTab'
 import UsersTab from './components/UsersTab'
 import DataNoticeDialog from './components/DataNoticeDialog'
 import { MagnifyingGlassIcon } from './components/ui'
+import { ROUTES, navigate, usePath } from './lib/nav'
 
 /** The app was built without what it needs to reach the backend or Supabase. Say exactly what. */
 function SetupProblem({ problems }) {
@@ -136,10 +138,46 @@ function Console() {
   )
 }
 
+/**
+ * Public screens live at their own address: the landing page at /, sign in at /sign-in and the request
+ * for an account at /request-access. Once signed in there is one screen (the console), always at /.
+ */
 function Router() {
-  const { phase, me } = useAuth()
+  const { phase, me, notice } = useAuth()
+  const path = usePath()
+  const previous = useRef(phase)
+  const signedOut = phase === 'signed-out'
+  const knownPath = Object.values(ROUTES).includes(path)
+  // Signed out with something to say (idle, session ended) or having just signed out: show the sign in
+  // screen, not the landing page. Decided here, while rendering, so the landing page never flashes first.
+  const justLeft = previous.current === 'checking' || previous.current === 'ready'
+  const redirectToSignIn = signedOut && path === ROUTES.landing && (justLeft || Boolean(notice))
+
+  useEffect(() => {
+    previous.current = phase
+    if (!signedOut) {
+      // the console has no address of its own: leave /sign-in behind once signed in
+      if (phase !== 'loading' && path !== ROUTES.landing) navigate(ROUTES.landing, { replace: true })
+    } else if (!knownPath) {
+      navigate(ROUTES.landing, { replace: true })
+    } else if (redirectToSignIn) {
+      navigate(ROUTES.signIn, { replace: true })
+    }
+  }, [phase, signedOut, path, knownPath, redirectToSignIn])
+
   if (phase === 'loading') return <Splash>Loading...</Splash>
-  if (phase === 'signed-out') return <LoginScreen />
+  if (signedOut) {
+    const asSignup = path === ROUTES.requestAccess
+    if (asSignup || path === ROUTES.signIn || redirectToSignIn) {
+      return (
+        <LoginScreen
+          mode={asSignup ? 'signup' : 'signin'}
+          onSwitchMode={(next) => navigate(next === 'signup' ? ROUTES.requestAccess : ROUTES.signIn, { replace: true })}
+        />
+      )
+    }
+    return <LandingPage />
+  }
   if (phase === 'checking' || !me) return <Connecting />
   if (me.status !== 'approved') return <WaitingScreen />
   return <Console />
