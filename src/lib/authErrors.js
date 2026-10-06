@@ -10,6 +10,9 @@ export function friendlyAuthError(error) {
   const text = String(error?.message || '').toLowerCase()
   const fail = (message, hint) => new ApiError({ code: 'SIGN_IN_FAILED', message, hint })
 
+  if (code === 'captcha_failed' || text.includes('captcha')) {
+    return fail('The security check was not accepted.', 'Wait for the check to finish and try again. If it keeps failing, reload the page.')
+  }
   if (code === 'invalid_credentials' || text.includes('invalid login credentials')) {
     return fail('That email or password is not correct.', 'Check both and try again.')
   }

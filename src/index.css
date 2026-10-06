@@ -659,6 +659,7 @@ input[type='file'] { font: inherit; font-size: 14px; max-width: 100%; }
 /* --- sign in, waiting, people ------------------------------------------- */
 
 .notice-line { margin: 0 0 14px; padding: 10px 14px; background: var(--amber-bg); border-left: 5px solid var(--amber); color: var(--ink); }
+.captcha-line { min-height: 65px; }   /* Turnstile's widget is 65px tall: keep the form from jumping when it appears */
 .check-line { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink-soft); }
 .check-line input { width: 18px; height: 18px; }
 .sent-panel h2 { font-family: var(--font-serif); font-size: 20px; margin-bottom: 6px; }

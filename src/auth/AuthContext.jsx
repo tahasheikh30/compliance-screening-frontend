@@ -129,19 +129,24 @@ export function AuthProvider({ children }) {
     }
   }, [waiting, loadMe])
 
-  const signIn = useCallback(async (email, password) => {
-    const { error } = await getSupabase().auth.signInWithPassword({ email: email.trim(), password })
+  // captchaToken: the Turnstile token, when CAPTCHA protection is on (see TurnstileWidget). Supabase checks it.
+  const signIn = useCallback(async (email, password, captchaToken) => {
+    const { error } = await getSupabase().auth.signInWithPassword({
+      email: email.trim(),
+      password,
+      ...(captchaToken ? { options: { captchaToken } } : {}),
+    })
     if (error) throw friendlyAuthError(error)
     touch()
     setNotice(null)
   }, [])
 
   /** Resolves { confirmEmail }: true when Supabase wants the address confirmed before the first sign in. */
-  const signUp = useCallback(async (email, password) => {
+  const signUp = useCallback(async (email, password, captchaToken) => {
     const { data, error } = await getSupabase().auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: window.location.origin },
+      options: { emailRedirectTo: window.location.origin, ...(captchaToken ? { captchaToken } : {}) },
     })
     if (error) throw friendlyAuthError(error)
     if (data.session) touch()

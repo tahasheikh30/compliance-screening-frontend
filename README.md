@@ -128,6 +128,7 @@ VITE_API_BASE_URL=https://<your-backend>.onrender.com
 VITE_API_KEY=<the same value as APP_API_KEY>
 VITE_SUPABASE_URL=https://<project>.supabase.co
 VITE_SUPABASE_PUBLISHABLE_KEY=<the project's publishable key>
+VITE_TURNSTILE_SITE_KEY=<the Cloudflare Turnstile site key, once CAPTCHA protection is on in Supabase>
 ```
 
 Supabase dashboard (Authentication): add the deployed frontend address to **URL Configuration** (Site URL and
@@ -233,3 +234,21 @@ sign in session is kept in `localStorage`).
 
 None of this replaces a legal or compliance review before this is used with
 real applicant data. It is a technical pass, not a sign-off.
+
+### Turnstile (CAPTCHA protection)
+
+Sign up and sign in go from the browser straight to Supabase Auth, so the human check is enforced by Supabase.
+Do it in this order, so nobody is locked out in between:
+
+1. Cloudflare dashboard, **Turnstile**: add a widget for the deployed address (and `localhost` for development).
+   Copy the **Site key** and the **Secret key**.
+2. Vercel: set `VITE_TURNSTILE_SITE_KEY` to the site key and redeploy. The sign in and request access forms now
+   show the check and send its token. This is safe before Supabase asks for it: an unused token is ignored.
+3. Supabase dashboard, **Authentication**, **Attack Protection**: turn on **Enable CAPTCHA protection**, choose
+   **Cloudflare Turnstile** and paste the **Secret key**. From now on Supabase rejects a sign up, sign in or
+   password reset without a valid token. The secret key lives in Supabase only, never in this app.
+
+`vercel.json` allows `https://challenges.cloudflare.com` for scripts, frames and connections, which the widget needs.
+If you change the Content Security Policy, keep those three entries. A token works once, so the form asks for a
+fresh one after every attempt. Without `VITE_TURNSTILE_SITE_KEY` the check is not shown (use that only while
+CAPTCHA protection is off in Supabase). Sessions that already exist are not affected.

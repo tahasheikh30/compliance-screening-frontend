@@ -7,12 +7,16 @@
 //                                  without a signed in person. Never put the backend's secret API_KEY here.
 //   VITE_SUPABASE_URL              https://<project>.supabase.co
 //   VITE_SUPABASE_PUBLISHABLE_KEY  the project's publishable (anon) key. Public by design.
+//   VITE_TURNSTILE_SITE_KEY        optional. The Cloudflare Turnstile SITE key (public). Set it when CAPTCHA
+//                                  protection is on in Supabase (Authentication, Attack Protection). The secret
+//                                  key goes in Supabase only, never here.
 
 export function readConfig(env = import.meta.env) {
   return {
     apiKey: String(env.VITE_API_KEY || '').trim(),
     supabaseUrl: String(env.VITE_SUPABASE_URL || '').trim().replace(/\/+$/, ''),
     supabaseKey: String(env.VITE_SUPABASE_PUBLISHABLE_KEY || '').trim(),
+    turnstileSiteKey: String(env.VITE_TURNSTILE_SITE_KEY || '').trim(),
   }
 }
 

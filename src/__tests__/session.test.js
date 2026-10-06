@@ -9,8 +9,9 @@ const good = { apiKey: 'k', supabaseUrl: 'https://abc.supabase.co', supabaseKey:
 describe('config', () => {
   it('trims values and drops a trailing slash on the project address', () => {
     expect(readConfig({ VITE_API_KEY: ' k \n', VITE_SUPABASE_URL: 'https://abc.supabase.co/', VITE_SUPABASE_PUBLISHABLE_KEY: ' p ' }))
-      .toEqual({ apiKey: 'k', supabaseUrl: 'https://abc.supabase.co', supabaseKey: 'p' })
-    expect(readConfig({})).toEqual({ apiKey: '', supabaseUrl: '', supabaseKey: '' })
+      .toEqual({ apiKey: 'k', supabaseUrl: 'https://abc.supabase.co', supabaseKey: 'p', turnstileSiteKey: '' })
+    expect(readConfig({})).toEqual({ apiKey: '', supabaseUrl: '', supabaseKey: '', turnstileSiteKey: '' })
+    expect(readConfig({ VITE_TURNSTILE_SITE_KEY: ' 0x4AAA \n' }).turnstileSiteKey).toBe('0x4AAA')
   })
 
   it('accepts a complete setup', () => {

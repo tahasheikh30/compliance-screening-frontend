@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth, MIN_PASSWORD_LENGTH } from '../auth/AuthContext'
 import { wakeBackend } from '../api'
 import ErrorBanner from './ErrorBanner'
 import { ApiError } from '../lib/apiError'
 import { MagnifyingGlassIcon } from './ui'
 import { Link, ROUTES } from '../lib/nav'
+import { config } from '../lib/config'
+import TurnstileWidget from './TurnstileWidget'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -21,6 +23,9 @@ export default function LoginScreen({ mode = 'signin', onSwitchMode = () => {} }
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [sent, setSent] = useState(null)                 // { confirmEmail } after a request for access
+  const captchaOn = Boolean(config.turnstileSiteKey)      // Supabase CAPTCHA protection: needs a Turnstile token per attempt
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const captcha = useRef(null)
 
   // The backend is on a plan that sleeps when idle. Wake it while the person types, so signing in is quick.
   useEffect(() => { wakeBackend().catch(() => {}) }, [])
@@ -31,6 +36,7 @@ export default function LoginScreen({ mode = 'signin', onSwitchMode = () => {} }
     setSent(null)
     setPassword('')
     setConfirm('')
+    setCaptchaToken(null)
   }, [mode])
 
   const switchMode = onSwitchMode
@@ -54,19 +60,23 @@ export default function LoginScreen({ mode = 'signin', onSwitchMode = () => {} }
       }
       if (password !== confirm) return problem('The two passwords do not match.')
     }
+    if (captchaOn && !captchaToken) {
+      return problem('Complete the security check first.', 'Wait for the check above the button to finish.')
+    }
     setBusy(true)
     try {
       if (mode === 'signup') {
-        setSent(await signUp(address, password))
+        setSent(await signUp(address, password, captchaToken))
         setPassword('')
         setConfirm('')
       } else {
-        await signIn(address, password)      // the app moves on by itself once the session starts
+        await signIn(address, password, captchaToken)      // the app moves on by itself once the session starts
       }
     } catch (err) {
       setError(err)
     } finally {
       setBusy(false)
+      if (captchaOn) captcha.current?.reset()      // a token works once: ask for a fresh one after every attempt
     }
   }
 
@@ -119,8 +129,11 @@ export default function LoginScreen({ mode = 'signin', onSwitchMode = () => {} }
             <label className="check-line">
               <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Show password
             </label>
+            {captchaOn && (
+              <TurnstileWidget key={mode} ref={captcha} siteKey={config.turnstileSiteKey} onToken={setCaptchaToken} />
+            )}
             <div className="form-actions">
-              <button type="submit" className="btn btn-primary" disabled={busy}>
+              <button type="submit" className="btn btn-primary" disabled={busy || (captchaOn && !captchaToken)}>
                 {busy ? (signup ? 'Sending...' : 'Signing in...') : (signup ? 'Request account' : 'Sign in')}
               </button>
               <button type="button" className="link-btn" onClick={() => switchMode(signup ? 'signin' : 'signup')}>
