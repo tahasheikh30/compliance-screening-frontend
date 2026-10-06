@@ -129,7 +129,7 @@ function Console() {
       </main>
 
       <footer className="footer">
-        <span>Internal tool, IGI General Takaful, Compliance dept.</span>
+        <span>Internal tool, IGI Holdings, Compliance dept.</span>
         <button type="button" className="link-btn" onClick={() => setShowNotice(true)}>Data handling notice</button>
       </footer>
 

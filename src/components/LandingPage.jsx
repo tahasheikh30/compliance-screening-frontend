@@ -173,7 +173,7 @@ export default function LandingPage() {
       <footer className="lp-frame">
         <div className="lp-divider" />
         <div className="lp-footer">
-          <span>Internal tool, IGI General Takaful, Compliance dept.</span>
+          <span>Internal tool, IGI Holdings, Compliance dept.</span>
           <button type="button" className="link-btn" onClick={() => setShowNotice(true)}>Data handling notice</button>
         </div>
       </footer>
