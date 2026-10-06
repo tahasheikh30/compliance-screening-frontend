@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { getApplicant, listApplicants } from '../api'
-import ErrorBanner from './ErrorBanner'
-import CaseReport from './CaseReport'
-import { Pill } from './ui'
-import { fmtDateTime } from '../lib/format'
-import { overallInfo } from '../lib/status'
+import { getApplicant, listApplicants } from '../../api'
+import ErrorBanner from '../../components/ErrorBanner'
+import CaseReport from '../../components/CaseReport'
+import { Pill } from '../../components/ui'
+import { fmtDateTime } from '../../lib/format'
+import { overallInfo } from '../../lib/status'
 
 const FILTERS = [
   { id: 'all', label: 'All' },

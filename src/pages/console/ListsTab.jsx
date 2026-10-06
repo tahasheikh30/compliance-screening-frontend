@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getListsStatus, reloadLists, getNactaStatus, uploadNacta } from '../api'
-import ErrorBanner from './ErrorBanner'
-import { Pill } from './ui'
-import { fmtAge, fmtNum, fmtDateTime, plural, safeUrl } from '../lib/format'
-import { SOURCES } from '../lib/status'
+import { getListsStatus, reloadLists, getNactaStatus, uploadNacta } from '../../api'
+import ErrorBanner from '../../components/ErrorBanner'
+import { Pill } from '../../components/ui'
+import { fmtAge, fmtNum, fmtDateTime, plural, safeUrl } from '../../lib/format'
+import { SOURCES } from '../../lib/status'
 
 const LIST_KEYS = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA']
 

@@ -61,7 +61,7 @@ const DEFAULT_TIMEOUT_MS = 20000
 // The backend accepts a caller-supplied X-Request-ID (8 to 64 letters, digits, dot, dash, underscore),
 // puts it on every log line and echoes it back. Sending our own means even a request that timed out
 // can be found in the server log afterwards.
-export function newRequestId() {
+function newRequestId() {
   const c = typeof globalThis !== 'undefined' ? globalThis.crypto : undefined
   if (c && typeof c.randomUUID === 'function') return c.randomUUID().replace(/-/g, '')
   return Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('')

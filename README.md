@@ -101,11 +101,25 @@ locked down Permissions-Policy. If your backend is on its own domain, add it to 
 
 ## Public screens and addresses
 
+## Project layout
+
+```
+src/
+  App.jsx            routing between the public screens and the console
+  api.js             all backend calls
+  auth/              sign in state (AuthContext)
+  components/        shared pieces: CaseReport, ErrorBanner, ConfirmDialog, dialogs, ui
+  lib/               config, formatting, status helpers, navigation, idle timer
+  pages/             one file per screen
+    console/         the tabs shown once signed in: Screening, History, Lists, People
+  __tests__/
+```
+
 Signed out, the app has three addresses (small history-based routing in `src/lib/nav.jsx`, no router library):
 
 | Address | Screen |
 |---|---|
-| `/` | Landing page (`LandingPage.jsx`, `landing.css`) |
+| `/` | Landing page (`pages/LandingPage.jsx`, `landing.css`) |
 | `/sign-in` | Sign in |
 | `/request-access` | Request an account |
 

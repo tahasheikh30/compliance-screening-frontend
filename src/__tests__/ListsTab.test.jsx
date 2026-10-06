@@ -8,7 +8,7 @@ vi.mock('../api', () => ({
   uploadNacta: vi.fn(),
 }))
 import { getListsStatus, getNactaStatus, reloadLists } from '../api'
-import ListsTab from '../components/ListsTab'
+import ListsTab from '../pages/console/ListsTab'
 
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 

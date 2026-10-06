@@ -13,7 +13,7 @@ export const SOURCES = {
 export const SOURCE_ORDER = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA', 'ADVERSE_MEDIA']
 
 // tone drives colour: 'bad' red, 'warn' amber, 'good' green
-export const RESULT_STATUS = {
+const RESULT_STATUS = {
   HIT: { label: 'Match', tone: 'bad' },
   REVIEW: { label: 'Review', tone: 'warn' },
   PARTIAL: { label: 'Incomplete', tone: 'warn' },
@@ -22,7 +22,7 @@ export const RESULT_STATUS = {
   NOT_CONFIGURED: { label: 'Not screened', tone: 'bad' },
 }
 
-export const OVERALL = {
+const OVERALL = {
   ESCALATE_TO_COMPLIANCE: {
     stamp: 'Escalate', tone: 'bad',
     headline: 'Potential watch-list match',

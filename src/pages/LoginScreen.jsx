@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth, MIN_PASSWORD_LENGTH } from '../auth/AuthContext'
 import { wakeBackend } from '../api'
-import ErrorBanner from './ErrorBanner'
+import ErrorBanner from '../components/ErrorBanner'
 import { ApiError } from '../lib/apiError'
-import { MagnifyingGlassIcon } from './ui'
+import { MagnifyingGlassIcon } from '../components/ui'
 import { Link, ROUTES } from '../lib/nav'
 import { config } from '../lib/config'
-import TurnstileWidget from './TurnstileWidget'
+import TurnstileWidget from '../components/TurnstileWidget'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 

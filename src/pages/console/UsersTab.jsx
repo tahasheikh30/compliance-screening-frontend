@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { listUsers, setUserRole, setUserStatus } from '../api'
-import ErrorBanner from './ErrorBanner'
-import ConfirmDialog from './ConfirmDialog'
-import { Pill } from './ui'
-import { fmtDateTime } from '../lib/format'
+import { listUsers, setUserRole, setUserStatus } from '../../api'
+import ErrorBanner from '../../components/ErrorBanner'
+import ConfirmDialog from '../../components/ConfirmDialog'
+import { Pill } from '../../components/ui'
+import { fmtDateTime } from '../../lib/format'
 
 const FILTERS = [
   { id: 'pending', label: 'Waiting' },

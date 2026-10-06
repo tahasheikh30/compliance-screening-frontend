@@ -20,7 +20,7 @@ let navigated = false
 export const arrivedByNavigation = () => navigated
 
 /** '/Sign-In/' -> '/sign-in'. Query string and hash are not part of the route. */
-export function normalizePath(pathname) {
+function normalizePath(pathname) {
   const trimmed = String(pathname || '/').replace(/\/+$/, '')
   return (trimmed || '/').toLowerCase()
 }

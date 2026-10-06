@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { summarize, nextStep, overallInfo, resultStatus, orderedResults, cnicMatches, SOURCES, SOURCE_ORDER } from '../lib/status'
-import { listDateLabel, plural, safeUrl, dateOrNull, caseRef, fmtAge } from '../lib/format'
+import { listDateLabel, plural, safeUrl, caseRef, fmtAge } from '../lib/format'
 
 const row = (source, status, extra = {}) => ({ id: Math.random(), source, status, matches: [], articles: [], ...extra })
 
@@ -80,11 +80,6 @@ describe('format helpers', () => {
     expect(listDateLabel('n/a')).toBeNull()
     expect(listDateLabel('')).toBeNull()
     expect(listDateLabel('n/a; 2026-09-29')).toMatch(/^list dated /)
-  })
-  it('only returns real dates from dateOrNull', () => {
-    expect(dateOrNull('2026-09-29')).toMatch(/2026/)
-    expect(dateOrNull('Retrieved live')).toBeNull()
-    expect(dateOrNull('n/a')).toBeNull()
   })
   it('pluralises', () => {
     expect(plural(1, 'record', 'records')).toBe('1 record')

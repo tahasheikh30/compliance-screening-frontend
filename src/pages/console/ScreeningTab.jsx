@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { screenApplicant } from '../api'
-import ErrorBanner, { fieldError } from './ErrorBanner'
-import CaseReport from './CaseReport'
-import { MagnifyingGlassIcon, ScanningAnimation } from './ui'
-import { SOURCES, SOURCE_ORDER } from '../lib/status'
+import { screenApplicant } from '../../api'
+import ErrorBanner, { fieldError } from '../../components/ErrorBanner'
+import CaseReport from '../../components/CaseReport'
+import { MagnifyingGlassIcon, ScanningAnimation } from '../../components/ui'
+import { SOURCES, SOURCE_ORDER } from '../../lib/status'
 
 const DEFAULT_THRESHOLD = 85
 

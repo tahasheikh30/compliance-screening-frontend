@@ -82,7 +82,7 @@ function handleFailure(err) {
 const RETRY_DELAYS_MS = [1500, 4000, 8000]
 const NOT_TEMPORARY = new Set(['AUTH_NOT_CONFIGURED', 'DATABASE_NOT_CONFIGURED'])
 
-export function isTransient(err) {
+function isTransient(err) {
   if (!(err instanceof ApiError) || NOT_TEMPORARY.has(err.code)) return false
   return err.code === 'NETWORK_ERROR' || err.code === 'TIMEOUT' || [502, 503, 504].includes(err.status)
 }
@@ -192,7 +192,7 @@ export async function setUserRole(id, role) {
 
 // The backend downloads the sanctions lists live and runs a news search, which
 // takes 20 to 40 seconds when the lists are not already cached. Give it room.
-export const SCREEN_TIMEOUT_MS = 120000
+const SCREEN_TIMEOUT_MS = 120000
 
 const MAYBE_FINISHED_HINT = 'The screening may still have finished on the server. Open the History tab and '
   + 'check before running it again, so the applicant is not recorded twice.'
@@ -230,12 +230,6 @@ export async function listApplicants({ mine = false } = {}) {
 
 export async function getApplicant(id) {
   return apiJson(`/applicants/${id}`)
-}
-
-export function evidenceUrl(resultId) {
-  // Evidence downloads also need the key, so they go through a fetch+blob
-  // helper instead of a plain <a href> (a direct link can't carry a header).
-  return `${BASE}/evidence/${resultId}`
 }
 
 export async function downloadEvidence(resultId, filename) {

@@ -41,7 +41,7 @@ beforeEach(async () => {
       return users.find((x) => x.id === 'u2')
     },
   })
-  UsersTab = (await import('../components/UsersTab.jsx')).default
+  UsersTab = (await import('../pages/console/UsersTab.jsx')).default
 })
 
 afterEach(() => {

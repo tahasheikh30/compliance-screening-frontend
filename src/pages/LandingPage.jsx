@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, ROUTES, arrivedByNavigation } from "../lib/nav";
-import { MagnifyingGlassIcon } from "./ui";
-import DataNoticeDialog from "./DataNoticeDialog";
+import { MagnifyingGlassIcon } from "../components/ui";
+import DataNoticeDialog from "../components/DataNoticeDialog";
 import "../landing.css";
 
 function CheckIcon() {

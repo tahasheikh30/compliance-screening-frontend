@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import ErrorBanner from './ErrorBanner'
-import { MagnifyingGlassIcon } from './ui'
+import ErrorBanner from '../components/ErrorBanner'
+import { MagnifyingGlassIcon } from '../components/ui'
 
 /** Shown to someone who is signed in but not approved: waiting for an administrator, or declined. */
 export default function WaitingScreen() {

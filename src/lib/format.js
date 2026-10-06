@@ -53,10 +53,3 @@ export function listDateLabel(v) {
 export function plural(n, one, many) {
   return `${fmtNum(n)} ${Number(n) === 1 ? one : many}`
 }
-
-// A formatted date, or null when the publisher gave none ("n/a", "Retrieved live", empty).
-export function dateOrNull(v) {
-  if (!v || String(v).toLowerCase() === 'n/a') return null
-  const d = new Date(v)
-  return Number.isNaN(d.getTime()) ? null : fmtDate(v)
-}

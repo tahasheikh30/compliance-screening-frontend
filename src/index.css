@@ -566,8 +566,6 @@ input[type='file'] { font: inherit; font-size: 14px; max-width: 100%; }
 .reload-result { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--rule); }
 .reload-result h2 { font-family: var(--font-serif); font-size: 18px; margin-bottom: 8px; }
 .reload-result li { padding: 6px 0; overflow-wrap: anywhere; }
-.reload-bad { color: var(--red); font-weight: 600; }
-.reload-lists { margin: 4px 0 6px 16px; list-style: disc; font-size: 14px; color: var(--ink-soft); }
 
 /* --- access gate -------------------------------------------------------- */
 
