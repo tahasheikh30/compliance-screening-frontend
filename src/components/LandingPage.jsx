@@ -187,24 +187,15 @@ export default function LandingPage() {
         >
           <div className="lp-divider" />
           <div className="lp-intro">
-            <div className="lp-intro-head">
+            <div>
               <p className="lp-label lp-label-gold">A clearer process</p>
               <h2 id="lp-how-title">Signal, not noise.</h2>
             </div>
-            <div className="lp-brief">
-              <p className="lp-lead lp-lead-small">
-                Enter a full name, add a date of birth, nationality or CNIC if
-                you have them, and read the findings on one page. A CNIC that
-                equals a listed one is reported as a match whatever the name
-                looks like.
-              </p>
-              <ul className="lp-inputs" aria-label="What you can enter">
-                <li className="lp-input lp-input-req">Full name</li>
-                <li className="lp-input">Date of birth</li>
-                <li className="lp-input">Nationality</li>
-                <li className="lp-input">CNIC</li>
-              </ul>
-            </div>
+            <p className="lp-lead lp-lead-small">
+              Enter a full name, add a date of birth, nationality or CNIC if you
+              have them, and read the findings on one page. A CNIC that equals a
+              listed one is reported as a match whatever the name looks like.
+            </p>
           </div>
           <ul className="lp-cards">
             {POINTS.map((p) => (
