@@ -61,7 +61,10 @@ describe('the landing page', () => {
       .map((el) => el.getAttribute('src') || el.getAttribute('href'))
       .filter((url) => /^(https?:)?\/\//i.test(url))
     expect(external).toEqual([])
-    expect(container.querySelector('img, iframe, video, link[rel="stylesheet"]')).toBeNull()
+    expect(container.querySelector('iframe, video, link[rel="stylesheet"]')).toBeNull()
+    // the only image is the company logo, served from this site's own files
+    const images = [...container.querySelectorAll('img')].map((img) => img.getAttribute('src'))
+    expect(images.every((src) => src.startsWith('/'))).toBe(true)
   })
 
   it('opens every link to another site safely: https only, new tab, no opener, no referrer', async () => {

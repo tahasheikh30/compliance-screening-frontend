@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-// Minimal path routing for the few public screens (landing, sign in, request access).
+// Minimal path routing for the few public screens (landing, sign in, request access, legal pages).
 // The signed in console is not routed: it is one screen with tabs, as before.
 // Vercel rewrites every path to index.html (vercel.json), and Vite's dev server does the same,
 // so a reload or a bookmark of /sign-in works.
@@ -9,7 +9,15 @@ export const ROUTES = {
   landing: '/',
   signIn: '/sign-in',
   requestAccess: '/request-access',
+  privacy: '/privacy',
+  terms: '/terms',
+  cookies: '/cookies',
+  accessibility: '/accessibility',
 }
+
+// Pages anyone can read, signed in or not. They have an address of their own even for a signed in person.
+export const LEGAL_ROUTES = [ROUTES.privacy, ROUTES.terms, ROUTES.cookies, ROUTES.accessibility]
+export const isLegalPath = (path) => LEGAL_ROUTES.includes(path)
 
 const NAV_EVENT = 'screening:navigate'
 

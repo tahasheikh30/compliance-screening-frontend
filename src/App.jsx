@@ -2,9 +2,10 @@ import { Suspense, lazy, useEffect, useMemo, useRef } from 'react'
 import { Analytics } from '@vercel/analytics/react'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { config, configProblems } from './lib/config'
-import { ROUTES, navigate, usePath } from './lib/nav'
+import { ROUTES, navigate, usePath, isLegalPath } from './lib/nav'
 import LandingPage from './pages/LandingPage'
 import LoginScreen from './pages/LoginScreen'
+import LegalPage from './pages/LegalPage'
 import WaitingScreen from './pages/WaitingScreen'
 import SetupProblem from './pages/SetupProblem'
 import Connecting from './pages/Connecting'
@@ -17,7 +18,8 @@ const Console = lazy(() => import('./pages/Console'))
 
 /**
  * Public screens live at their own address: the landing page at /, sign in at /sign-in and the request
- * for an account at /request-access. Once signed in there is one screen (the console), always at /.
+ * for an account at /request-access. The legal pages (/privacy, /terms, /cookies, /accessibility) can be read by
+ * anyone, signed in or not. Once signed in there is one screen (the console), always at /.
  */
 function Router() {
   const { phase, me, notice } = useAuth()
@@ -34,7 +36,7 @@ function Router() {
     previous.current = phase
     if (!signedOut) {
       // the console has no address of its own: leave /sign-in behind once signed in
-      if (phase !== 'loading' && path !== ROUTES.landing) navigate(ROUTES.landing, { replace: true })
+      if (phase !== 'loading' && path !== ROUTES.landing && !isLegalPath(path)) navigate(ROUTES.landing, { replace: true })
     } else if (!knownPath) {
       navigate(ROUTES.landing, { replace: true })
     } else if (redirectToSignIn) {
@@ -43,6 +45,7 @@ function Router() {
   }, [phase, signedOut, path, knownPath, redirectToSignIn])
 
   if (phase === 'loading') return <Splash>Loading...</Splash>
+  if (isLegalPath(path)) return <LegalPage path={path} />
   if (signedOut) {
     const asSignup = path === ROUTES.requestAccess
     if (asSignup || path === ROUTES.signIn || redirectToSignIn) {
