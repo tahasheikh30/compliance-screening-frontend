@@ -74,10 +74,19 @@ export default function SiteFooter() {
       <div className="site-footer-inner">
         <div className="site-footer-grid">
           <div className="site-footer-brand">
+            <img src="packages_logo.png" alt={site.company} />
             <p className="site-footer-wordmark">{site.company}</p>
             <p className="site-footer-blurb">
-              An application of {site.company} for account-opening AML/KYC
-              screening. Authorised personnel only.
+              {site.company}’s mission is to provide excellence to improve the
+              quality of living and to drive sustainability based on the triple
+              bottom line approach of People, Planet and Prosperity. It is in
+              keeping with those tenets and our embrace of the United Nations’
+              Sustainable Development Goals (SDGs) that we are accelerating our
+              drive to help materialize sustainability for societies around the
+              world. We hope to become essential to each and every stakeholder,
+              from employees and customers to business partners and investors,
+              by contributing to better tomorrows in the communities that we are
+              privileged to serve.
             </p>
             {site.linkedinUrl && (
               <a
