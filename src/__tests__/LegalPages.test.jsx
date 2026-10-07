@@ -49,13 +49,14 @@ describe('legal pages', () => {
     })
   }
 
-  it('lets the reader move between legal pages without a page load', async () => {
+  it('moves between legal pages only through the footer, without a page load', async () => {
     at('/privacy')
     await load()
     render(<App />)
     await screen.findByRole('heading', { level: 1, name: 'Privacy policy' })
-    const tabs = screen.getByRole('navigation', { name: 'Legal pages' })
-    fireEvent.click(within(tabs).getByRole('link', { name: 'Terms of use' }))
+    // the footer is the only way between legal pages
+    expect(screen.queryByRole('navigation', { name: 'Legal pages' })).toBeNull()
+    fireEvent.click(within(screen.getByRole('contentinfo')).getByRole('link', { name: 'Terms of use' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'Terms of use' })).toBeTruthy()
     expect(window.location.pathname).toBe('/terms')
   })

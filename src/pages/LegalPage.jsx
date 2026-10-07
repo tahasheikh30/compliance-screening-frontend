@@ -4,8 +4,6 @@ import { MagnifyingGlassIcon } from '../components/ui'
 import SiteFooter from '../components/SiteFooter'
 import { LEGAL_PAGES, UPDATED } from './legalContent'
 
-const ORDER = [ROUTES.privacy, ROUTES.terms, ROUTES.cookies, ROUTES.accessibility]
-
 /** One of the legal pages (privacy, terms, cookies, accessibility), readable signed in or out. */
 export default function LegalPage({ path }) {
   const page = LEGAL_PAGES[path]
@@ -32,14 +30,6 @@ export default function LegalPage({ path }) {
       </header>
 
       <main id="legal-main" ref={mainRef} tabIndex={-1} className="legal">
-        <nav className="legal-tabs" aria-label="Legal pages">
-          {ORDER.map((to) => (
-            <Link key={to} to={to} className="legal-tab" aria-current={to === path ? 'page' : undefined}>
-              {LEGAL_PAGES[to].title}
-            </Link>
-          ))}
-        </nav>
-
         <article className="legal-sheet">
           <h1>{page.title}</h1>
           <p className="legal-updated">Last updated {UPDATED}</p>
