@@ -1,4 +1,4 @@
-# Sentinel: Applicant Screening Frontend
+# Sentinel by Packages: Applicant Screening Frontend
 
 Vite + React console for screening an applicant against the UN, OFAC, UK,
 FIA Red Book and NACTA watch lists plus an open news search, reading the

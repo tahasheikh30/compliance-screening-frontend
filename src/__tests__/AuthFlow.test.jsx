@@ -54,7 +54,7 @@ describe('signing in', () => {
     await load()
     mockApi(fetchMock, health)
     render(<App />)
-    expect(await screen.findByRole('heading', { name: /Sentinel/ })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: /Sentinel by Packages/ })).toBeTruthy()
     expect(screen.getByLabelText('Work email')).toBeTruthy()
   })
 

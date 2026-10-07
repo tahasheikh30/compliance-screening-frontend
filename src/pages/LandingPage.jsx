@@ -82,12 +82,12 @@ export default function LandingPage() {
           <Link
             to={ROUTES.landing}
             className="lp-wordmark"
-            aria-label="Sentinel home"
+            aria-label="Sentinel by Packages home"
           >
             <span className="brand-mark">
               <MagnifyingGlassIcon size={20} />
             </span>
-            <span>Sentinel</span>
+            <span>Sentinel by Packages</span>
           </Link>
           <nav className="lp-nav" aria-label="Primary">
             <a href="#how-it-works">How it works</a>

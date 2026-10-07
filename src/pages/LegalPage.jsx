@@ -11,7 +11,7 @@ export default function LegalPage({ path }) {
 
   useEffect(() => {
     const previous = document.title
-    document.title = `${page.title} | Sentinel`
+    document.title = `${page.title} | Sentinel by Packages`
     window.scrollTo?.(0, 0)
     if (arrivedByNavigation()) mainRef.current?.focus({ preventScroll: true })
     return () => { document.title = previous }
@@ -21,9 +21,9 @@ export default function LegalPage({ path }) {
     <div className="gate-page">
       <header className="legal-top">
         <div className="legal-top-inner">
-          <Link to={ROUTES.landing} className="legal-brand" aria-label="Sentinel home">
+          <Link to={ROUTES.landing} className="legal-brand" aria-label="Sentinel by Packages home">
             <span className="brand-mark"><MagnifyingGlassIcon size={20} /></span>
-            <span>Sentinel</span>
+            <span>Sentinel by Packages</span>
           </Link>
           <Link to={ROUTES.landing} className="btn btn-ghost">Back to the app</Link>
         </div>

@@ -88,7 +88,7 @@ export default function LoginScreen({ mode = 'signin', onSwitchMode = () => {} }
     <main className="gate">
       <section className="sheet gate-sheet" aria-labelledby="gate-heading">
         <div className="folder-tab">Restricted</div>
-        <h1 id="gate-heading"><MagnifyingGlassIcon size={22} /> Sentinel</h1>
+        <h1 id="gate-heading"><MagnifyingGlassIcon size={22} /> Sentinel by Packages</h1>
         <p className="lead">
           {signup ? 'Request an account. An administrator approves it before you can use the console.'
             : 'Sign in with your account. Authorized personnel only.'}
