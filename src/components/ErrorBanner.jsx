@@ -1,27 +1,27 @@
-import { useState } from 'react'
-import { ApiError } from '../lib/apiError'
+import { useState } from "react";
+import { ApiError } from "../lib/apiError";
 
 const CODE_COPY = {
   OFFLINE: { title: "You're offline" },
   NETWORK_ERROR: { title: "Can't reach the backend" },
-  TIMEOUT: { title: 'That took too long' },
-  SIGN_IN_FAILED: { title: 'Could not continue' },
-  AUTH_MISSING_KEY: { title: 'App not set up correctly' },
-  AUTH_INVALID_KEY: { title: 'App not set up correctly' },
-  AUTH_REQUIRED: { title: 'Please sign in' },
-  AUTH_INVALID_TOKEN: { title: 'Please sign in again' },
-  AUTH_TOKEN_EXPIRED: { title: 'Please sign in again' },
-  AUTH_NOT_CONFIGURED: { title: 'Backend not configured' },
-  AUTH_UNAVAILABLE: { title: 'Sign in check unavailable' },
-  ACCOUNT_PENDING: { title: 'Waiting for approval' },
-  ACCOUNT_REJECTED: { title: 'Account declined' },
-  ADMIN_ONLY: { title: 'Administrators only' },
-  LAST_ADMIN: { title: 'Keep one administrator' },
-  DATABASE_UNAVAILABLE: { title: 'Database unavailable' },
-  DATABASE_NOT_CONFIGURED: { title: 'Backend not configured' },
-  RATE_LIMITED: { title: 'Slow down a moment' },
-  VALIDATION_ERROR: { title: 'Check the form' },
-}
+  TIMEOUT: { title: "That took too long" },
+  SIGN_IN_FAILED: { title: "Could not continue" },
+  AUTH_MISSING_KEY: { title: "App not set up correctly" },
+  AUTH_INVALID_KEY: { title: "App not set up correctly" },
+  AUTH_REQUIRED: { title: "Please sign in" },
+  AUTH_INVALID_TOKEN: { title: "Please sign in again" },
+  AUTH_TOKEN_EXPIRED: { title: "Please sign in again" },
+  AUTH_NOT_CONFIGURED: { title: "Backend not configured" },
+  AUTH_UNAVAILABLE: { title: "Sign in check unavailable" },
+  ACCOUNT_PENDING: { title: "Waiting for approval" },
+  ACCOUNT_REJECTED: { title: "Account declined" },
+  ADMIN_ONLY: { title: "Administrators only" },
+  LAST_ADMIN: { title: "Keep one administrator" },
+  DATABASE_UNAVAILABLE: { title: "Database unavailable" },
+  DATABASE_NOT_CONFIGURED: { title: "Backend not configured" },
+  RATE_LIMITED: { title: "Slow down a moment" },
+  VALIDATION_ERROR: { title: "Check the form" },
+};
 
 /**
  * A single consistent way to show something going wrong: what happened, what
@@ -30,23 +30,28 @@ const CODE_COPY = {
  * quote to whoever maintains this tool. Never renders a raw error object.
  */
 export default function ErrorBanner({ error, onRetry, onDismiss }) {
-  const [copied, setCopied] = useState(false)
-  if (!error) return null
+  const [copied, setCopied] = useState(false);
+  if (!error) return null;
 
-  const isApiError = error instanceof ApiError
-  const code = isApiError ? error.code : null
-  const title = (code && CODE_COPY[code]?.title) || 'Something went wrong'
-  const message = isApiError ? error.message : (error?.message || String(error))
-  const hint = isApiError ? error.hint : null
-  const requestId = isApiError ? error.requestId : null
-  const canRetry = onRetry && (!isApiError || error.retryable)
+  const isApiError = error instanceof ApiError;
+  const code = isApiError ? error.code : null;
+  const title = (code && CODE_COPY[code]?.title) || "Something went wrong";
+  const message = isApiError ? error.message : error?.message || String(error);
+  const hint = isApiError ? error.hint : null;
+  const requestId = isApiError ? error.requestId : null;
+  const canRetry = onRetry && (!isApiError || error.retryable);
 
   function copyDetails() {
-    const lines = [title, message, hint, requestId ? `Reference: ${requestId}` : null].filter(Boolean)
-    navigator.clipboard?.writeText(lines.join('\n')).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    })
+    const lines = [
+      title,
+      message,
+      hint,
+      requestId ? `Reference: ${requestId}` : null,
+    ].filter(Boolean);
+    navigator.clipboard?.writeText(lines.join("\n")).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
   }
 
   return (
@@ -58,23 +63,40 @@ export default function ErrorBanner({ error, onRetry, onDismiss }) {
         {requestId && (
           <div className="error-banner-ref">
             Reference: <code>{requestId}</code>
-            <button type="button" className="inline-link-btn" onClick={copyDetails}>
-              {copied ? 'Copied' : 'Copy details'}
+            <button
+              type="button"
+              className="inline-link-btn"
+              onClick={copyDetails}
+            >
+              {copied ? "Copied" : "Copy details"}
             </button>
           </div>
         )}
       </div>
       <div className="error-banner-actions">
-        {canRetry && <button type="button" className="error-banner-btn" onClick={onRetry}>Try again</button>}
-        {onDismiss && <button type="button" className="error-banner-btn error-banner-btn-quiet" onClick={onDismiss} aria-label="Dismiss">Dismiss</button>}
+        {canRetry && (
+          <button type="button" className="error-banner-btn" onClick={onRetry}>
+            Try again
+          </button>
+        )}
+        {onDismiss && (
+          <button
+            type="button"
+            className="error-banner-btn error-banner-btn-quiet"
+            onClick={onDismiss}
+            aria-label="Dismiss"
+          >
+            Dismiss
+          </button>
+        )}
       </div>
     </div>
-  )
+  );
 }
 
 /** Field-level message under an input, from an ApiError's `fields` list. */
 export function fieldError(error, fieldName) {
-  if (!(error instanceof ApiError) || !error.fields) return null
-  const f = error.fields.find((f) => f.field === fieldName)
-  return f ? f.message : null
+  if (!(error instanceof ApiError) || !error.fields) return null;
+  const f = error.fields.find((f) => f.field === fieldName);
+  return f ? f.message : null;
 }
