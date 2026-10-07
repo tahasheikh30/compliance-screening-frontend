@@ -3,11 +3,12 @@
 
    Design language (shared with the landing page): a deep slate desk lit by a
    soft gold glow, frosted glass panels with hairline borders, gold as the one
-   accent colour, serif headings, and the rubber-stamp verdict as the single
+   accent colour, bold sans headings, and the rubber-stamp verdict as the single
    memorable object.
 
-   System fonts only. This tool handles applicant PII, so nothing here may
-   make a third-party request (no web fonts, no CDNs, no remote images).
+   Fonts: Inter, bundled with the app and served from this site (see main.jsx), with system fonts as
+   the fallback. This tool handles applicant PII, so nothing here may make a third-party request
+   (no web font services, no CDNs, no remote images).
 
    Contrast: body text on the glass panels is --text (#E8ECEE) or --text-soft
    (#A9B6BD) over surfaces no lighter than #2A373F, both above 4.5:1. Status
@@ -66,8 +67,9 @@
   --tone-warn-bg: rgba(240, 190, 94, 0.11);
   --tone-good-bg: rgba(143, 209, 174, 0.11);
 
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-serif: Charter, 'Bitstream Charter', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* headings use the same family as the body (they were a serif before): one clean sans everywhere */
+  --font-serif: var(--font-sans);
   --font-mono: ui-monospace, 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 
   --radius: 8px;
