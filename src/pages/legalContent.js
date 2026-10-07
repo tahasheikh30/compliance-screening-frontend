@@ -10,13 +10,13 @@ export const LEGAL_PAGES = {
   [ROUTES.privacy]: {
     title: 'Privacy policy',
     lead:
-      'How the Screening console collects, uses and protects personal information. This tool is used by authorised staff for AML/KYC screening of applicants.',
+      'How Sentinel collects, uses and protects personal information. This tool is used by authorised staff for AML/KYC screening of applicants.',
     sections: [
       {
         h: 'Who this applies to',
         p: [
-          'This policy covers two groups of people: staff who hold an account on the console, and applicants whose details a member of staff enters in order to screen them.',
-          'The console is an internal tool of the Compliance department at IGI General Takaful, part of Packages Group. It is not offered to the public.',
+          'This policy covers two groups of people: staff who hold an account on Sentinel, and applicants whose details a member of staff enters in order to screen them.',
+          'Sentinel is an internal tool of the Compliance department at IGI General Takaful, part of Packages Group. It is not offered to the public.',
         ],
       },
       {
@@ -72,18 +72,18 @@ export const LEGAL_PAGES = {
   [ROUTES.terms]: {
     title: 'Terms of use',
     lead:
-      'The rules for using the Screening console. By signing in you agree to them.',
+      'The rules for using Sentinel. By signing in you agree to them.',
     sections: [
       {
-        h: 'Who may use the console',
+        h: 'Who may use Sentinel',
         p: [
-          'The console is for authorised employees and contractors of Packages Group companies who have been given an approved account. Do not share your account or password, and sign out when you finish on a shared computer.',
+          'Sentinel is for authorised employees and contractors of Packages Group companies who have been given an approved account. Do not share your account or password, and sign out when you finish on a shared computer.',
         ],
       },
       {
         h: 'Acceptable use',
         ul: [
-          'Use the console only for account-opening AML/KYC screening and related compliance work.',
+          'Use Sentinel only for account-opening AML/KYC screening and related compliance work.',
           'Enter details only for applicants who have been told about, and have agreed to, screening as part of the normal account-opening process.',
           'Do not search for yourself, friends, family or anyone else without a business reason.',
           'Do not copy, export or share screening results outside the people who need them for compliance.',
@@ -112,13 +112,13 @@ export const LEGAL_PAGES = {
       {
         h: 'Availability and changes',
         p: [
-          'We aim to keep the console running but do not promise it will always be available or free of errors. We may change or withdraw features, and may update these terms. The date at the top of this page shows when they last changed, and continued use means you accept the update.',
+          'We aim to keep Sentinel running but do not promise it will always be available or free of errors. We may change or withdraw features, and may update these terms. The date at the top of this page shows when they last changed, and continued use means you accept the update.',
         ],
       },
       {
         h: 'Ownership',
         p: [
-          'The console, its design and its content belong to Packages Group or its licensors. You may use it as these terms allow, and no other rights are given.',
+          'Sentinel, its design and its content belong to Packages Group or its licensors. You may use it as these terms allow, and no other rights are given.',
         ],
       },
       {
@@ -142,7 +142,7 @@ export const LEGAL_PAGES = {
       {
         h: 'Strictly necessary storage',
         p: [
-          'When you sign in, our authentication provider keeps a session token in your browser’s local storage so you stay signed in as you move around and refresh the page. It is removed when you sign out or the session ends. The console also keeps a few small settings in your browser, such as your last activity time for the inactivity timeout.',
+          'When you sign in, our authentication provider keeps a session token in your browser’s local storage so you stay signed in as you move around and refresh the page. It is removed when you sign out or the session ends. Sentinel also keeps a few small settings in your browser, such as your last activity time for the inactivity timeout.',
           'This storage is needed for the service to work, so it does not ask for consent.',
         ],
       },
@@ -174,7 +174,7 @@ export const LEGAL_PAGES = {
   [ROUTES.accessibility]: {
     title: 'Accessibility',
     lead:
-      'We want the Screening console to be usable by everyone who needs it for their work.',
+      'We want Sentinel to be usable by everyone who needs it for their work.',
     sections: [
       {
         h: 'What we do',

@@ -82,7 +82,7 @@ export default function Console() {
         <div className="brand">
           <span className="brand-mark"><MagnifyingGlassIcon size={20} /></span>
           <span className="brand-text">
-            <span className="brand-name">Case File</span>
+            <span className="brand-name">Sentinel</span>
             <span className="brand-sub">Applicant screening</span>
           </span>
         </div>

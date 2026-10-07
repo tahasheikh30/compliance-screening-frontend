@@ -12,7 +12,7 @@
 //   VITE_LINKEDIN_URL / VITE_FACEBOOK_URL / VITE_INSTAGRAM_URL / VITE_X_URL   the social icons
 
 export const COMPANY = 'Packages Group'
-export const PRODUCT = 'Case File'
+export const PRODUCT = 'Sentinel'
 const DEFAULT_COMPANY_URL = 'https://www.packages.com.pk'
 
 /** Only plain https addresses are accepted: nothing like javascript: or data: can reach an href. */
