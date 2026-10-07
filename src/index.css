@@ -159,7 +159,7 @@ h1, h2, h3 { text-wrap: balance; }
 }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
 .brand-name { font-family: var(--font-serif); font-size: 18px; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
-.brand-sub { font-size: 12px; letter-spacing: 0.04em; color: var(--text-soft); }
+.brand-sub { font-size: 12px; margin-top: 2px; letter-spacing: 0.04em; color: var(--text-soft); }
 
 .tabs {
   display: flex;
