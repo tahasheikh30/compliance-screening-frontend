@@ -131,6 +131,9 @@ describe('the about page', () => {
     expect(screen.getByText(/joined Packages Limited in July 1987/)).toBeTruthy()
     expect(screen.getByRole('heading', { level: 3, name: 'Faisal Khan' })).toBeTruthy()
     expect(screen.getByRole('heading', { level: 3, name: 'Courage' })).toBeTruthy()
+    // this is the Compliance department's tool: no HR contact in the leadership list
+    expect(screen.queryByText('Hadia Tariq')).toBeNull()
+    expect(screen.queryByText(/Human Resources/)).toBeNull()
   })
 
   it('shows initials instead of a broken image when a photo is missing', async () => {
@@ -142,6 +145,21 @@ describe('the about page', () => {
     const avatar = await screen.findByRole('img', { name: 'Syed Hyder Ali' })
     expect(avatar.textContent).toBe('SA')
     expect(screen.queryByAltText('Syed Hyder Ali')).toBeNull()
+  })
+
+  it('keeps the founder\'s text beside a placeholder when the portrait is missing', async () => {
+    await load()
+    at('/about')
+    render(<App />)
+    await pageTitle('Confidence without the theatre.')
+    fireEvent.error(screen.getByAltText('Syed Babar Ali'))
+    const avatar = await screen.findByRole('img', { name: 'Syed Babar Ali' })
+    const profile = avatar.parentElement
+    expect(profile.className).toBe('info-profile')
+    // photo column first, text column second: the text never lands in the narrow photo column
+    expect(profile.children).toHaveLength(2)
+    expect(profile.children[0]).toBe(avatar)
+    expect(profile.children[1].textContent).toMatch(/Syed Babar Ali was born in Lahore/)
   })
 
   it('hides an illustration that is not there yet', async () => {

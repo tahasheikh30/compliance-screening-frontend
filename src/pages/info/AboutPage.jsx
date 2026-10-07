@@ -23,12 +23,6 @@ const LEADERSHIP = [
     blurb: "Brokerage and equity market access for retail and institutional clients.",
     img: "/assets/raza-hussain-rizvi.jpg",
   },
-  {
-    name: "Hadia Tariq",
-    role: "HOD, Human Resources",
-    blurb: "People, culture and talent across every IGI Holdings company.",
-    img: "/assets/hadia-tariq.jpg",
-  },
 ];
 
 // Facts from the Packages Limited and Nestlé Pakistan board profiles and PACRA rating reports.
@@ -195,9 +189,9 @@ export default function AboutPage() {
 
       <section className="info-section" aria-labelledby="about-founder">
         <div className="info-profile">
-          <OptionalImage
-            src="/assets/syed-babar-ali.png"
-            alt="Syed Babar Ali"
+          <Portrait
+            name="Syed Babar Ali"
+            img="/assets/syed-babar-ali.png"
             className="info-profile-photo"
           />
           <div>
@@ -257,7 +251,7 @@ export default function AboutPage() {
           insurance, Investments, and Securities - each run by its own
           leadership team under a shared standard of governance and service.
         </p>
-        <ul className="info-grid info-grid-4">
+        <ul className="info-grid info-grid-3">
           {LEADERSHIP.map((p) => (
             <li key={p.name} className="lp-card info-person">
               <Portrait
