@@ -7,6 +7,7 @@ import { MagnifyingGlassIcon } from '../components/ui'
 import { Link, ROUTES } from '../lib/nav'
 import { config } from '../lib/config'
 import TurnstileWidget from '../components/TurnstileWidget'
+import SiteFooter from '../components/SiteFooter'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -83,6 +84,7 @@ export default function LoginScreen({ mode = 'signin', onSwitchMode = () => {} }
   const signup = mode === 'signup'
 
   return (
+    <div className="gate-page">
     <main className="gate">
       <section className="sheet gate-sheet" aria-labelledby="gate-heading">
         <div className="folder-tab">Restricted</div>
@@ -151,5 +153,7 @@ export default function LoginScreen({ mode = 'signin', onSwitchMode = () => {} }
         </p>
       </section>
     </main>
+    <SiteFooter />
+    </div>
   )
 }

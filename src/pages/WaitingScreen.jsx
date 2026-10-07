@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import ErrorBanner from '../components/ErrorBanner'
 import { MagnifyingGlassIcon } from '../components/ui'
+import SiteFooter from '../components/SiteFooter'
 
 /** Shown to someone who is signed in but not approved: waiting for an administrator, or declined. */
 export default function WaitingScreen() {
@@ -15,6 +16,7 @@ export default function WaitingScreen() {
   }
 
   return (
+    <div className="gate-page">
     <main className="gate">
       <section className="sheet gate-sheet" aria-labelledby="wait-heading">
         <div className="folder-tab">{rejected ? 'Declined' : 'Pending'}</div>
@@ -36,5 +38,7 @@ export default function WaitingScreen() {
         <ErrorBanner error={meError} onRetry={check} />
       </section>
     </main>
+    <SiteFooter />
+    </div>
   )
 }

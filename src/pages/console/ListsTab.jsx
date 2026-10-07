@@ -4,6 +4,7 @@ import ErrorBanner from '../../components/ErrorBanner'
 import { Pill } from '../../components/ui'
 import { fmtAge, fmtNum, fmtDateTime, plural, safeUrl } from '../../lib/format'
 import { SOURCES } from '../../lib/status'
+import { useToast } from '../../components/Toaster'
 
 const LIST_KEYS = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA']
 
@@ -56,6 +57,7 @@ function CopyButton({ text }) {
  * like the other lists. It is loaded from an exported CSV or JSON file instead.
  */
 function NactaPanel({ onChanged, isAdmin }) {
+  const toast = useToast()
   const [status, setStatus] = useState(null)
   const [error, setError] = useState(null)
   const [file, setFile] = useState(null)
@@ -83,12 +85,14 @@ function NactaPanel({ onChanged, isAdmin }) {
     setResult(null)
     try {
       setResult(await uploadNacta(file))
+      toast.success('NACTA list uploaded', { to: 'lists' })
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
       await load()
       onChanged?.()
     } catch (err) {
       setUploadError(err)
+      toast.error('NACTA upload failed', { message: err?.message })
     } finally {
       setBusy(false)
     }
@@ -179,6 +183,7 @@ function NactaPanel({ onChanged, isAdmin }) {
 }
 
 export default function ListsTab({ isAdmin = true }) {
+  const toast = useToast()
   const [status, setStatus] = useState(null)
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -202,9 +207,11 @@ export default function ListsTab({ isAdmin = true }) {
     setReloaded(null)
     try {
       setReloaded(await reloadLists())
+      toast.success('Lists reloaded', { to: 'lists' })
       await load()
     } catch (err) {
       setReloadError(err)
+      toast.error('Could not reload the lists', { message: err?.message })
     } finally {
       setBusy(false)
     }

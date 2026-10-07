@@ -4,6 +4,7 @@ import ErrorBanner from '../../components/ErrorBanner'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { Pill } from '../../components/ui'
 import { fmtDateTime } from '../../lib/format'
+import { useToast } from '../../components/Toaster'
 
 const FILTERS = [
   { id: 'pending', label: 'Waiting' },
@@ -23,6 +24,7 @@ const STATUS_PILL = {
  * remove the last administrator, and says so.
  */
 export default function UsersTab({ selfId, onPendingCount }) {
+  const toast = useToast()
   const [users, setUsers] = useState(null)
   const [error, setError] = useState(null)
   const [filter, setFilter] = useState('pending')
@@ -51,9 +53,11 @@ export default function UsersTab({ selfId, onPendingCount }) {
     setError(null)
     try {
       await change()
+      toast.success('Account updated', { message: user.email })
       await load()
     } catch (err) {
       setError(err)
+      toast.error('Could not update the account', { message: err?.message })
     } finally {
       setBusyId(null)
     }

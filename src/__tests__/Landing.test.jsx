@@ -55,12 +55,27 @@ describe('the landing page', () => {
     const { container } = render(<App />)
     await heroTitle()
     expect(fetchMock).not.toHaveBeenCalled()
-    // the Content Security Policy only allows this site's own files: nothing may point anywhere else
-    const external = [...container.querySelectorAll('[src], [href]')]
+    // the Content Security Policy only allows this site's own files: nothing may LOAD from anywhere else
+    // (scripts, images, styles, frames). Links the person clicks to go to another site are not loads.
+    const external = [...container.querySelectorAll('[src], link[href]')]
       .map((el) => el.getAttribute('src') || el.getAttribute('href'))
       .filter((url) => /^(https?:)?\/\//i.test(url))
     expect(external).toEqual([])
     expect(container.querySelector('img, iframe, video, link[rel="stylesheet"]')).toBeNull()
+  })
+
+  it('opens every link to another site safely: https only, new tab, no opener, no referrer', async () => {
+    await load()
+    const { container } = render(<App />)
+    await heroTitle()
+    const links = [...container.querySelectorAll('a[href]')].filter((a) => /^(https?:)?\/\//i.test(a.getAttribute('href')))
+    expect(links.length).toBeGreaterThan(0)
+    for (const a of links) {
+      expect(a.getAttribute('href')).toMatch(/^https:\/\//)
+      expect(a.getAttribute('target')).toBe('_blank')
+      expect(a.getAttribute('rel')).toContain('noopener')
+      expect(a.getAttribute('rel')).toContain('noreferrer')
+    }
   })
 
   it('only claims what the app does', async () => {

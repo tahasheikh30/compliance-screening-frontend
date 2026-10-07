@@ -154,13 +154,20 @@ export function AuthProvider({ children }) {
     return { confirmEmail: !data.session }
   }, [])
 
+  /** Sets a new password for the signed in person. Supabase may ask them to have signed in recently. */
+  const changePassword = useCallback(async (password) => {
+    const { error } = await getSupabase().auth.updateUser({ password })
+    if (error) throw friendlyAuthError(error)
+    touch()
+  }, [])
+
   const signOut = useCallback(() => endSession(null), [endSession])
   const clearNotice = useCallback(() => setNotice(null), [])
 
   const value = useMemo(() => ({
-    phase, me, meError, notice, signIn, signUp, signOut, refresh: loadMe, clearNotice,
+    phase, me, meError, notice, signIn, signUp, signOut, changePassword, refresh: loadMe, clearNotice,
     isAdmin: me?.role === 'admin' && me?.status === 'approved',
-  }), [phase, me, meError, notice, signIn, signUp, signOut, loadMe, clearNotice])
+  }), [phase, me, meError, notice, signIn, signUp, signOut, changePassword, loadMe, clearNotice])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

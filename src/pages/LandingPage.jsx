@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Link, ROUTES, arrivedByNavigation } from "../lib/nav";
 import { MagnifyingGlassIcon } from "../components/ui";
-import DataNoticeDialog from "../components/DataNoticeDialog";
+import SiteFooter from "../components/SiteFooter";
 import "../landing.css";
 
 function CheckIcon() {
@@ -50,7 +50,6 @@ const POINTS = [
 ];
 
 export default function LandingPage() {
-  const [showNotice, setShowNotice] = useState(false);
   const mainRef = useRef(null);
 
   useEffect(() => {
@@ -242,21 +241,7 @@ export default function LandingPage() {
         </section>
       </main>
 
-      <footer className="lp-frame">
-        <div className="lp-divider" />
-        <div className="lp-footer">
-          <span>Internal tool, IGI Holdings, Compliance dept.</span>
-          <button
-            type="button"
-            className="link-btn"
-            onClick={() => setShowNotice(true)}
-          >
-            Data handling notice
-          </button>
-        </div>
-      </footer>
-
-      {showNotice && <DataNoticeDialog onClose={() => setShowNotice(false)} />}
+      <SiteFooter />
     </div>
   );
 }

@@ -309,16 +309,6 @@ html:has(.landing) { scroll-behavior: smooth; }
 .lp-band p:not(.lp-label) { max-width: 66ch; margin-top: 12px; color: var(--on-desk-muted); line-height: 1.65; }
 .lp-band:last-child { padding-bottom: 88px; }
 
-.lp-footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px 20px;
-  padding: 22px 0 32px;
-  color: var(--on-desk-muted);
-  font-size: 13.5px;
-}
-
 @media (max-width: 860px) {
   .lp-hero { grid-template-columns: minmax(0, 1fr); gap: 52px; padding-top: 64px; }
   .lp-preview { max-width: 560px; width: 100%; }

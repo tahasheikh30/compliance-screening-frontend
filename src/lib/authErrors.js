@@ -22,6 +22,12 @@ export function friendlyAuthError(error) {
   if (status === 429 || code.includes('rate_limit') || text.includes('rate limit') || text.includes('too many')) {
     return fail('Too many attempts for now.', 'Wait a few minutes and try again.')
   }
+  if (code === 'same_password' || text.includes('different from the old password')) {
+    return fail('The new password must be different from your current one.', null)
+  }
+  if (code === 'reauthentication_needed' || text.includes('reauthentication')) {
+    return fail('Please sign in again before changing your password.', 'Sign out, sign in again, then try once more.')
+  }
   if (code === 'weak_password' || text.includes('password should') || text.includes('weak password')) {
     return fail('That password is not strong enough.', 'Use at least 12 characters, and avoid common words or passwords you use elsewhere.')
   }

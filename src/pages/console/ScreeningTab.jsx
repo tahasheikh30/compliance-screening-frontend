@@ -3,7 +3,9 @@ import { screenApplicant } from '../../api'
 import ErrorBanner, { fieldError } from '../../components/ErrorBanner'
 import CaseReport from '../../components/CaseReport'
 import { MagnifyingGlassIcon, ScanningAnimation } from '../../components/ui'
-import { SOURCES, SOURCE_ORDER } from '../../lib/status'
+import { SOURCES, SOURCE_ORDER, overallInfo } from '../../lib/status'
+import { useToast } from '../../components/Toaster'
+import BatchScreening from './BatchScreening'
 
 const DEFAULT_THRESHOLD = 85
 
@@ -31,7 +33,8 @@ function EmptyState() {
   )
 }
 
-export default function ScreeningTab() {
+function IndividualScreening() {
+  const toast = useToast()
   const [fullName, setFullName] = useState('')
   const [dob, setDob] = useState('')
   const [nationality, setNationality] = useState('')
@@ -70,8 +73,13 @@ export default function ScreeningTab() {
       reportKey.current += 1
       setSubmitted({ dob: run.dob, nationality: run.nationality })
       setCaseData(data)
+      // also reaches the person if they moved to another tab while the 20 to 40 seconds went by
+      const info = overallInfo(data.overall_status)
+      const kind = { bad: 'error', warn: 'warn', good: 'success' }[info.tone] || 'info'
+      toast[kind](`Screening complete: ${info.stamp}`, { message: `${data.full_name}. ${info.headline}.`, to: 'history' })
     } catch (err) {
       setError(err)
+      toast.error('Screening did not finish', { message: err?.message || 'Please try again.', to: 'history' })
     } finally {
       setLoading(false)
     }
@@ -193,6 +201,7 @@ export default function ScreeningTab() {
               step="1"
               value={threshold}
               onChange={(e) => setThreshold(Number(e.target.value))}
+              style={{ '--fill': `${((Number(threshold) - 50) / 50) * 100}%` }}
               aria-describedby="threshold-hint"
             />
             <span id="threshold-hint" className="field-hint">
@@ -224,6 +233,77 @@ export default function ScreeningTab() {
         )}
         {!loading && !caseData && !error && <EmptyState />}
       </div>
+    </div>
+  )
+}
+
+const MODES = [
+  {
+    id: 'individual', label: 'Individual', sub: 'One applicant',
+    icon: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4.2 3.6-7 8-7s8 2.8 8 7" /></>,
+  },
+  {
+    id: 'batch', label: 'Batch', sub: 'Upload a file',
+    icon: <><rect x="7" y="3" width="13" height="16" rx="2" /><path d="M4 7v12a2 2 0 0 0 2 2h10" /><path d="M11 8h5M11 12h5" /></>,
+  },
+]
+
+/** Individual or batch. Each side keeps its own state while the other is showing. */
+export default function ScreeningTab() {
+  const [mode, setMode] = useState('individual')
+  const [batchSeen, setBatchSeen] = useState(false)
+
+  function choose(id) {
+    setMode(id)
+    if (id === 'batch') setBatchSeen(true)
+  }
+
+  // arrow keys move between the two, as in any tab list
+  function onKeyDown(e) {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Home' && e.key !== 'End') return
+    e.preventDefault()
+    const i = MODES.findIndex((m) => m.id === mode)
+    const next = e.key === 'Home' ? 0 : e.key === 'End' ? MODES.length - 1 : (i + (e.key === 'ArrowRight' ? 1 : -1) + MODES.length) % MODES.length
+    choose(MODES[next].id)
+    document.getElementById(`mode-tab-${MODES[next].id}`)?.focus()
+  }
+
+  return (
+    <div className="screening">
+      <div className="mode-switch" role="tablist" aria-label="Screening type" onKeyDown={onKeyDown}>
+        {MODES.map((m) => {
+          const on = mode === m.id
+          return (
+            <button
+              key={m.id}
+              id={`mode-tab-${m.id}`}
+              type="button"
+              role="tab"
+              aria-selected={on}
+              aria-controls={`mode-panel-${m.id}`}
+              tabIndex={on ? 0 : -1}
+              className={`mode-btn${on ? ' mode-btn-on' : ''}`}
+              onClick={() => choose(m.id)}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{m.icon}</svg>
+              <span className="mode-text">
+                <span className="mode-title">{m.label}</span>
+                <span className="mode-sub">{m.sub}</span>
+              </span>
+            </button>
+          )
+        })}
+      </div>
+
+      <div role="tabpanel" id="mode-panel-individual" aria-labelledby="mode-tab-individual" hidden={mode !== 'individual'}>
+        <IndividualScreening />
+      </div>
+      {batchSeen && (
+        <div role="tabpanel" id="mode-panel-batch" aria-labelledby="mode-tab-batch" hidden={mode !== 'batch'}>
+          <BatchScreening />
+        </div>
+      )}
     </div>
   )
 }

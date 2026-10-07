@@ -9,6 +9,7 @@ import SetupProblem from './pages/SetupProblem'
 import Connecting from './pages/Connecting'
 import Splash from './pages/Splash'
 import GlobalLoader from './components/GlobalLoader'
+import { ToastProvider } from './components/Toaster'
 
 // Only people who are signed in and approved need the console, so it is fetched separately.
 const Console = lazy(() => import('./pages/Console'))
@@ -67,8 +68,10 @@ export default function App() {
   if (problems.length > 0) return <SetupProblem problems={problems} />
   return (
     <AuthProvider>
-      <GlobalLoader />
-      <Router />
+      <ToastProvider>
+        <GlobalLoader />
+        <Router />
+      </ToastProvider>
     </AuthProvider>
   )
 }
