@@ -93,14 +93,13 @@ describe('the landing page', () => {
     expect(screen.queryByText(/Live workspace/i)).toBeNull()
   })
 
-  it('has working in-page links for each section it lists in the header', async () => {
+  it('links each header entry to a page of its own', async () => {
     await load()
-    const { container } = render(<App />)
+    render(<App />)
     await heroTitle()
     const nav = screen.getByRole('navigation', { name: 'Primary' })
-    const targets = [...nav.querySelectorAll('a[href^="#"]')].map((a) => a.getAttribute('href').slice(1))
-    expect(targets).toEqual(['how-it-works', 'security', 'about'])
-    for (const id of targets) expect(container.querySelector(`#${id}`)).toBeTruthy()
+    const hrefs = [...nav.querySelectorAll('a')].map((a) => a.getAttribute('href'))
+    expect(hrefs).toEqual(['/how-it-works', '/security', '/about', '/sign-in'])
   })
 
   it('scrolls to the section named in a shared link, once the page exists', async () => {

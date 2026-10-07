@@ -1,0 +1,199 @@
+/* ===========================================================================
+   Public information pages (How it works, Security, About).
+
+   They sit inside the landing page's frame (.landing, see landing.css) and use
+   the same tokens from index.css: the slate desk, manila gold, Inter, and the
+   "-dark" status tones that were checked for contrast on dark backgrounds.
+   Everything is scoped under .landing so nothing here can leak into the
+   console. No remote images or fonts: the Content Security Policy allows only
+   this site's own files.
+   =========================================================================== */
+
+.landing .info-hero { padding: clamp(48px, 7vw, 88px) 0 clamp(32px, 5vw, 56px); }
+.landing .info-hero h1 {
+  max-width: 20ch;
+  font-size: clamp(34px, 5vw, 52px);
+  line-height: 1.06;
+}
+.landing .info-hero .lp-label { margin-bottom: 18px; }
+.landing .info-hero .lp-lead { max-width: 60ch; }
+
+.landing .info-section { padding: 52px 0 8px; border-top: 1px solid var(--lp-line); scroll-margin-top: 24px; }
+.landing .info-hero + .info-section { margin-top: 8px; }
+.landing .info-section > h2 { margin-bottom: 12px; }
+.landing .info-intro { max-width: 68ch; margin-bottom: 26px; color: var(--on-desk-muted); font-size: 16px; line-height: 1.7; }
+.landing .info-note {
+  max-width: 72ch;
+  margin-top: 22px;
+  padding-left: 16px;
+  border-left: 2px solid var(--manila);
+  color: var(--on-desk-muted);
+  font-size: 14.5px;
+  line-height: 1.7;
+}
+.landing .info-note a, .landing .info-list a { color: var(--link-dark); }
+.landing .info-section:last-of-type { padding-bottom: 88px; }
+
+/* card grids reuse .lp-card (top gold rule, glass fill) */
+.landing .info-grid { display: grid; gap: 16px; }
+.landing .info-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.landing .info-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.landing .info-grid-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.landing .info-card h3 { margin: 0 0 9px; }
+
+/* steps: a real sequence, so they are numbered */
+.landing .info-steps { counter-reset: step; display: grid; gap: 0; max-width: 760px; list-style: none; }
+.landing .info-step {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 18px;
+  padding: 0 0 28px;
+}
+.landing .info-step::before {
+  content: counter(step);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(216, 190, 128, 0.42);
+  border-radius: 50%;
+  color: var(--manila);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.landing .info-step h3 { margin: 6px 0 6px; font-size: 18px; font-weight: 600; color: var(--on-desk); }
+.landing .info-step p { color: var(--on-desk-muted); font-size: 15px; line-height: 1.65; }
+
+/* verdicts */
+.landing .info-verdicts { display: grid; gap: 10px; max-width: 760px; }
+.landing .info-verdict {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border: 1px solid var(--lp-line);
+  border-left: 4px solid var(--tone);
+  border-radius: 6px;
+  background: var(--lp-card);
+}
+.landing .info-verdict-bad { --tone: var(--tone-bad); }
+.landing .info-verdict-warn { --tone: var(--tone-warn); }
+.landing .info-verdict-good { --tone: var(--tone-good); }
+.landing .info-verdict-name { color: var(--tone); font-weight: 700; font-size: 15px; }
+.landing .info-verdict-copy { color: #C9D3D8; font-size: 14.5px; line-height: 1.55; }
+
+.landing .info-list { display: grid; gap: 10px; max-width: 72ch; padding-left: 20px; list-style: disc; color: var(--on-desk-muted); font-size: 15px; line-height: 1.65; }
+.landing .info-list li::marker { color: var(--manila); }
+
+.landing .info-cta { padding: 40px 0 88px; border-top: 1px solid var(--lp-line); }
+.landing .info-cta .lp-cta { margin-top: 0; }
+
+/* profiles (founder, group CEO) */
+.landing .info-profile {
+  display: grid;
+  grid-template-columns: 176px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+  padding: 28px;
+  border: 1px solid var(--lp-line);
+  border-left: 8px solid var(--manila);
+  border-radius: 6px;
+  background: var(--lp-card);
+}
+.landing .info-profile h2 { margin: 0; font-size: 28px; }
+.landing .info-profile-photo {
+  display: block;
+  width: 176px;
+  height: 216px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid var(--lp-line);
+  border-radius: 6px;
+  background: rgba(14, 20, 24, 0.5);
+}
+.landing .info-avatar {
+  display: grid;
+  place-items: center;
+  color: var(--manila);
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.landing .info-role { margin: 4px 0 0; color: var(--manila); font-size: 14px; font-weight: 600; }
+.landing .info-body { max-width: 68ch; margin-top: 14px; color: #C9D3D8; font-size: 15.5px; line-height: 1.7; }
+
+.landing .info-facts { margin: 22px 0 0; border-top: 1px solid var(--lp-line); }
+.landing .info-fact {
+  display: grid;
+  grid-template-columns: 170px minmax(0, 1fr);
+  gap: 18px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--lp-line);
+}
+.landing .info-fact dt { color: var(--on-desk-muted); font-size: 13.5px; font-weight: 600; }
+.landing .info-fact dd { margin: 0; color: #C9D3D8; font-size: 14.5px; line-height: 1.6; }
+
+/* people and companies */
+.landing .info-person h3, .landing .info-company h3 { margin: 12px 0 4px; font-size: 16.5px; font-weight: 600; color: var(--on-desk); }
+.landing .info-person .info-role { margin: 0 0 10px; }
+.landing .info-person p:not(.info-role), .landing .info-company p { color: #B9C5CB; font-size: 14.5px; line-height: 1.6; }
+.landing .info-person-photo {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 4px;
+  object-fit: cover;
+  border: 1px solid var(--lp-line);
+  border-radius: 50%;
+  background: rgba(14, 20, 24, 0.5);
+}
+.landing .info-person-photo.info-avatar { font-size: 18px; }
+
+.landing .info-sector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--sector);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.landing .info-sector::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--sector); }
+
+.landing .info-banner { margin: 0 0 22px; }
+.landing .info-banner img {
+  display: block;
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border: 1px solid var(--lp-line);
+  border-radius: 6px;
+}
+
+/* values */
+.landing .info-values { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: 32px; align-items: center; }
+.landing .info-values:not(:has(img)) { grid-template-columns: minmax(0, 1fr); }
+.landing .info-values-image { display: block; width: 100%; height: auto; }
+.landing .info-value-list { display: grid; gap: 10px; }
+.landing .info-value { padding: 6px 0 6px 16px; border-left: 4px solid var(--lp-line); }
+.landing .info-value h3 { margin: 0 0 2px; font-size: 16px; font-weight: 600; color: var(--on-desk); }
+.landing .info-value p { color: var(--on-desk-muted); font-size: 14.5px; line-height: 1.55; }
+
+@media (max-width: 1100px) {
+  .landing .info-grid-4, .landing .info-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 860px) {
+  .landing .info-profile { grid-template-columns: minmax(0, 1fr); gap: 20px; padding: 22px; }
+  .landing .info-profile-photo { width: 128px; height: 156px; }
+  .landing .info-values { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .landing .info-grid-2, .landing .info-grid-3, .landing .info-grid-4 { grid-template-columns: minmax(0, 1fr); }
+  .landing .info-fact { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .landing .info-verdict { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .landing .info-section { padding-top: 40px; }
+}

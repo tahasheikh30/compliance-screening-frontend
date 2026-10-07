@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Link, ROUTES, arrivedByNavigation } from "../lib/nav";
-import { MagnifyingGlassIcon } from "../components/ui";
+import PublicHeader from "../components/PublicHeader";
 import SiteFooter from "../components/SiteFooter";
 import "../landing.css";
 
@@ -77,28 +77,7 @@ export default function LandingPage() {
       <div className="lp-glow" aria-hidden="true" />
       <div className="lp-grid" aria-hidden="true" />
 
-      <header className="lp-frame">
-        <div className="lp-header">
-          <Link
-            to={ROUTES.landing}
-            className="lp-wordmark"
-            aria-label="Sentinel by Packages home"
-          >
-            <span className="brand-mark">
-              <MagnifyingGlassIcon size={20} />
-            </span>
-            <span>Sentinel by Packages</span>
-          </Link>
-          <nav className="lp-nav" aria-label="Primary">
-            <a href="#how-it-works">How it works</a>
-            <a href="#security">Security</a>
-            <a href="#about">About</a>
-            <Link to={ROUTES.signIn} className="btn btn-ghost lp-nav-signin">
-              Sign in
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <PublicHeader />
 
       <main
         id="lp-main"

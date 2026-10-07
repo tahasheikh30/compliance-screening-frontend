@@ -13,11 +13,19 @@ export const ROUTES = {
   terms: '/terms',
   cookies: '/cookies',
   accessibility: '/accessibility',
+  howItWorks: '/how-it-works',
+  security: '/security',
+  about: '/about',
 }
 
 // Pages anyone can read, signed in or not. They have an address of their own even for a signed in person.
 export const LEGAL_ROUTES = [ROUTES.privacy, ROUTES.terms, ROUTES.cookies, ROUTES.accessibility]
 export const isLegalPath = (path) => LEGAL_ROUTES.includes(path)
+
+// The public information pages linked from the landing page header. Like the legal pages, anyone can read
+// them, signed in or not.
+export const INFO_ROUTES = [ROUTES.howItWorks, ROUTES.security, ROUTES.about]
+export const isInfoPath = (path) => INFO_ROUTES.includes(path)
 
 const NAV_EVENT = 'screening:navigate'
 
