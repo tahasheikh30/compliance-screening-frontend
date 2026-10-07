@@ -228,8 +228,7 @@ export default function LandingPage() {
             <p className="lp-label lp-label-gold">About</p>
             <h2 id="lp-about-title">Confidence without the theatre.</h2>
             <p>
-              An internal tool of the Compliance department at IGI General
-              Takaful, for account-opening AML/KYC screening. It shows what was
+              An internal tool of the Compliance department at IGI Holdings, for account-opening AML/KYC screening. It shows what was
               checked, what was found, and what could not be checked.
             </p>
           </div>
