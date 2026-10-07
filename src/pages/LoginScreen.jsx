@@ -138,7 +138,7 @@ export default function LoginScreen({ mode = 'signin', onSwitchMode = () => {} }
               <button type="submit" className="btn btn-primary" disabled={busy || (captchaOn && !captchaToken)}>
                 {busy ? (signup ? 'Sending...' : 'Signing in...') : (signup ? 'Request account' : 'Sign in')}
               </button>
-              <button type="button" className="link-btn" onClick={() => switchMode(signup ? 'signin' : 'signup')}>
+              <button type="button" className="btn btn-quiet" onClick={() => switchMode(signup ? 'signin' : 'signup')}>
                 {signup ? 'I already have an account' : 'Request an account'}
               </button>
             </div>
