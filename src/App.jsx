@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { config, configProblems } from './lib/config'
 import { ROUTES, navigate, usePath } from './lib/nav'
@@ -71,6 +72,7 @@ export default function App() {
       <ToastProvider>
         <GlobalLoader />
         <Router />
+        <Analytics />
       </ToastProvider>
     </AuthProvider>
   )
