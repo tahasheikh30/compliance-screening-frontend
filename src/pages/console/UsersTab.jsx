@@ -87,9 +87,9 @@ export default function UsersTab({ selfId, onPendingCount, onOpenHistory }) {
       </div>
 
       <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
-      {users === null && !error && <p className="muted">Loading...</p>}
+      {users === null && !error && <p className="muted empty-note">Loading...</p>}
       {users && shown.length === 0 && (
-        <p className="muted">{filter === 'pending' ? 'Nobody is waiting for approval.' : 'No one to show here.'}</p>
+        <p className="muted empty-note">{filter === 'pending' ? 'Nobody is waiting for approval.' : 'No one to show here.'}</p>
       )}
 
       {shown.length > 0 && (
