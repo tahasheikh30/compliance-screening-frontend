@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { cancelBatch, downloadBatchEvidence, downloadBatchResults, getApplicant, getBatch, startBatch } from '../../api'
+import CaseReport from '../../components/CaseReport'
 import ErrorBanner from '../../components/ErrorBanner'
+import MonitorToggle from '../../components/MonitorToggle'
 import { useToast } from '../../components/Toaster'
 import { Pill } from '../../components/ui'
 import { ApiError } from '../../lib/apiError'
 import { fmtNum } from '../../lib/format'
+import { forget, peek, remember } from '../../lib/readCache'
 import { overallInfo, SOURCE_ORDER } from '../../lib/status'
-import { simulateBatch } from './batchDemo'
 
 const DEFAULT_THRESHOLD = 85
+const POLL_MS = 1500
+const ACTIVE_KEY = 'batch:active'            // the batch on screen, remembered in memory only (never storage)
 const MAX_BYTES = 10 * 1024 * 1024
 const ACCEPT = '.xlsx,.xls,.csv,.docx'
 const KINDS = { xlsx: 'Excel', xls: 'Excel', csv: 'CSV', docx: 'Word' }
@@ -26,7 +31,12 @@ const FILTERS = [
   { id: 'ESCALATE_TO_COMPLIANCE', label: 'Escalated' },
   { id: 'MANUAL_REVIEW', label: 'Needs review' },
   { id: 'AUTO_CLEAR', label: 'Clear' },
+  { id: 'NOT_SCREENED', label: 'Not screened' },
 ]
+
+/** A row that was not screened is never "clear": it is invalid, failed, or was not reached. */
+const isScreened = (r) => r.state === 'screened'
+const outcomeOf = (r) => (isScreened(r) ? r.overall_status : 'NOT_SCREENED')
 
 function extOf(name) {
   const m = /\.([a-z0-9]+)$/i.exec(name || '')
@@ -62,14 +72,6 @@ function UploadIcon() {
   )
 }
 
-function PreviewNote({ children }) {
-  return (
-    <p className="preview-note" role="note">
-      <strong>Design preview.</strong> {children}
-    </p>
-  )
-}
-
 function Guide() {
   return (
     <div className="empty batch-guide">
@@ -99,51 +101,90 @@ function Guide() {
   )
 }
 
-function Progress({ done, total, onCancel }) {
+function Progress({ batch, reading, stopping, onCancel }) {
+  const total = batch?.total || 0
+  const done = batch?.done || 0
   const pct = total ? Math.round((done / total) * 100) : 0
   return (
     <div className="scan batch-progress" role="status" aria-live="polite">
-      <p className="scan-title">Screening the file</p>
+      <p className="scan-title">{reading ? 'Reading the file' : 'Screening the file'}</p>
       <p className="scan-sub">
-        Row <span className="scan-clock">{done}</span> of <span className="scan-clock">{total}</span>. Each row is checked against every list.
+        {reading
+          ? 'Uploading it and checking every row.'
+          : <>Row <span className="scan-clock">{done}</span> of <span className="scan-clock">{total}</span>. Each row is checked against every list.</>}
+        {stopping && ' Stopping after the row in progress.'}
       </p>
       <div className="bar" role="progressbar" aria-label="Batch progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
         <span className="bar-fill" style={{ width: `${pct}%` }} />
       </div>
-      <button type="button" className="btn btn-quiet btn-small" onClick={onCancel}>Cancel</button>
+      {!reading && <button type="button" className="btn btn-quiet btn-small" disabled={stopping} onClick={onCancel}>{stopping ? 'Stopping...' : 'Cancel'}</button>}
     </div>
   )
 }
 
-function Results({ rows, file, onNew }) {
+const HEADLINE = { done: 'Batch screened', cancelled: 'Batch cancelled', interrupted: 'Batch interrupted' }
+const NOT_FINISHED = {
+  cancelled: 'It was cancelled. Rows not reached are listed as not screened, never as clear.',
+  interrupted: 'The server restarted while it was running. Rows not reached are listed as not screened, never as clear.',
+}
+
+function Results({ batch, onNew, onOpen }) {
   const toast = useToast()
   const [filter, setFilter] = useState('all')
-  const count = (id) => rows.filter((r) => r.overall_status === id).length
-  const shown = useMemo(() => rows.filter((r) => filter === 'all' || r.overall_status === filter), [rows, filter])
-  const notYet = (what) => toast.info(`${what} is not connected yet`, { message: 'It will work once the batch backend is wired.', log: false })
+  const [busy, setBusy] = useState(null)               // 'results' | 'evidence' while a download runs
+  const [downloadError, setDownloadError] = useState(null)
+  const rows = batch.rows
+  const count = (id) => rows.filter((r) => outcomeOf(r) === id).length
+  const shown = useMemo(() => rows.filter((r) => filter === 'all' || outcomeOf(r) === filter), [rows, filter])
+  const notScreened = count('NOT_SCREENED')
+  const hasEvidence = count('ESCALATE_TO_COMPLIANCE') + count('MANUAL_REVIEW') > 0
+
+  async function download(kind) {
+    setBusy(kind)
+    setDownloadError(null)
+    try {
+      await (kind === 'results' ? downloadBatchResults(batch.id) : downloadBatchEvidence(batch.id))
+    } catch (err) {
+      if (err instanceof ApiError && err.code === 'EVIDENCE_NOT_GENERATED') {
+        toast.info('No evidence PDFs', { message: 'An evidence PDF is only made when a row has a match or an adverse news lead.', log: false })
+      } else {
+        setDownloadError(err)
+      }
+    } finally {
+      setBusy(null)
+    }
+  }
 
   return (
     <section className="report batch-report" aria-labelledby="batch-report-heading">
-      <header className="verdict verdict-warn">
+      <header className={`verdict ${count('ESCALATE_TO_COMPLIANCE') ? 'verdict-bad' : 'verdict-warn'}`}>
         <div className="verdict-text">
-          <p className="verdict-ref"><span className="mono">{file.name}</span></p>
-          <h2 id="batch-report-heading" tabIndex={-1}>Batch screened</h2>
-          <p className="verdict-applicant">{fmtNum(rows.length)} rows<span className="verdict-sub">{count('ESCALATE_TO_COMPLIANCE')} need escalating</span></p>
+          <p className="verdict-ref"><span className="mono">{batch.filename}</span></p>
+          <h2 id="batch-report-heading" tabIndex={-1}>{HEADLINE[batch.status] || 'Batch screened'}</h2>
+          <p className="verdict-applicant">{fmtNum(batch.total)} rows<span className="verdict-sub">{count('ESCALATE_TO_COMPLIANCE')} need escalating</span></p>
         </div>
       </header>
 
-      <PreviewNote>These results are simulated so the layout can be reviewed. No file was read and nothing was screened.</PreviewNote>
+      {NOT_FINISHED[batch.status] && <p className="batch-note" role="note">{NOT_FINISHED[batch.status]}</p>}
 
       <dl className="tally">
-        <div><dt>Rows screened</dt><dd>{fmtNum(rows.length)}</dd></div>
+        <div><dt>Rows in file</dt><dd>{fmtNum(batch.total)}</dd></div>
         <div><dt>Escalate</dt><dd className={count('ESCALATE_TO_COMPLIANCE') ? 'tally-bad' : ''}>{count('ESCALATE_TO_COMPLIANCE')}</dd></div>
         <div><dt>Review</dt><dd className={count('MANUAL_REVIEW') ? 'tally-warn' : ''}>{count('MANUAL_REVIEW')}</dd></div>
         <div><dt>Clear</dt><dd>{count('AUTO_CLEAR')}</dd></div>
+        {notScreened > 0 && <div><dt>Not screened</dt><dd className="tally-warn">{notScreened}</dd></div>}
       </dl>
+
+      {notScreened > 0 && (
+        <p className="batch-note" role="note">
+          {notScreened === 1 ? '1 row was' : `${notScreened} rows were`} not screened. Fix {notScreened === 1 ? 'it' : 'them'} in the
+          file and upload again. {notScreened === 1 ? 'It is' : 'They are'} not counted as clear.
+        </p>
+      )}
 
       <div className="batch-toolbar">
         <div className="filter-group" role="group" aria-label="Filter by outcome">
-          {FILTERS.map((f) => (
+          {FILTERS.filter((f) => f.id !== 'NOT_SCREENED' || notScreened > 0).map((f) => (
             <button key={f.id} type="button" className={`filter-btn ${filter === f.id ? 'filter-btn-on' : ''}`}
               aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
               {f.label}{f.id !== 'all' && <span className="filter-count"> {count(f.id)}</span>}
@@ -151,10 +192,15 @@ function Results({ rows, file, onNew }) {
           ))}
         </div>
         <div className="batch-downloads">
-          <button type="button" className="btn btn-primary btn-small" onClick={() => notYet('The results download')}>Download results (.xlsx)</button>
-          <button type="button" className="btn btn-quiet btn-small" onClick={() => notYet('The evidence download')}>Evidence (.zip)</button>
+          <button type="button" className="btn btn-primary btn-small" disabled={busy !== null} onClick={() => download('results')}>
+            {busy === 'results' ? 'Preparing...' : 'Download results (.xlsx)'}
+          </button>
+          <button type="button" className="btn btn-quiet btn-small" disabled={busy !== null || !hasEvidence} onClick={() => download('evidence')}>
+            {busy === 'evidence' ? 'Preparing...' : 'Evidence (.zip)'}
+          </button>
         </div>
       </div>
+      <ErrorBanner error={downloadError} onDismiss={() => setDownloadError(null)} />
 
       <div className="table-wrap">
         <table className="table batch-table">
@@ -170,16 +216,20 @@ function Results({ rows, file, onNew }) {
           </thead>
           <tbody>
             {shown.map((r) => {
+              const screened = isScreened(r)
               const info = overallInfo(r.overall_status)
               return (
                 <tr key={r.row}>
                   <td className="num mono">{r.row}</td>
-                  <td><span className="batch-name">{r.full_name}</span></td>
-                  <td><Pill tone={info.tone}>{info.stamp}</Pill></td>
-                  <td className="num">{r.sanctions}</td>
-                  <td className="num">{r.news}</td>
+                  <td>
+                    <span className="batch-name">{r.full_name || 'No name'}</span>
+                    {!screened && <span className="batch-why">{r.error || 'Not reached before the batch stopped.'}</span>}
+                  </td>
+                  <td>{screened ? <Pill tone={info.tone}>{info.stamp}</Pill> : <Pill tone="warn">Not screened</Pill>}</td>
+                  <td className="num">{screened ? r.sanctions : ''}</td>
+                  <td className="num">{screened ? r.news : ''}</td>
                   <td className="num">
-                    <button type="button" className="row-btn batch-open" onClick={() => notYet('Opening a case')}>View case</button>
+                    {screened && <button type="button" className="row-btn batch-open" onClick={() => onOpen(r)}>View case</button>}
                   </td>
                 </tr>
               )
@@ -198,19 +248,108 @@ function Results({ rows, file, onNew }) {
   )
 }
 
+/** One row's full case, with its evidence PDF, in place of the results until the person goes back. */
+function CaseView({ row, onBack }) {
+  const [caseData, setCaseData] = useState(null)
+  const [error, setError] = useState(null)
+  const headingRef = useRef(null)
+
+  const load = useCallback(async () => {
+    setError(null)
+    try {
+      setCaseData(await getApplicant(row.applicant_id))
+    } catch (err) {
+      setError(err)
+    }
+  }, [row.applicant_id])
+
+  useEffect(() => { load() }, [load])
+  useEffect(() => { if (caseData) headingRef.current?.focus() }, [caseData])
+
+  return (
+    <>
+      <div className="form-actions batch-back">
+        <button type="button" className="btn btn-quiet btn-small" onClick={onBack}>Back to the batch results</button>
+      </div>
+      <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
+      {!caseData && !error && <p className="muted state-note">Opening case...</p>}
+      {caseData && (
+        <>
+          <CaseReport key={caseData.applicant_id} ref={headingRef} caseData={caseData} applicant={row} />
+          <MonitorToggle key={`monitor-${caseData.applicant_id}`} applicantId={caseData.applicant_id} monitored={!!caseData.monitored} />
+        </>
+      )}
+    </>
+  )
+}
+
 export default function BatchScreening() {
   const toast = useToast()
   const inputRef = useRef(null)
-  const stop = useRef(null)
   const [file, setFile] = useState(null)
   const [error, setError] = useState(null)
   const [dragging, setDragging] = useState(false)
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD)
-  const [phase, setPhase] = useState('idle')            // 'idle' | 'running' | 'done'
-  const [progress, setProgress] = useState({ done: 0, total: 0 })
-  const [rows, setRows] = useState([])
+  const [monitor, setMonitor] = useState(false)
+  const [uploading, setUploading] = useState(false)     // the file is on its way to the server
+  const [batch, setBatch] = useState(null)              // the batch on screen, as the server last reported it
+  const [stopping, setStopping] = useState(false)       // Cancel was pressed; the row in progress still finishes
+  const [pollError, setPollError] = useState(null)
+  const [openRow, setOpenRow] = useState(null)
 
-  useEffect(() => () => stop.current?.(), [])
+  const running = uploading || batch?.status === 'running'
+
+  // Coming back to this tab (or this page) while a batch is on screen: pick it up where it is. The batch keeps
+  // running on the server whether or not this page is open.
+  useEffect(() => {
+    const id = peek(ACTIVE_KEY)
+    if (!id) return undefined
+    let alive = true
+    getBatch(id)
+      .then((b) => { if (alive) setBatch(b) })
+      .catch(() => forget(ACTIVE_KEY))
+    return () => { alive = false }
+  }, [])
+
+  // While it runs, ask for progress. Each answer replaces `batch`, which re-arms the next ask; a failed ask is
+  // shown and retried more slowly, so a hiccup does not lose the batch.
+  useEffect(() => {
+    if (batch?.status !== 'running') return undefined
+    let alive = true
+    let timer
+    const ask = async () => {
+      try {
+        const next = await getBatch(batch.id)
+        if (!alive) return
+        setPollError(null)
+        setBatch(next)
+        if (next.status !== 'running') finished(next)
+      } catch (err) {
+        if (!alive) return
+        if (err instanceof ApiError && err.status === 404) {
+          forget(ACTIVE_KEY)
+          setBatch(null)
+          setError(err)
+          return
+        }
+        setPollError(err)
+        timer = setTimeout(ask, POLL_MS * 3)
+      }
+    }
+    timer = setTimeout(ask, POLL_MS)
+    return () => { alive = false; clearTimeout(timer) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batch])
+
+  function finished(b) {
+    forget('history:')                       // the batch's screenings are new history rows
+    setStopping(false)
+    const escalate = b.counts?.ESCALATE_TO_COMPLIANCE || 0
+    const title = b.status === 'done' ? 'Batch screened' : b.status === 'cancelled' ? 'Batch cancelled' : 'Batch interrupted'
+    const message = `${b.filename}. ${fmtNum(b.counts?.screened || 0)} of ${fmtNum(b.total)} rows screened, ${escalate} to escalate.`
+    if (b.status === 'done' && escalate === 0) toast.success(title, { message, to: 'history' })
+    else toast.warn(title, { message, to: 'history' })
+  }
 
   function refuse(message, hint) {
     setError(new ApiError({ code: 'VALIDATION_ERROR', message, hint }))
@@ -225,8 +364,8 @@ export default function BatchScreening() {
     if (f.size === 0) return refuse('That file is empty.')
     if (f.size > MAX_BYTES) return refuse('That file is too large.', `The limit is ${fmtSize(MAX_BYTES)}. Split it into smaller files.`)
     setFile(f)
-    setPhase('idle')
-    setRows([])
+    setBatch(null)
+    forget(ACTIVE_KEY)
   }
 
   function onPick(e) {
@@ -240,44 +379,54 @@ export default function BatchScreening() {
     accept(e.dataTransfer?.files)
   }
 
-  function clearFile() {
+  function reset() {
     setFile(null)
     setError(null)
-    setPhase('idle')
-    setRows([])
+    setBatch(null)
+    setPollError(null)
+    setOpenRow(null)
+    setStopping(false)
+    forget(ACTIVE_KEY)
   }
 
-  function run() {
-    if (!file || phase === 'running') return
-    setPhase('running')
+  async function run() {
+    if (!file || running) return
+    setUploading(true)
     setError(null)
-    // DESIGN PREVIEW: swap this call for the real batch request when the backend is ready.
-    stop.current = simulateBatch({
-      onProgress: setProgress,
-      onDone: (result) => {
-        setRows(result)
-        setPhase('done')
-        toast.success('Batch preview finished', { message: 'Simulated results, nothing was screened.', log: false })
-      },
-    })
+    setPollError(null)
+    setStopping(false)
+    try {
+      const started = await startBatch(file, { threshold, monitor })
+      remember(ACTIVE_KEY, started.id)
+      setBatch(started)
+      if (started.status !== 'running') finished(started)     // a very small file can be done before the reply
+    } catch (err) {
+      setError(err)
+    } finally {
+      setUploading(false)
+    }
   }
 
-  function cancel() {
-    stop.current?.()
-    setPhase('idle')
+  async function cancel() {
+    if (!batch || stopping) return
+    setStopping(true)
+    try {
+      setBatch(await cancelBatch(batch.id))
+    } catch (err) {
+      setStopping(false)
+      setPollError(err)
+    }
   }
 
   const kind = file ? KINDS[extOf(file.name)] : null
   const thresholdLow = Number(threshold) < 75
-  const running = phase === 'running'
+  const finishedBatch = batch && batch.status !== 'running'
 
   return (
     <div className="workspace">
       <section className="sheet intake" aria-labelledby="batch-heading">
         <div className="folder-tab">Batch screening</div>
         <h1 id="batch-heading">Screen a file of applicants</h1>
-
-        <PreviewNote>The batch backend is not connected yet, so Run shows simulated results.</PreviewNote>
 
         <div className="form">
           <div className="field">
@@ -314,7 +463,7 @@ export default function BatchScreening() {
                   </div>
                   <div className="file-actions">
                     <button type="button" className="btn btn-quiet btn-small" disabled={running} onClick={() => inputRef.current?.click()}>Replace</button>
-                    <button type="button" className="btn btn-quiet btn-small" disabled={running} onClick={clearFile} aria-label={`Remove ${file.name}`}>Remove</button>
+                    <button type="button" className="btn btn-quiet btn-small" disabled={running} onClick={reset} aria-label={`Remove ${file.name}`}>Remove</button>
                   </div>
                 </div>
               )}
@@ -350,11 +499,22 @@ export default function BatchScreening() {
             </span>
           </div>
 
+          <label className="check-row" htmlFor="batch-monitor">
+            <input id="batch-monitor" type="checkbox" checked={monitor} disabled={running} onChange={(e) => setMonitor(e.target.checked)} />
+            <span>
+              <span className="field-label">Keep monitoring everyone in this file</span>
+              <span className="field-hint">
+                Screen each person again automatically whenever a sanctions list changes, and be told about any new match.
+                Only you will see the alerts.
+              </span>
+            </span>
+          </label>
+
           <div className="form-actions">
             <button type="button" className="btn btn-primary" disabled={!file || running} onClick={run}>
               {running ? 'Screening...' : 'Run batch screening'}
             </button>
-            <button type="button" className="btn btn-quiet" disabled={running || (!file && phase === 'idle')} onClick={clearFile}>Clear</button>
+            <button type="button" className="btn btn-quiet" disabled={running || (!file && !batch)} onClick={reset}>Clear</button>
           </div>
         </div>
 
@@ -365,9 +525,15 @@ export default function BatchScreening() {
       </section>
 
       <div className="outcome" aria-live="polite">
-        {phase === 'idle' && <Guide />}
-        {phase === 'running' && <Progress done={progress.done} total={progress.total} onCancel={cancel} />}
-        {phase === 'done' && file && <Results rows={rows} file={file} onNew={clearFile} />}
+        {pollError && <ErrorBanner error={pollError} onDismiss={() => setPollError(null)} />}
+        {!running && !finishedBatch && <Guide />}
+        {running && <Progress batch={batch} reading={uploading} stopping={stopping} onCancel={cancel} />}
+        {finishedBatch && openRow && <CaseView row={openRow} onBack={() => setOpenRow(null)} />}
+        {finishedBatch && (
+          <div hidden={!!openRow}>
+            <Results batch={batch} onNew={reset} onOpen={setOpenRow} />
+          </div>
+        )}
       </div>
     </div>
   )

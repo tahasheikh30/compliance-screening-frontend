@@ -261,17 +261,81 @@ export async function getApplicant(id) {
   return apiJson(`/applicants/${id}`)
 }
 
-export async function downloadEvidence(resultId, filename) {
-  const res = await request(`/evidence/${resultId}`, { timeoutMs: 60000 })
+/** Hand a downloaded response to the browser as a file save. */
+async function saveResponse(res, filename) {
   const blob = await res.blob()
   const url = window.URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = filename || `evidence_${resultId}.pdf`
+  a.download = filename
   document.body.appendChild(a)
   a.click()
   a.remove()
   window.URL.revokeObjectURL(url)
+}
+
+export async function downloadEvidence(resultId, filename) {
+  const res = await request(`/evidence/${resultId}`, { timeoutMs: 60000 })
+  await saveResponse(res, filename || `evidence_${resultId}.pdf`)
+}
+
+// ---------------------------------------------------------------------------
+// Batch screening
+//
+// The file is sent as the raw request body (not a multipart form). The backend reads it, screens every row in
+// the background as an ordinary screening, and the page polls getBatch for progress. A batch is private to the
+// person who uploaded it, administrators included.
+// ---------------------------------------------------------------------------
+
+const BATCH_UPLOAD_TIMEOUT_MS = 120000
+
+const MAYBE_STARTED_HINT = 'The batch may have started on the server. Open the History tab and check before '
+  + 'uploading the file again, so the applicants are not screened twice.'
+
+/** Upload a file and start screening it. Resolves with the batch (status 'running'); poll getBatch for the rest. */
+export async function startBatch(file, { threshold, monitor } = {}) {
+  const qs = new URLSearchParams({ filename: file.name })
+  if (threshold != null) qs.set('threshold', String(Number(threshold)))
+  if (monitor) qs.set('monitor', 'true')
+  // As for a single screening: never send the file to a server that is asleep, because if the request then
+  // timed out we could not tell whether the batch had started. If this fails, nothing was sent.
+  await wakeBackend()
+  try {
+    const out = await apiJson(`/batch?${qs}`, {
+      method: 'POST',
+      headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      body: file,
+      timeoutMs: BATCH_UPLOAD_TIMEOUT_MS,
+      track: false,
+    })
+    forget('history:')
+    return out
+  } catch (err) {
+    if (err instanceof ApiError && (err.code === 'TIMEOUT' || err.code === 'NETWORK_ERROR')) {
+      err.hint = err.code === 'TIMEOUT' ? `${err.hint || ''} ${MAYBE_STARTED_HINT}`.trim() : MAYBE_STARTED_HINT
+    }
+    throw err
+  }
+}
+
+/** Progress and per row results. Reads are retried on a brief outage, so a polling page rides out a hiccup. */
+export async function getBatch(id) {
+  return apiJson(`/batches/${encodeURIComponent(id)}`, { track: false })
+}
+
+/** Stop after the row being screened. Resolves with the batch as it now stands. */
+export async function cancelBatch(id) {
+  return apiJson(`/batches/${encodeURIComponent(id)}/cancel`, { method: 'POST', track: false })
+}
+
+export async function downloadBatchResults(id) {
+  const res = await request(`/batches/${encodeURIComponent(id)}/results.xlsx`, { timeoutMs: 60000 })
+  await saveResponse(res, `screening-results-${id}.xlsx`)
+}
+
+export async function downloadBatchEvidence(id) {
+  const res = await request(`/batches/${encodeURIComponent(id)}/evidence.zip`, { timeoutMs: 120000 })
+  await saveResponse(res, `evidence-batch-${id}.zip`)
 }
 
 // ---------------------------------------------------------------------------

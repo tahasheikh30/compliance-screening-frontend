@@ -240,3 +240,88 @@ describe('screening', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })
+
+describe('batch screening', () => {
+  const xlsx = () => new File([new Uint8Array(10)], 'applicants.xlsx', { type: '' })
+
+  it('wakes the server, then sends the file as the raw body with the settings in the address', async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ status: 'ok' }))
+      .mockResolvedValueOnce(json({ id: 3, status: 'running' }, 202))
+    const f = xlsx()
+    await expect(api.startBatch(f, { threshold: 90, monitor: true })).resolves.toMatchObject({ id: 3 })
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/health')
+    const [url, init] = fetchMock.mock.calls[1]
+    expect(url).toBe('/api/batch?filename=applicants.xlsx&threshold=90&monitor=true')
+    expect(init.method).toBe('POST')
+    expect(init.body).toBe(f)                                  // the file itself, not a multipart form
+    expect(init.headers['Content-Type']).toBe('application/octet-stream')
+    expect(init.headers['X-API-Key']).toBe('test-app-key')
+    expect(init.headers.Authorization).toBe('Bearer tok-1')
+  })
+
+  it('leaves the settings out when they are not set, and encodes an awkward file name', async () => {
+    fetchMock.mockResolvedValueOnce(json({ status: 'ok' })).mockResolvedValueOnce(json({ id: 4 }, 202))
+    await api.startBatch(new File([new Uint8Array(3)], 'my list & more.csv'))
+    expect(fetchMock.mock.calls[1][0]).toBe('/api/batch?filename=my+list+%26+more.csv')
+  })
+
+  it('never uploads to a server that will not wake up', async () => {
+    vi.useFakeTimers()
+    fetchMock.mockImplementation(() => Promise.resolve(apiErr(503, 'HTTP_503', 'asleep')))
+    const assertion = expect(api.startBatch(xlsx())).rejects.toMatchObject({ status: 503 })
+    await vi.advanceTimersByTimeAsync(60000)
+    await assertion
+    expect(fetchMock.mock.calls.some(([url]) => String(url).startsWith('/api/batch'))).toBe(false)
+  })
+
+  it('does not retry a timed out upload and warns that the batch may have started', async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ status: 'ok' }))
+      .mockRejectedValueOnce(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+    await expect(api.startBatch(xlsx())).rejects.toMatchObject({ code: 'TIMEOUT', hint: expect.stringContaining('History') })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows the server reason for a refused file', async () => {
+    fetchMock
+      .mockResolvedValueOnce(json({ status: 'ok' }))
+      .mockResolvedValueOnce(apiErr(422, 'BATCH_NO_NAME_COLUMN', 'The file has no Full name column.', 'Put the column names in the first row.'))
+    await expect(api.startBatch(xlsx())).rejects.toMatchObject({ status: 422, code: 'BATCH_NO_NAME_COLUMN', hint: 'Put the column names in the first row.' })
+  })
+
+  it('polls with a read that rides out a brief outage, and cancels with a post', async () => {
+    vi.useFakeTimers()
+    fetchMock
+      .mockResolvedValueOnce(apiErr(503, 'HTTP_503', 'waking'))
+      .mockResolvedValueOnce(json({ id: 3, status: 'running', done: 1 }))
+    const p = api.getBatch(3)
+    await vi.advanceTimersByTimeAsync(2000)
+    await expect(p).resolves.toMatchObject({ done: 1 })
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/batches/3')
+
+    fetchMock.mockResolvedValueOnce(json({ id: 3, status: 'running' }))
+    await api.cancelBatch(3)
+    const [url, init] = fetchMock.mock.calls.at(-1)
+    expect(url).toBe('/api/batches/3/cancel')
+    expect(init.method).toBe('POST')
+  })
+
+  it('saves the results and the evidence zip under clear names', async () => {
+    const saved = []
+    const real = document.createElement.bind(document)
+    vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+      const el = real(tag)
+      if (tag === 'a') { el.click = () => saved.push(el.download) }
+      return el
+    })
+    window.URL.createObjectURL = vi.fn(() => 'blob:x')
+    window.URL.revokeObjectURL = vi.fn()
+    fetchMock.mockImplementation(async () => new Response(new Blob(['x'])))
+    await api.downloadBatchResults(3)
+    await api.downloadBatchEvidence(3)
+    expect(fetchMock.mock.calls.map(([u]) => u)).toEqual(['/api/batches/3/results.xlsx', '/api/batches/3/evidence.zip'])
+    expect(saved).toEqual(['screening-results-3.xlsx', 'evidence-batch-3.zip'])
+    vi.restoreAllMocks()
+  })
+})
