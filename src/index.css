@@ -736,6 +736,18 @@ span.article-title { color: var(--text); }
 .filter-btn:not(.filter-btn-on):hover { background: var(--inset-2); color: var(--text); border-color: rgba(232, 236, 238, 0.4); }
 .filter-btn-on, .filter-btn-on:hover { background: var(--gold-soft); color: var(--gold-hi); border-color: var(--gold-line); }
 
+.sheet > .filter-group { margin: 16px 0 0; }
+
+/* Loading / empty-state messages that follow filters or a banner */
+.state-note {
+  margin: 18px 0 0;
+  max-width: 62ch;
+  color: var(--text-soft);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+.sheet > .filter-group + .state-note { margin-top: 20px; }
+
 .table-wrap { overflow-x: auto; margin: 0 -8px; padding: 0 8px; }
 .table { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-size: 14px; }
 .table th {
@@ -921,7 +933,6 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
   box-shadow: 0 0 0 3px rgba(216, 190, 128, 0.2);
 }
 .users { max-width: 940px; }
-.users .filter-group { margin: 14px 0 6px; }
 .user-email { overflow-wrap: anywhere; }
 .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .sheet .link-btn { color: var(--link-dark); }
