@@ -437,17 +437,6 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px 
   color: var(--text);
   padding: 30px 30px 26px;
 }
-.empty::after {
-  content: '';
-  position: absolute;
-  right: -60px;
-  top: -60px;
-  width: 220px;
-  height: 220px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(216, 190, 128, 0.16), transparent 68%);
-  pointer-events: none;
-}
 .empty h2 { font-family: var(--font-serif); font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 16px; }
 .empty p { color: var(--text-soft); max-width: 62ch; }
 .empty-sources { margin-bottom: 18px; counter-reset: src; }
