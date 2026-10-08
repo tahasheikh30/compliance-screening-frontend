@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { listUsers, setUserRole, setUserStatus } from '../../api'
+import { deleteUser, listUsers, setUserRole, setUserStatus } from '../../api'
 import ErrorBanner from '../../components/ErrorBanner'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import { Pill } from '../../components/ui'
@@ -10,17 +10,20 @@ const FILTERS = [
   { id: 'pending', label: 'Waiting' },
   { id: 'all', label: 'Everyone' },
   { id: 'rejected', label: 'Declined' },
+  { id: 'disabled', label: 'Disabled' },
 ]
 
 const STATUS_PILL = {
   pending: { tone: 'warn', label: 'Waiting' },
   approved: { tone: 'good', label: 'Approved' },
   rejected: { tone: 'bad', label: 'Declined' },
+  disabled: { tone: 'bad', label: 'Disabled' },
 }
 
 /**
- * Administrators only. Approve or decline people who signed up, and choose who is an administrator.
- * Anything that removes access or grants admin asks first. The server has the final word: it refuses to
+ * Administrators only. Approve or decline people who signed up, switch accounts off (Disable) and back on
+ * (Enable), delete accounts, and choose who is an administrator.
+ * Anything that removes access, deletes someone or grants admin asks first. The server has the final word: it refuses to
  * remove the last administrator, and says so.
  */
 export default function UsersTab({ selfId, onPendingCount, onOpenHistory }) {
@@ -47,13 +50,13 @@ export default function UsersTab({ selfId, onPendingCount, onOpenHistory }) {
   const shown = useMemo(() => (users || []).filter((u) => filter === 'all' || u.status === filter), [users, filter])
   const waiting = (users || []).filter((u) => u.status === 'pending').length
 
-  async function apply(user, change) {
+  async function apply(user, change, done = 'Account updated') {
     setConfirm(null)
     setBusyId(user.id)
     setError(null)
     try {
       await change()
-      toast.success('Account updated', { message: user.email })
+      toast.success(done, { message: user.email })
       await load()
     } catch (err) {
       setError(err)
@@ -63,7 +66,7 @@ export default function UsersTab({ selfId, onPendingCount, onOpenHistory }) {
     }
   }
 
-  const approve = (u) => apply(u, () => setUserStatus(u.id, 'approved'))
+  const approve = (u) => apply(u, () => setUserStatus(u.id, 'approved'), u.status === 'disabled' ? 'Account enabled' : 'Account approved')
 
   function ask(user, spec) {
     setConfirm({ user, ...spec })
@@ -74,7 +77,7 @@ export default function UsersTab({ selfId, onPendingCount, onOpenHistory }) {
       <div className="folder-tab">Administration</div>
       <h1 id="users-heading">People</h1>
       <p className="lead">
-        New accounts wait here until you approve them. Approving or declining takes effect on their next action. Select a person to see their screening history.
+        New accounts wait here until you approve them. Approving, declining, disabling and deleting take effect on their next action. Select a person to see their screening history.
       </p>
 
       <div className="filter-group" role="group" aria-label="Show">
@@ -118,16 +121,14 @@ export default function UsersTab({ selfId, onPendingCount, onOpenHistory }) {
                       <div className="row-actions">
                         {u.status !== 'approved' && (
                           <button type="button" className="btn btn-primary btn-small" disabled={busy} onClick={() => approve(u)}>
-                            Approve
+                            {u.status === 'disabled' ? 'Enable' : 'Approve'}
                           </button>
                         )}
-                        {u.status !== 'rejected' && !self && (
+                        {u.status === 'pending' && !self && (
                           <button type="button" className="btn btn-quiet btn-small" disabled={busy}
                             onClick={() => ask(u, {
                               title: `Decline ${u.email}?`,
-                              body: u.status === 'approved'
-                                ? 'They lose access at once. Their past screenings stay in the history.'
-                                : 'They will not be able to use the console.',
+                              body: 'They will not be able to use the console.',
                               label: 'Decline', danger: true,
                               run: () => setUserStatus(u.id, 'rejected'),
                             })}>
@@ -157,6 +158,30 @@ export default function UsersTab({ selfId, onPendingCount, onOpenHistory }) {
                             </button>
                           )
                         )}
+                        {u.status === 'approved' && !self && (
+                          <button type="button" className="btn btn-quiet btn-small" disabled={busy}
+                            onClick={() => ask(u, {
+                              title: `Disable ${u.email}?`,
+                              body: 'They lose access at once, and any batch they are running stops. Nothing is deleted: you can switch them back on later, and their past screenings stay in the history.',
+                              label: 'Disable', danger: true,
+                              run: () => setUserStatus(u.id, 'disabled'),
+                              done: 'Account disabled',
+                            })}>
+                            Disable
+                          </button>
+                        )}
+                        {!self && (
+                          <button type="button" className="btn btn-quiet btn-small" disabled={busy}
+                            onClick={() => ask(u, {
+                              title: `Delete ${u.email}?`,
+                              body: 'This removes their account and they can no longer sign in. Their past screenings stay in the history, without their name on them. This cannot be undone. To stop someone for now, disable them instead.',
+                              label: 'Delete', danger: true,
+                              run: () => deleteUser(u.id),
+                              done: 'Account deleted',
+                            })}>
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -174,7 +199,7 @@ export default function UsersTab({ selfId, onPendingCount, onOpenHistory }) {
           confirmLabel={confirm.label}
           danger={confirm.danger}
           onCancel={() => setConfirm(null)}
-          onConfirm={() => apply(confirm.user, confirm.run)}
+          onConfirm={() => apply(confirm.user, confirm.run, confirm.done)}
         />
       )}
     </section>

@@ -47,7 +47,7 @@ async function accessToken({ forceRefresh = false } = {}) {
   return data?.session?.access_token || null
 }
 
-const TOKEN_CODES = new Set(['AUTH_REQUIRED', 'AUTH_INVALID_TOKEN', 'AUTH_TOKEN_EXPIRED'])
+const TOKEN_CODES = new Set(['AUTH_REQUIRED', 'AUTH_INVALID_TOKEN', 'AUTH_TOKEN_EXPIRED', 'AUTH_ACCOUNT_DELETED'])
 const isTokenProblem = (err) => err instanceof ApiError && err.status === 401 && TOKEN_CODES.has(err.code)
 const isAppKeyProblem = (err) => err instanceof ApiError && err.status === 401
   && (err.code === 'AUTH_MISSING_KEY' || err.code === 'AUTH_INVALID_KEY')
@@ -66,7 +66,7 @@ function handleFailure(err) {
   } else if (isTokenProblem(err)) {
     // a fresh token was already tried (see request): this sign in is over
     window.dispatchEvent(new CustomEvent(SESSION_ENDED_EVENT, { detail: { code: err.code } }))
-  } else if (err instanceof ApiError && err.status === 403 && (err.code === 'ACCOUNT_PENDING' || err.code === 'ACCOUNT_REJECTED')) {
+  } else if (err instanceof ApiError && err.status === 403 && (err.code === 'ACCOUNT_PENDING' || err.code === 'ACCOUNT_REJECTED' || err.code === 'ACCOUNT_DISABLED')) {
     window.dispatchEvent(new Event(ACCOUNT_CHANGED_EVENT))
   }
   throw err
@@ -183,7 +183,7 @@ async function apiJson(path, options = {}) {
 // The signed in person, and (for administrators) who has signed up
 // ---------------------------------------------------------------------------
 
-/** { id, email, role: 'user' | 'admin', status: 'pending' | 'approved' | 'rejected' } */
+/** { id, email, role: 'user' | 'admin', status: 'pending' | 'approved' | 'rejected' | 'disabled' } */
 export async function getMe() {
   return apiJson('/me')
 }
@@ -196,6 +196,14 @@ export async function setUserStatus(id, status) {
   return apiJson(`/admin/users/${encodeURIComponent(id)}/status`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }),
   })
+}
+
+/**
+ * Delete a person: their sign in account and profile. Their past screenings stay in the history. Needs the
+ * backend to have SUPABASE_SERVICE_ROLE_KEY; if it does not, the server says so and Disable still works.
+ */
+export async function deleteUser(id) {
+  return apiJson(`/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
 export async function setUserRole(id, role) {

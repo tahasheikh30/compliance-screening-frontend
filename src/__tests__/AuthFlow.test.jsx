@@ -167,6 +167,16 @@ describe('approval', () => {
     expect(screen.queryByRole('button', { name: 'Check again' })).toBeNull()
   })
 
+  it('tells a disabled person so, with no way to retry', async () => {
+    await load()
+    h.supabase = makeSupabase({ session: sessionFor() })
+    mockApi(fetchMock, { ...health, 'GET /api/me': { ...ME, status: 'disabled' } })
+    render(<App />)
+    expect(await screen.findByRole('heading', { name: 'Account disabled' })).toBeTruthy()
+    expect(screen.getByText(/switched back on/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Check again' })).toBeNull()
+  })
+
   it('moves a signed in user to the waiting screen when the server says their access was withdrawn', async () => {
     await load()
     h.supabase = makeSupabase({ session: sessionFor() })

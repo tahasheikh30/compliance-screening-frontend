@@ -14,9 +14,11 @@ const USERS = () => ([
   { id: 'p1', email: 'newbie@example.com', role: 'user', status: 'pending', created_at: '2026-10-02T10:00:00Z' },
   { id: 'u2', email: 'ana@example.com', role: 'user', status: 'approved', created_at: '2026-09-10T10:00:00Z' },
   { id: 'r1', email: 'gone@example.com', role: 'user', status: 'rejected', created_at: '2026-09-12T10:00:00Z' },
+  { id: 'd1', email: 'paused@example.com', role: 'user', status: 'disabled', created_at: '2026-09-14T10:00:00Z' },
 ])
 
 const posts = () => fetchMock.mock.calls.filter(([, i]) => i?.method === 'POST')
+const deletes = () => fetchMock.mock.calls.filter(([, i]) => i?.method === 'DELETE')
 
 beforeEach(async () => {
   vi.resetModules()
@@ -31,6 +33,14 @@ beforeEach(async () => {
       const body = JSON.parse(init.body)
       users = users.map((x) => (x.id === 'p1' ? { ...x, status: body.status } : x))
       return users.find((x) => x.id === 'p1')
+    },
+    'POST /api/admin/users/d1/status': (u, init) => {
+      users = users.map((x) => (x.id === 'd1' ? { ...x, status: JSON.parse(init.body).status } : x))
+      return users.find((x) => x.id === 'd1')
+    },
+    'DELETE /api/admin/users/u2': () => {
+      users = users.filter((x) => x.id !== 'u2')
+      return { id: 'u2', email: 'ana@example.com', sign_in_removed: true }
     },
     'POST /api/admin/users/u2/status': (u, init) => {
       users = users.map((x) => (x.id === 'u2' ? { ...x, status: JSON.parse(init.body).status } : x))
@@ -72,12 +82,10 @@ describe('People', () => {
 
   it('asks before declining, focuses Cancel, and does nothing if cancelled', async () => {
     render(<UsersTab selfId="self" />)
-    await screen.findByText('newbie@example.com')
-    fireEvent.click(screen.getByRole('button', { name: 'Everyone' }))
-    const row = (await screen.findByText('ana@example.com')).closest('tr')
+    const row = (await screen.findByText('newbie@example.com')).closest('tr')
     fireEvent.click(within(row).getByRole('button', { name: 'Decline' }))
     const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText('Decline ana@example.com?')).toBeTruthy()
+    expect(within(dialog).getByText('Decline newbie@example.com?')).toBeTruthy()
     expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancel' }))
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog')).toBeNull()
@@ -86,14 +94,75 @@ describe('People', () => {
 
   it('declines after confirmation', async () => {
     render(<UsersTab selfId="self" />)
-    await screen.findByText('newbie@example.com')
-    fireEvent.click(screen.getByRole('button', { name: 'Everyone' }))
-    const row = (await screen.findByText('ana@example.com')).closest('tr')
+    const row = (await screen.findByText('newbie@example.com')).closest('tr')
     fireEvent.click(within(row).getByRole('button', { name: 'Decline' }))
     fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Decline' }))
     await waitFor(() => expect(posts()).toHaveLength(1))
-    expect(posts()[0][0]).toBe('/api/admin/users/u2/status')
+    expect(posts()[0][0]).toBe('/api/admin/users/p1/status')
     expect(JSON.parse(posts()[0][1].body)).toEqual({ status: 'rejected' })
+  })
+
+  it('asks before disabling someone, then switches them off', async () => {
+    render(<UsersTab selfId="self" />)
+    await screen.findByText('newbie@example.com')
+    fireEvent.click(screen.getByRole('button', { name: 'Everyone' }))
+    const row = (await screen.findByText('ana@example.com')).closest('tr')
+    fireEvent.click(within(row).getByRole('button', { name: 'Disable' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Disable ana@example.com?')).toBeTruthy()
+    expect(posts()).toHaveLength(0)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Disable' }))
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(posts()[0][0]).toBe('/api/admin/users/u2/status')
+    expect(JSON.parse(posts()[0][1].body)).toEqual({ status: 'disabled' })
+    await waitFor(() => expect(within((screen.getByText('ana@example.com')).closest('tr')).getByText('Disabled')).toBeTruthy())
+  })
+
+  it('enables a disabled account with one click', async () => {
+    render(<UsersTab selfId="self" />)
+    await screen.findByText('newbie@example.com')
+    fireEvent.click(screen.getByRole('button', { name: 'Disabled' }))
+    const row = (await screen.findByText('paused@example.com')).closest('tr')
+    expect(within(row).queryByRole('button', { name: 'Disable' })).toBeNull()
+    fireEvent.click(within(row).getByRole('button', { name: 'Enable' }))
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    expect(posts()[0][0]).toBe('/api/admin/users/d1/status')
+    expect(JSON.parse(posts()[0][1].body)).toEqual({ status: 'approved' })
+  })
+
+  it('asks before deleting, explains what stays, and removes the person from the list', async () => {
+    render(<UsersTab selfId="self" />)
+    await screen.findByText('newbie@example.com')
+    fireEvent.click(screen.getByRole('button', { name: 'Everyone' }))
+    const row = (await screen.findByText('ana@example.com')).closest('tr')
+    fireEvent.click(within(row).getByRole('button', { name: 'Delete' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Delete ana@example.com?')).toBeTruthy()
+    expect(within(dialog).getByText(/past screenings stay in the history/)).toBeTruthy()
+    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(deletes()).toHaveLength(0)
+    fireEvent.click(within(row).getByRole('button', { name: 'Delete' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(deletes()).toHaveLength(1))
+    expect(deletes()[0][0]).toBe('/api/admin/users/u2')
+    await waitFor(() => expect(screen.queryByText('ana@example.com')).toBeNull())
+  })
+
+  it('shows the server\'s reason when deleting is not set up, and keeps the person listed', async () => {
+    mockApi(fetchMock, {
+      'GET /api/admin/users': () => users,
+      'DELETE /api/admin/users/u2': () => apiErr(503, 'USER_DELETE_NOT_CONFIGURED', 'Deleting people is not set up on this server.', 'Set SUPABASE_SERVICE_ROLE_KEY on the backend, or use Disable instead.'),
+    })
+    render(<UsersTab selfId="self" />)
+    await screen.findByText('newbie@example.com')
+    fireEvent.click(screen.getByRole('button', { name: 'Everyone' }))
+    const row = (await screen.findByText('ana@example.com')).closest('tr')
+    fireEvent.click(within(row).getByRole('button', { name: 'Delete' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }))
+    expect(await screen.findByText('Delete is not set up')).toBeTruthy()
+    expect(screen.getByText(/or use Disable instead/)).toBeTruthy()
+    expect(screen.getByText('ana@example.com')).toBeTruthy()
   })
 
   it('asks before granting administrator rights', async () => {
@@ -109,7 +178,7 @@ describe('People', () => {
     expect(JSON.parse(posts()[0][1].body)).toEqual({ role: 'admin' })
   })
 
-  it('offers no way to decline or demote yourself', async () => {
+  it('offers no way to decline, disable, delete or demote yourself', async () => {
     render(<UsersTab selfId="self" />)
     await screen.findByText('newbie@example.com')
     fireEvent.click(screen.getByRole('button', { name: 'Everyone' }))

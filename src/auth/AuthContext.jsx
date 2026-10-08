@@ -14,7 +14,7 @@ export function useAuth() {
 }
 
 export const MIN_PASSWORD_LENGTH = 12
-const TOKEN_REFUSED = new Set(['AUTH_REQUIRED', 'AUTH_INVALID_TOKEN', 'AUTH_TOKEN_EXPIRED'])
+const TOKEN_REFUSED = new Set(['AUTH_REQUIRED', 'AUTH_INVALID_TOKEN', 'AUTH_TOKEN_EXPIRED', 'AUTH_ACCOUNT_DELETED'])
 const PENDING_POLL_MS = 20000
 
 /**
@@ -24,7 +24,7 @@ const PENDING_POLL_MS = 20000
  *   3. This component: idle sign out, and sending people to the right screen.
  *
  * phase: 'loading' (checking for a saved session) | 'signed-out' | 'checking' (signed in, asking the
- *        backend) | 'ready' (me is known: me.status says pending, approved or rejected)
+ *        backend) | 'ready' (me is known: me.status says pending, approved, rejected or disabled)
  */
 export function AuthProvider({ children }) {
   const [phase, setPhase] = useState('loading')

@@ -9,6 +9,8 @@ export default function WaitingScreen() {
   const { me, refresh, signOut, meError } = useAuth()
   const [checking, setChecking] = useState(false)
   const rejected = me?.status === 'rejected'
+  const disabled = me?.status === 'disabled'
+  const closed = rejected || disabled        // nothing to wait for: an administrator has to act
 
   async function check() {
     setChecking(true)
@@ -19,16 +21,18 @@ export default function WaitingScreen() {
     <div className="gate-page">
     <main className="gate">
       <section className="sheet gate-sheet" aria-labelledby="wait-heading">
-        <div className="folder-tab">{rejected ? 'Declined' : 'Pending'}</div>
-        <h1 id="wait-heading"><MagnifyingGlassIcon size={22} /> {rejected ? 'Request declined' : 'Waiting for approval'}</h1>
+        <div className="folder-tab">{disabled ? 'Disabled' : rejected ? 'Declined' : 'Pending'}</div>
+        <h1 id="wait-heading"><MagnifyingGlassIcon size={22} /> {disabled ? 'Account disabled' : rejected ? 'Request declined' : 'Waiting for approval'}</h1>
         <p className="lead">
-          {rejected
+          {disabled
+            ? 'An administrator has disabled this account. Contact the compliance team to have it switched back on.'
+            : rejected
             ? 'An administrator declined this account. If you think that is a mistake, contact the compliance team.'
             : 'Your account is created. An administrator needs to approve it before you can use the console. This page updates by itself.'}
         </p>
         <p className="muted">Signed in as <strong>{me?.email}</strong></p>
         <div className="form-actions">
-          {!rejected && (
+          {!closed && (
             <button type="button" className="btn btn-primary" onClick={check} disabled={checking}>
               {checking ? 'Checking...' : 'Check again'}
             </button>

@@ -167,6 +167,31 @@ describe('an expired or refused sign in', () => {
   })
 })
 
+describe('disabling and deleting people', () => {
+  it('tells the app when an account was disabled under it', async () => {
+    const changed = listen(api.ACCOUNT_CHANGED_EVENT)
+    fetchMock.mockResolvedValueOnce(apiErr(403, 'ACCOUNT_DISABLED', 'Your account has been disabled by an administrator.'))
+    await expect(api.listApplicants()).rejects.toMatchObject({ code: 'ACCOUNT_DISABLED' })
+    expect(changed).toHaveLength(1)
+  })
+
+  it('ends the session of someone whose account was deleted', async () => {
+    const ended = listen(api.SESSION_ENDED_EVENT)
+    fetchMock.mockResolvedValue(apiErr(401, 'AUTH_ACCOUNT_DELETED', 'This account has been deleted.'))
+    await expect(api.listApplicants()).rejects.toMatchObject({ code: 'AUTH_ACCOUNT_DELETED' })
+    expect(ended.length).toBeGreaterThan(0)
+  })
+
+  it('deletes a person with DELETE and the right path', async () => {
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ id: 'u 2', email: 'a@b.c', sign_in_removed: true }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }))
+    await expect(api.deleteUser('u 2')).resolves.toMatchObject({ sign_in_removed: true })
+    const [url, init] = fetchMock.mock.calls.at(-1)
+    expect(String(url)).toContain('/admin/users/u%202')
+    expect(init.method).toBe('DELETE')
+  })
+})
+
 describe('retries', () => {
   it('retries a read on a temporary server error and then succeeds', async () => {
     vi.useFakeTimers()
