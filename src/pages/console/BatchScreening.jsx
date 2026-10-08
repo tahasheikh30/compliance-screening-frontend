@@ -18,6 +18,7 @@ const COLUMNS = [
   { name: 'Nationality', note: 'e.g. Pakistan' },
   { name: 'CNIC', note: '13 digits, dashes optional' },
   { name: 'Father or husband', note: 'Name' },
+  { name: 'Province', note: 'e.g. Punjab' },
 ]
 
 const FILTERS = [

@@ -144,7 +144,7 @@ function NactaPanel({ onChanged, isAdmin }) {
       <p className="lead">
         {status?.source === 'url'
           ? 'The list is downloaded automatically from the configured address. You can still upload a file by hand, which is used if the download has never worked.'
-          : 'NACTA\'s portal (nfs.nacta.gov.pk) has no download address, so the list is loaded from a file. On the portal, click the JSON button to save the list, then upload that file here. Your administrator can also schedule an automatic refresh. A CNIC and father\'s name column make matching far more precise, and the list changes every few weeks, so keep it fresh.'}
+          : 'NACTA\'s portal (nfs.nacta.gov.pk) has no download address, so the list is loaded from a file. On the portal, click the JSON button to save the list, then upload that file here. Your administrator can also schedule an automatic refresh. A CNIC, father\'s name and province column make matching far more precise, and the list changes every few weeks, so keep it fresh.'}
       </p>
       <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
       {summary}

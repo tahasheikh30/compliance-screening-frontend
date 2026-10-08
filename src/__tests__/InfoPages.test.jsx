@@ -48,7 +48,8 @@ describe('the public information pages', () => {
     render(<App />)
     await pageTitle(heading)
     expect(here()).toBe(path)
-    expect(document.title).toBe(title)
+    // the title is set once the lazily loaded page has mounted, which can land a moment after its heading
+    await waitFor(() => expect(document.title).toBe(title))
   })
 
   it('is reached from the landing page header, and marks the current page', async () => {

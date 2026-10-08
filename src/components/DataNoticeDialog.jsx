@@ -55,7 +55,7 @@ export default function DataNoticeDialog({ onClose }) {
         <h3>What this tool collects</h3>
         <p>
           The applicant's full name, and optionally a date of birth,
-          nationality, CNIC and father's or husband's name. Nothing else about
+          nationality, CNIC, father's or husband's name and province. Nothing else about
           the applicant is collected here. These are only compared against
           listed records and shown as supporting evidence, except that a CNIC
           equal to a listed CNIC is reported as a match.

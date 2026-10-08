@@ -31,7 +31,7 @@ const SOURCES = [
 const STEPS = [
   {
     title: "Enter the applicant",
-    copy: "A full name is all that is required. A CNIC, father's name, date of birth and nationality are optional and add supporting evidence. Names are entered in Latin letters.",
+    copy: "A full name is all that is required. A CNIC, father's name, province, date of birth and nationality are optional and add supporting evidence. Names are entered in Latin letters.",
   },
   {
     title: "Names are compared",

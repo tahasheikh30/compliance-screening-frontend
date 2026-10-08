@@ -109,6 +109,21 @@ export function MatchItem({ match, applicantHasDob }) {
             </>
           )}
         </Fact>
+        <Fact label="Province">
+          {match.province}
+          {match.province_match === true && (
+            <>
+              {" "}
+              <Pill tone="warn">Province matches</Pill>
+            </>
+          )}
+          {match.province_match === false && (
+            <>
+              {" "}
+              <Pill tone="good">Province differs</Pill>
+            </>
+          )}
+        </Fact>
         <Fact label="CNIC">
           {match.cnic && <span className="mono">{match.cnic}</span>}
           {match.cnic_match === true && (

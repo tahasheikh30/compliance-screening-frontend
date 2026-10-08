@@ -8,11 +8,11 @@ findings, and downloading the evidence PDF. It talks to the screening backend
 ## What it does
 
 **Screening.** Enter a full name (required), plus an optional date of birth,
-nationality, CNIC, father's or husband's name and match threshold (50 to 100,
-default 85). A CNIC is checked for 13 digits when you leave the field. The FIA
+nationality, CNIC, father's or husband's name, province and match threshold
+(50 to 100, default 85). A CNIC is checked for 13 digits when you leave the field. The FIA
 Red Book and NACTA publish CNICs, so a CNIC that equals a listed one is
 reported as a match whatever the name looks like, and is called out above the
-sources. A matching father's name is shown as supporting evidence. The result is a
+sources. A matching father's name or province is shown as supporting evidence. The result is a
 stamped verdict (Escalate, Review or Clear), the number of watch-list
 matches and news leads, a next step, and one card per source. Each match
 shows its score, reference, programme, listed date of birth (flagged when
@@ -238,8 +238,8 @@ consumer website. Items below say what was checked and what was not.
 - **Links.** News links open only if they are `http` or `https`, with
   `rel="noopener noreferrer"`. Anything else is shown as plain text.
 - **Only collect necessary data.** The form collects a name (required), and
-  an optional date of birth, nationality, CNIC and father's or husband's
-  name. Each is used: date of birth and nationality, and a father's name, are
+  an optional date of birth, nationality, CNIC, father's or husband's
+  name and province. Each is used: date of birth, nationality, a father's name and province, are
   shown next to matches as supporting evidence and never remove one, and a CNIC
   that equals a listed CNIC is reported as a match. They are all optional.
   The CNIC is a national identity number, so treat the stored screening

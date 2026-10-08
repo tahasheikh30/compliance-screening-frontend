@@ -215,13 +215,14 @@ const SCREEN_TIMEOUT_MS = 120000
 const MAYBE_FINISHED_HINT = 'The screening may still have finished on the server. Open the History tab and '
   + 'check before running it again, so the applicant is not recorded twice.'
 
-export async function screenApplicant({ full_name, dob, nationality, threshold, cnic, father_name, monitor }) {
+export async function screenApplicant({ full_name, dob, nationality, threshold, cnic, father_name, province, monitor }) {
   const body = { full_name }
   if (monitor) body.monitor = true         // keep watching this person: screened again whenever a list changes
   if (dob) body.dob = dob
   if (nationality) body.nationality = nationality
   if (cnic) body.cnic = cnic
   if (father_name) body.father_name = father_name
+  if (province) body.province = province
   if (threshold != null) body.threshold = Number(threshold)
 
   // Never send the screening to a server that is asleep: if the request then timed out we could not

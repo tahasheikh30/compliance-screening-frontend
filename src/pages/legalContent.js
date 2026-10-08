@@ -23,7 +23,7 @@ export const LEGAL_PAGES = {
         h: 'What we collect',
         ul: [
           'Staff accounts: your email address, your password (held by our authentication provider as a salted hash, never in readable form), your approval status and your role.',
-          'Applicant details entered for screening: full name and, optionally, date of birth, nationality, CNIC and father’s or husband’s name. Nothing else about an applicant is collected.',
+          'Applicant details entered for screening: full name and, optionally, date of birth, nationality, CNIC, father’s or husband’s name and province. Nothing else about an applicant is collected.',
           'Screening records: the result of each screening, the evidence PDF, and the time it was run and by whom, so a compliance officer can review the finding later.',
           'Basic usage measurements: anonymous page view counts, collected without cookies and without identifying you.',
         ],

@@ -205,3 +205,71 @@ describe('administrators and history', () => {
     expect(screen.queryByText('Screened By Ana')).toBeNull()
   })
 })
+
+describe('the screening form: father and province', () => {
+  const screened = { applicant_id: 3, full_name: 'Muhammad Shakir', overall_status: 'AUTO_CLEAR', results: [], case_ref: 'CS-2026-00003', monitored: false }
+
+  it('puts the father or husband box under the name, as wide as it, and the province beside the CNIC', async () => {
+    await load()
+    mockApi(fetchMock, { ...health, 'GET /api/me': ME, 'GET /api/monitoring/status': status() })
+    render(<App />)
+    const name = await screen.findByLabelText(/Full name/)
+    const father = screen.getByLabelText(/Father or husband/)
+    const cnic = screen.getByLabelText(/CNIC/)
+    const province = screen.getByLabelText('Province')
+    // order in the page: name, father, ..., CNIC, province
+    const follows = (a, b) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(follows(name, father) && follows(father, cnic) && follows(cnic, province)).toBe(true)
+    // father is its own full width row, like the name: neither sits inside a two column row
+    expect(name.closest('.field-row')).toBeNull()
+    expect(father.closest('.field-row')).toBeNull()
+    // province shares the row with the CNIC, where the father's name used to be
+    expect(province.closest('.field-row')).toBe(cnic.closest('.field-row'))
+    expect(province.tagName).toBe('SELECT')
+    expect(within(province).getByRole('option', { name: 'Not known' }).value).toBe('')
+    expect(within(province).getAllByRole('option').map((o) => o.value)).toContain('Khyber Pakhtunkhwa')
+  })
+
+  it('sends the chosen province and father, and leaves them out when not filled in', async () => {
+    await load()
+    const sent = []
+    mockApi(fetchMock, {
+      ...health, 'GET /api/me': ME, 'GET /api/monitoring/status': status(),
+      'POST /api/screen': (u, init) => { sent.push(JSON.parse(init.body)); return screened },
+    })
+    render(<App />)
+    fireEvent.change(await screen.findByLabelText(/Full name/), { target: { value: 'Muhammad Shakir' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Run screening' }))
+    await waitFor(() => expect(sent).toHaveLength(1), { timeout: 4000 })
+    expect(sent[0].province).toBeUndefined()
+    expect(sent[0].father_name).toBeUndefined()
+
+    fireEvent.change(screen.getByLabelText(/Father or husband/), { target: { value: 'Qabil Khan' } })
+    fireEvent.change(screen.getByLabelText('Province'), { target: { value: 'Punjab' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Run screening' }))
+    await waitFor(() => expect(sent).toHaveLength(2), { timeout: 4000 })
+    expect(sent[1].province).toBe('Punjab')
+    expect(sent[1].father_name).toBe('Qabil Khan')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    expect(screen.getByLabelText('Province').value).toBe('')
+  })
+
+  it('shows whether a listed person\'s province agrees', async () => {
+    await load()
+    const result = (province_match) => ({ source: 'NACTA', status: 'HIT', matches: [{
+      id: 'NACTA-1', primary_name: 'Muhammad Shakir', matched_name: 'Muhammad Shakir', score: 100, list: 'NACTA',
+      type: 'Individual', province: 'Punjab', province_match }], articles: [], match_count: 1, lists: [] })
+    for (const [value, text] of [[true, 'Province matches'], [false, 'Province differs']]) {
+      cleanup()
+      mockApi(fetchMock, {
+        ...health, 'GET /api/me': ME, 'GET /api/monitoring/status': status(),
+        'POST /api/screen': { ...screened, overall_status: 'ESCALATE_TO_COMPLIANCE', results: [result(value)] },
+      })
+      render(<App />)
+      fireEvent.change(await screen.findByLabelText(/Full name/), { target: { value: 'Muhammad Shakir' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Run screening' }))
+      expect(await screen.findByText(text, {}, { timeout: 4000 })).toBeTruthy()
+    }
+  })
+})

@@ -5,6 +5,7 @@ import CaseReport from '../../components/CaseReport'
 import MonitorToggle from '../../components/MonitorToggle'
 import { MagnifyingGlassIcon, ScanningAnimation } from '../../components/ui'
 import { SOURCES, SOURCE_ORDER, overallInfo } from '../../lib/status'
+import { PROVINCES } from '../../lib/provinces'
 import { useToast } from '../../components/Toaster'
 import BatchScreening from './BatchScreening'
 
@@ -42,6 +43,7 @@ function IndividualScreening() {
   const [cnic, setCnic] = useState('')
   const [cnicTouched, setCnicTouched] = useState(false)
   const [fatherName, setFatherName] = useState('')
+  const [province, setProvince] = useState('')
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD)
   const [monitor, setMonitor] = useState(false)       // keep watching this person after the screening
   const [loading, setLoading] = useState(false)
@@ -66,7 +68,7 @@ function IndividualScreening() {
 
   async function doSubmit() {
     const run = { full_name: fullName.trim(), dob, nationality: nationality.trim(), threshold,
-      cnic: cnicDigits, father_name: fatherName.trim(), monitor }
+      cnic: cnicDigits, father_name: fatherName.trim(), province, monitor }
     setLoading(true)
     setError(null)
     setCaseData(null)
@@ -103,6 +105,7 @@ function IndividualScreening() {
     setCnic('')
     setCnicTouched(false)
     setFatherName('')
+    setProvince('')
     setThreshold(DEFAULT_THRESHOLD)
     setMonitor(false)
     setError(null)
@@ -135,6 +138,17 @@ function IndividualScreening() {
             />
             <span id="name-hint" className="field-hint">As written on the ID. Word order and titles such as Dr or Haji do not matter.</span>
             {nameError && <span className="field-error">{nameError}</span>}
+          </label>
+
+          <label className="field" htmlFor="father-input">
+            <span className="field-label">Father or husband</span>
+            <input
+              id="father-input"
+              value={fatherName}
+              onChange={(e) => setFatherName(e.target.value)}
+              placeholder="Name"
+              autoComplete="off"
+            />
           </label>
 
           <div className="field-row">
@@ -177,21 +191,18 @@ function IndividualScreening() {
               />
               {cnicProblem && <span className="field-error">{cnicProblem}</span>}
             </label>
-            <label className="field" htmlFor="father-input">
-              <span className="field-label">Father or husband</span>
-              <input
-                id="father-input"
-                value={fatherName}
-                onChange={(e) => setFatherName(e.target.value)}
-                placeholder="Name"
-                autoComplete="off"
-              />
+            <label className="field" htmlFor="province-input">
+              <span className="field-label">Province</span>
+              <select id="province-input" value={province} onChange={(e) => setProvince(e.target.value)}>
+                <option value="">Not known</option>
+                {PROVINCES.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
             </label>
           </div>
           <p id="cnic-hint" className="field-hint field-hint-block">
             All of these except the name are optional. A CNIC that equals a CNIC on the NACTA or FIA Red Book lists
-            is reported as a match whatever the name looks like, so enter it whenever you have it. The others are
-            shown next to each match as supporting evidence and never remove one.
+            is reported as a match whatever the name looks like, so enter it whenever you have it. The others,
+            including the province, are shown next to each match as supporting evidence and never remove one.
           </p>
 
           <div className="field">
