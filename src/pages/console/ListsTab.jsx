@@ -5,6 +5,7 @@ import { Pill } from '../../components/ui'
 import { fmtAge, fmtNum, fmtDateTime, plural, safeUrl } from '../../lib/format'
 import { SOURCES } from '../../lib/status'
 import { useToast } from '../../components/Toaster'
+import { peek, remember } from '../../lib/readCache'
 
 const LIST_KEYS = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA']
 
@@ -58,7 +59,7 @@ function CopyButton({ text }) {
  */
 function NactaPanel({ onChanged, isAdmin }) {
   const toast = useToast()
-  const [status, setStatus] = useState(null)
+  const [status, setStatus] = useState(() => peek('lists:nacta'))
   const [error, setError] = useState(null)
   const [file, setFile] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -69,7 +70,7 @@ function NactaPanel({ onChanged, isAdmin }) {
   const load = useCallback(async () => {
     setError(null)
     try {
-      setStatus(await getNactaStatus())
+      setStatus(remember('lists:nacta', await getNactaStatus()))
     } catch (err) {
       setError(err)
     }
@@ -184,7 +185,7 @@ function NactaPanel({ onChanged, isAdmin }) {
 
 export default function ListsTab({ isAdmin = true }) {
   const toast = useToast()
-  const [status, setStatus] = useState(null)
+  const [status, setStatus] = useState(() => peek('lists:status'))   // the last answer, shown at once while it refreshes
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
   const [reloaded, setReloaded] = useState(null)
@@ -193,7 +194,7 @@ export default function ListsTab({ isAdmin = true }) {
   const load = useCallback(async () => {
     setError(null)
     try {
-      setStatus(await getListsStatus())
+      setStatus(remember('lists:status', await getListsStatus()))
     } catch (err) {
       setError(err)
     }

@@ -1,21 +1,43 @@
-import { Suspense, lazy, useEffect, useMemo, useRef } from 'react'
-import { Analytics } from '@vercel/analytics/react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { config, configProblems } from './lib/config'
 import { ROUTES, navigate, usePath, isLegalPath, isInfoPath } from './lib/nav'
-import LandingPage from './pages/LandingPage'
-import LoginScreen from './pages/LoginScreen'
-import LegalPage from './pages/LegalPage'
-import InfoPage from './pages/InfoPage'
-import WaitingScreen from './pages/WaitingScreen'
-import SetupProblem from './pages/SetupProblem'
 import Connecting from './pages/Connecting'
+import SetupProblem from './pages/SetupProblem'
 import Splash from './pages/Splash'
 import GlobalLoader from './components/GlobalLoader'
 import { ToastProvider } from './components/Toaster'
 
-// Only people who are signed in and approved need the console, so it is fetched separately.
-const Console = lazy(() => import('./pages/Console'))
+// Each screen is fetched only when it is shown. Someone who is already signed in never downloads the landing
+// page, the information pages or their styles, and a visitor never downloads the console.
+const loadConsole = () => import('./pages/Console')
+const loadLanding = () => import('./pages/LandingPage')
+const loadLogin = () => import('./pages/LoginScreen')
+const Console = lazy(loadConsole)
+const LandingPage = lazy(loadLanding)
+const LoginScreen = lazy(loadLogin)
+const LegalPage = lazy(() => import('./pages/LegalPage'))
+const InfoPage = lazy(() => import('./pages/InfoPage'))
+const WaitingScreen = lazy(() => import('./pages/WaitingScreen'))
+const Analytics = lazy(() => import('@vercel/analytics/react').then((m) => ({ default: m.Analytics })))
+
+// Start fetching the screen this address needs right now, in parallel with the sign in check, instead of
+// after it: the first paint no longer waits for a second round trip.
+if (typeof window !== 'undefined') {
+  const path = window.location.pathname.replace(/\/+$/, '').toLowerCase() || '/'
+  if (path === ROUTES.landing) loadLanding().catch(() => {})
+  else if (path === ROUTES.signIn || path === ROUTES.requestAccess) loadLogin().catch(() => {})
+}
+
+// Analytics is not needed to use the app, so it loads after the first screen and never delays it.
+function DeferredAnalytics() {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    const id = typeof requestIdleCallback === 'function' ? requestIdleCallback(() => setReady(true), { timeout: 3000 }) : setTimeout(() => setReady(true), 1500)
+    return () => (typeof cancelIdleCallback === 'function' ? cancelIdleCallback(id) : clearTimeout(id))
+  }, [])
+  return ready ? <Suspense fallback={null}><Analytics /></Suspense> : null
+}
 
 /**
  * Public screens live at their own address: the landing page at /, sign in at /sign-in and the request
@@ -44,6 +66,14 @@ function Router() {
       navigate(ROUTES.signIn, { replace: true })
     }
   }, [phase, signedOut, path, knownPath, redirectToSignIn])
+
+  // The console is the next stop for anyone signing in: fetch it while they type their password or while the
+  // server confirms who they are, so it opens the moment they are through.
+  const onSignInScreen = signedOut && (path === ROUTES.signIn || path === ROUTES.requestAccess)
+  useEffect(() => {
+    if (onSignInScreen || phase === 'checking') loadConsole().catch(() => {})
+    if (signedOut && path === ROUTES.landing) loadLogin().catch(() => {})
+  }, [onSignInScreen, phase, signedOut, path])
 
   if (phase === 'loading') return <Splash>Loading...</Splash>
   if (isLegalPath(path)) return <LegalPage path={path} />
@@ -76,8 +106,10 @@ export default function App() {
     <AuthProvider>
       <ToastProvider>
         <GlobalLoader />
-        <Router />
-        <Analytics />
+        <Suspense fallback={<Splash>Loading...</Splash>}>
+          <Router />
+        </Suspense>
+        <DeferredAnalytics />
       </ToastProvider>
     </AuthProvider>
   )

@@ -132,6 +132,8 @@ export default function SiteFooter({ inPlace = false }) {
                 src="/packages_logo_footer.png"
                 width="309"
                 height="274"
+                loading="lazy"
+                decoding="async"
                 alt={site.company}
               />
               <span className="visually-hidden"> (opens in a new tab)</span>

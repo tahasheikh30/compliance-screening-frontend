@@ -5,6 +5,7 @@ import { apiFetch, ApiError } from './lib/apiError'
 import { config } from './lib/config'
 import { getSupabase } from './lib/supabase'
 import { beginActivity } from './lib/activity'
+import { forget } from './lib/readCache'
 
 export { ApiError }
 
@@ -226,13 +227,15 @@ export async function screenApplicant({ full_name, dob, nationality, threshold, 
   // tell whether it ran. If this fails, nothing was sent.
   await wakeBackend()
   try {
-    return await apiJson('/screen', {
+    const result = await apiJson('/screen', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
       timeoutMs: SCREEN_TIMEOUT_MS,
       track: false,
     })
+    forget('history:')      // the new screening is a history row the cached copy does not have
+    return result
   } catch (err) {
     if (err instanceof ApiError && (err.code === 'TIMEOUT' || err.code === 'NETWORK_ERROR')) {
       err.hint = err.code === 'TIMEOUT' ? `${err.hint || ''} ${MAYBE_FINISHED_HINT}`.trim() : MAYBE_FINISHED_HINT

@@ -12,9 +12,17 @@ import AccountPage from './console/AccountPage'
 import NotificationsPage from './console/NotificationsPage'
 
 // The first tab is needed immediately; the rest are fetched the first time they are opened.
-const HistoryTab = lazy(() => import('./console/HistoryTab'))
-const ListsTab = lazy(() => import('./console/ListsTab'))
-const UsersTab = lazy(() => import('./console/UsersTab'))
+const loadHistory = () => import('./console/HistoryTab')
+const loadLists = () => import('./console/ListsTab')
+const loadUsers = () => import('./console/UsersTab')
+const HistoryTab = lazy(loadHistory)
+const ListsTab = lazy(loadLists)
+const UsersTab = lazy(loadUsers)
+
+// Once the first screen is up and the browser has nothing better to do, fetch the other tabs' code so
+// opening them is instant instead of a visible load.
+const whenIdle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 4000 }) : setTimeout(fn, 1500))
+const cancelIdle = (id) => (typeof cancelIdleCallback === 'function' ? cancelIdleCallback(id) : clearTimeout(id))
 
 // Shown while a tab's code is being fetched; the global loader does the visible work.
 function TabLoading() {
@@ -48,6 +56,15 @@ export default function Console() {
   const lastPending = useRef(null)
   const [pending, setPending] = useState(0)
 
+  useEffect(() => {
+    const id = whenIdle(() => {
+      loadHistory().catch(() => {})
+      loadLists().catch(() => {})
+      if (isAdmin) loadUsers().catch(() => {})
+    })
+    return () => cancelIdle(id)
+  }, [isAdmin])
+
   // administrators see how many people are waiting, whichever tab they are on
   useEffect(() => {
     if (!isAdmin) return undefined
@@ -68,8 +85,12 @@ export default function Console() {
       } catch { /* the People tab shows the error if it persists */ }
     }
     look()
-    const timer = setInterval(look, PENDING_POLL_MS)
-    return () => { active = false; clearInterval(timer) }
+    // a hidden tab does not need to keep asking (it wakes the server and spends battery for nobody);
+    // look again as soon as the person comes back
+    const timer = setInterval(() => { if (document.visibilityState !== 'hidden') look() }, PENDING_POLL_MS)
+    const onVisible = () => { if (document.visibilityState === 'visible') look() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { active = false; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible) }
   }, [isAdmin, toast])
 
   const tabs = useMemo(() => (isAdmin ? [...BASE_TABS, PEOPLE_TAB] : BASE_TABS), [isAdmin])

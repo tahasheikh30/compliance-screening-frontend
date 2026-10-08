@@ -1,10 +1,33 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { getApplicant, listApplicants } from '../../api'
 import ErrorBanner from '../../components/ErrorBanner'
 import CaseReport from '../../components/CaseReport'
 import { Pill } from '../../components/ui'
 import { fmtDateTime } from '../../lib/format'
 import { overallInfo } from '../../lib/status'
+import { peek, remember } from '../../lib/readCache'
+
+// A long history is drawn a page at a time: hundreds of table rows are what makes typing in the search box lag.
+const PAGE_SIZE = 100
+const cacheKey = (mine) => `history:${mine ? 'mine' : 'all'}`
+
+// One row. Memoised so a keystroke in the search box or selecting a case only redraws the rows that changed.
+const HistoryRow = memo(function HistoryRow({ row, on, isAdmin, onOpen }) {
+  const info = overallInfo(row.overall_status)
+  return (
+    <tr className={on ? 'row-on' : ''}>
+      <td>
+        <button type="button" className="row-btn" onClick={() => onOpen(row)} aria-current={on ? 'true' : undefined}>
+          {row.full_name}
+        </button>
+        <span className="row-sub">{fmtDateTime(row.submitted_at)}</span>
+        <span className="row-sub mono">#{String(row.id).padStart(5, '0')}</span>
+        {isAdmin && <span className="row-sub">Screened by {row.screened_by || 'a removed account'}</span>}
+      </td>
+      <td><Pill tone={info.tone}>{info.stamp}</Pill></td>
+    </tr>
+  )
+})
 
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -14,29 +37,40 @@ const FILTERS = [
 ]
 
 export default function HistoryTab({ isAdmin = false }) {
-  const [rows, setRows] = useState(null)
+  const [mine, setMine] = useState(false)           // administrators: only my own screenings
+  const [rows, setRows] = useState(() => peek(cacheKey(false)))   // the last answer, shown at once while it refreshes
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('all')
-  const [mine, setMine] = useState(false)           // administrators: only my own screenings
+  const [limit, setLimit] = useState(PAGE_SIZE)
   const [selected, setSelected] = useState(null) // list row being viewed
   const [caseData, setCaseData] = useState(null)
   const [caseError, setCaseError] = useState(null)
   const [opening, setOpening] = useState(false)
   const headingRef = useRef(null)
 
+  const latest = useRef(0)                          // only the newest request may update the screen
+
   const load = useCallback(async () => {
+    const mark = ++latest.current
     setError(null)
     try {
-      setRows(await listApplicants({ mine }))
+      const fresh = await listApplicants({ mine })
+      if (mark !== latest.current) return          // switched to Everyone's / Mine meanwhile: this answer is stale
+      setRows(remember(cacheKey(mine), fresh))
     } catch (err) {
-      setError(err)
+      if (mark === latest.current) setError(err)
     }
   }, [mine])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    setRows(peek(cacheKey(mine)))                  // show the other list's last answer (or the loading text) straight away
+    setLimit(PAGE_SIZE)
+    load()
+    return () => { latest.current += 1 }
+  }, [load, mine])
 
-  async function open(row) {
+  const open = useCallback(async (row) => {
     setSelected(row)
     setCaseData(null)
     setCaseError(null)
@@ -48,18 +82,20 @@ export default function HistoryTab({ isAdmin = false }) {
     } finally {
       setOpening(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (caseData) headingRef.current?.focus()
   }, [caseData])
 
-  const shown = useMemo(() => {
-    const q = query.trim().toLowerCase()
+  const deferredQuery = useDeferredValue(query)      // typing stays responsive; the table catches up
+  const matches = useMemo(() => {
+    const q = deferredQuery.trim().toLowerCase()
     return (rows || []).filter((r) =>
       (filter === 'all' || r.overall_status === filter)
       && (!q || r.full_name.toLowerCase().includes(q) || (isAdmin && (r.screened_by || '').toLowerCase().includes(q))))
-  }, [rows, query, filter, isAdmin])
+  }, [rows, deferredQuery, filter, isAdmin])
+  const shown = useMemo(() => matches.slice(0, limit), [matches, limit])
 
   return (
     <div className="workspace workspace-history">
@@ -98,7 +134,7 @@ export default function HistoryTab({ isAdmin = false }) {
         <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
         {rows === null && !error && <p className="muted">Loading...</p>}
         {rows && rows.length === 0 && <p className="muted">{mine || !isAdmin ? 'You have not screened anyone yet. Run one from the Screening tab and it will appear here.' : 'No screenings yet.'}</p>}
-        {rows && rows.length > 0 && shown.length === 0 && <p className="muted">No screenings match this search and filter.</p>}
+        {rows && rows.length > 0 && matches.length === 0 && <p className="muted">No screenings match this search and filter.</p>}
 
         {shown.length > 0 && (
           <div className="table-wrap">
@@ -107,25 +143,18 @@ export default function HistoryTab({ isAdmin = false }) {
                 <tr><th scope="col">Applicant</th><th scope="col">Outcome</th></tr>
               </thead>
               <tbody>
-                {shown.map((r) => {
-                  const info = overallInfo(r.overall_status)
-                  const on = selected?.id === r.id
-                  return (
-                    <tr key={r.id} className={on ? 'row-on' : ''}>
-                      <td>
-                        <button type="button" className="row-btn" onClick={() => open(r)} aria-current={on ? 'true' : undefined}>
-                          {r.full_name}
-                        </button>
-                        <span className="row-sub">{fmtDateTime(r.submitted_at)}</span>
-                        <span className="row-sub mono">#{String(r.id).padStart(5, '0')}</span>
-                        {isAdmin && <span className="row-sub">Screened by {r.screened_by || 'a removed account'}</span>}
-                      </td>
-                      <td><Pill tone={info.tone}>{info.stamp}</Pill></td>
-                    </tr>
-                  )
-                })}
+                {shown.map((r) => (
+                  <HistoryRow key={r.id} row={r} on={selected?.id === r.id} isAdmin={isAdmin} onOpen={open} />
+                ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {matches.length > shown.length && (
+          <div className="form-actions form-actions-spaced">
+            <button type="button" className="btn btn-quiet" onClick={() => setLimit((n) => n + PAGE_SIZE)}>
+              Show more ({matches.length - shown.length} more)
+            </button>
           </div>
         )}
       </section>

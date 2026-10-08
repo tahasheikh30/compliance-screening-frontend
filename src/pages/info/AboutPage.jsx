@@ -129,7 +129,7 @@ const GROUP_COMPANIES = [
 ];
 
 // The group's five core values, as published in its Code of Conduct. The colours match the segments of
-// the values ribbon graphic (/assets/core-values.png).
+// the values ribbon graphic (/assets/core-values.webp).
 const CORE_VALUES = [
   { name: "Care", color: "#C3D62E", blurb: "Fairness and consideration run through everything the group does." },
   { name: "Respect", color: "#29ABE2", blurb: "Everyone is treated with respect and dignity." },
@@ -154,6 +154,8 @@ function Portrait({ name, img, className }) {
         src={img}
         alt={name}
         className={className}
+        loading="lazy"
+        decoding="async"
         onError={() => setFailed(true)}
       />
     );
@@ -170,7 +172,7 @@ function OptionalImage({ src, alt, className }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
   return (
-    <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />
+    <img src={src} alt={alt} className={className} loading="lazy" decoding="async" onError={() => setFailed(true)} />
   );
 }
 
@@ -191,7 +193,7 @@ export default function AboutPage() {
         <div className="info-profile">
           <Portrait
             name="Syed Babar Ali"
-            img="/assets/syed-babar-ali.png"
+            img="/assets/syed-babar-ali.webp"
             className="info-profile-photo"
           />
           <div>
@@ -306,7 +308,7 @@ export default function AboutPage() {
         </p>
         <div className="info-values">
           <OptionalImage
-            src="/assets/core-values.png"
+            src="/assets/core-values.webp"
             alt="Packages Group core values: Care, Respect, Lead, Honesty, Courage"
             className="info-values-image"
           />

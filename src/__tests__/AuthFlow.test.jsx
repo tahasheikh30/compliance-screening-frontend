@@ -215,6 +215,20 @@ describe('leaving', () => {
     expect(h.supabase.auth.signOut).toHaveBeenCalled()
   })
 
+  it('forgets cached screenings on sign out, so the next person on this computer never sees them', async () => {
+    await load()
+    const { remember, peek } = await import('../lib/readCache')   // the same module instance the app just loaded
+    h.supabase = makeSupabase({ session: sessionFor() })
+    mockApi(fetchMock, { ...health, 'GET /api/me': ME })
+    render(<App />)
+    await screen.findByText('Applicant screening')
+    remember('history:all', [{ id: 1, full_name: 'Private Applicant' }])
+    expect(peek('history:all')).not.toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+    expect(await screen.findByLabelText('Work email')).toBeTruthy()
+    expect(peek('history:all')).toBeNull()
+  })
+
   it('returns to the login screen, with the reason, when the backend ends the session', async () => {
     await load()
     h.supabase = makeSupabase({ session: sessionFor() })

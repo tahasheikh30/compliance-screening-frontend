@@ -3,6 +3,7 @@ import { getMe, SESSION_ENDED_EVENT, ACCOUNT_CHANGED_EVENT } from '../api'
 import { getSupabase } from '../lib/supabase'
 import { friendlyAuthError } from '../lib/authErrors'
 import { clearActivity, idleExpired, touch, watchActivity } from '../lib/idle'
+import { forget } from '../lib/readCache'
 
 const AuthContext = createContext(null)
 
@@ -36,6 +37,7 @@ export function AuthProvider({ children }) {
   const endSession = useCallback(async (message) => {
     try { await getSupabase().auth.signOut({ scope: 'local' }) } catch { /* the local session is dropped regardless */ }
     clearActivity()
+    forget()                      // cached screenings are applicant data: gone with the session
     setMe(null)
     setMeError(null)
     setNotice(message || null)
@@ -83,6 +85,7 @@ export function AuthProvider({ children }) {
       setTimeout(() => {
         if (!active) return
         if (event === 'SIGNED_OUT') {
+          forget()
           setMe(null)
           setPhase('signed-out')
         } else if (event === 'SIGNED_IN' && session && meRef.current?.id !== session.user.id) {
@@ -120,7 +123,7 @@ export function AuthProvider({ children }) {
   const waiting = phase === 'ready' && me?.status === 'pending'
   useEffect(() => {
     if (!waiting) return undefined
-    const timer = setInterval(loadMe, PENDING_POLL_MS)
+    const timer = setInterval(() => { if (document.visibilityState !== 'hidden') loadMe() }, PENDING_POLL_MS)
     const onVisible = () => { if (document.visibilityState === 'visible') loadMe() }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
