@@ -141,9 +141,9 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
         </div>
 
         <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
-        {rows === null && !error && <p className="muted empty-note">Loading...</p>}
-        {rows && rows.length === 0 && <p className="muted empty-note">{emptyText}</p>}
-        {rows && rows.length > 0 && matches.length === 0 && <p className="muted empty-note">No screenings match this search and filter.</p>}
+        {rows === null && !error && <p className="muted">Loading...</p>}
+        {rows && rows.length === 0 && <p className="muted">{emptyText}</p>}
+        {rows && rows.length > 0 && matches.length === 0 && <p className="muted">No screenings match this search and filter.</p>}
 
         {shown.length > 0 && (
           <div className="table-wrap">
@@ -170,7 +170,7 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
 
       <div className="outcome" aria-live="polite">
         <ErrorBanner error={caseError} onRetry={selected ? () => open(selected) : undefined} onDismiss={() => setCaseError(null)} />
-        {opening && <p className="muted empty-note">Opening case...</p>}
+        {opening && <p className="muted">Opening case...</p>}
         {caseData && (
           <>
             <CaseReport key={caseData.applicant_id} ref={headingRef} caseData={caseData} applicant={selected} />

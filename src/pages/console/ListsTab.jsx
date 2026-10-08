@@ -233,7 +233,7 @@ export default function ListsTab({ isAdmin = true }) {
         </p>
 
         <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
-        {!status && !error && <p className="muted empty-note">Loading...</p>}
+        {!status && !error && <p className="muted">Loading...</p>}
 
         {status && (
           <div className="table-wrap">

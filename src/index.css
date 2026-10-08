@@ -104,8 +104,6 @@ h1, h2, h3 { text-wrap: balance; }
 
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .muted { color: var(--text-soft); }
-/* empty / loading messages sit clear of the controls above them */
-.empty-note { margin: 18px 0 4px; line-height: 1.5; }
 .nowrap { white-space: nowrap; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 

@@ -194,9 +194,9 @@ export default function MonitoringTab({ onOpenCount }) {
         </div>
 
         <ErrorBanner error={error} onRetry={() => { loadStatus(); loadAlerts() }} onDismiss={() => setError(null)} />
-        {alerts === null && !error && <p className="muted empty-note">Loading...</p>}
+        {alerts === null && !error && <p className="muted">Loading...</p>}
         {alerts && alerts.length === 0 && (
-          <p className="muted empty-note">
+          <p className="muted">
             {filter === 'open'
               ? (status && status.monitored_applicants === 0
                 ? 'Nobody is being monitored yet. Tick "Keep monitoring this person" when you screen someone, or start monitoring from an opened case in History.'
