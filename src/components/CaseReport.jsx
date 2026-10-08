@@ -46,7 +46,7 @@ function Fact({ label, children }) {
   );
 }
 
-function MatchItem({ match, applicantHasDob }) {
+export function MatchItem({ match, applicantHasDob }) {
   const aliasMatched =
     match.matched_name && match.matched_name !== match.primary_name;
   return (

@@ -1,6 +1,6 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { listUsers } from '../api'
+import { getMonitoringStatus, listUsers } from '../api'
 import ErrorBoundary from '../components/ErrorBoundary'
 import SiteFooter from '../components/SiteFooter'
 import { MagnifyingGlassIcon } from '../components/ui'
@@ -15,9 +15,13 @@ import NotificationsPage from './console/NotificationsPage'
 const loadHistory = () => import('./console/HistoryTab')
 const loadLists = () => import('./console/ListsTab')
 const loadUsers = () => import('./console/UsersTab')
+const loadMonitoring = () => import('./console/MonitoringTab')
+const loadUserHistory = () => import('./console/UserHistoryPage')
 const HistoryTab = lazy(loadHistory)
 const ListsTab = lazy(loadLists)
 const UsersTab = lazy(loadUsers)
+const MonitoringTab = lazy(loadMonitoring)
+const UserHistoryPage = lazy(loadUserHistory)
 
 // Once the first screen is up and the browser has nothing better to do, fetch the other tabs' code so
 // opening them is instant instead of a visible load.
@@ -33,6 +37,7 @@ function TabLoading() {
 const BASE_TABS = [
   { id: 'screen', label: 'Screening' },
   { id: 'history', label: 'History' },
+  { id: 'monitoring', label: 'Monitoring' },
   { id: 'lists', label: 'Lists' },
 ]
 const PEOPLE_TAB = { id: 'people', label: 'People' }
@@ -42,6 +47,7 @@ function TabIcon({ id }) {
   const common = { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': 'true' }
   if (id === 'screen') return <svg {...common}><circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="21" y2="21" /></svg>
   if (id === 'history') return <svg {...common}><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" /></svg>
+  if (id === 'monitoring') return <svg {...common}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
   if (id === 'lists') return <svg {...common}><line x1="8" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="20" y2="12" /><line x1="8" y1="18" x2="20" y2="18" /><circle cx="4" cy="6" r="1" /><circle cx="4" cy="12" r="1" /><circle cx="4" cy="18" r="1" /></svg>
   return <svg {...common}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8" /><path d="M18 14.4c2.2.7 3.5 2.6 3.5 5.6" /></svg>
 }
@@ -55,15 +61,45 @@ export default function Console() {
   const { unread } = useNotifications()
   const lastPending = useRef(null)
   const [pending, setPending] = useState(0)
+  const [alerts, setAlerts] = useState(0)               // open continuous monitoring alerts on my own screenings
+  const lastAlerts = useRef(null)
+  const [viewUser, setViewUser] = useState(null)        // People tab: the person whose history is open
 
   useEffect(() => {
     const id = whenIdle(() => {
       loadHistory().catch(() => {})
+      loadMonitoring().catch(() => {})
       loadLists().catch(() => {})
-      if (isAdmin) loadUsers().catch(() => {})
+      if (isAdmin) { loadUsers().catch(() => {}); loadUserHistory().catch(() => {}) }
     })
     return () => cancelIdle(id)
   }, [isAdmin])
+
+  // Continuous monitoring: look for new alerts while the console is open, and tell the person in the app when
+  // a list change has brought up a new potential match on someone they screened.
+  const onAlertCount = useCallback((n) => { setAlerts(n); lastAlerts.current = n }, [])
+  useEffect(() => {
+    let active = true
+    async function look() {
+      try {
+        const status = await getMonitoringStatus({ background: true })
+        if (!active) return
+        const open = status.open_alerts
+        if (open > 0 && (lastAlerts.current === null || open > lastAlerts.current)) {
+          toast.warn(
+            open === 1 ? 'A monitored person has a possible new match' : `${open} monitoring alerts need review`,
+            { message: 'A watch list changed. Review it on the Monitoring tab.', to: 'monitoring', duration: 12000 },
+          )
+        }
+        onAlertCount(open)
+      } catch { /* the Monitoring tab shows the error if it persists */ }
+    }
+    look()
+    const timer = setInterval(() => { if (document.visibilityState !== 'hidden') look() }, PENDING_POLL_MS)
+    const onVisible = () => { if (document.visibilityState === 'visible') look() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => { active = false; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible) }
+  }, [toast, onAlertCount])
 
   // administrators see how many people are waiting, whichever tab they are on
   useEffect(() => {
@@ -95,7 +131,7 @@ export default function Console() {
 
   const tabs = useMemo(() => (isAdmin ? [...BASE_TABS, PEOPLE_TAB] : BASE_TABS), [isAdmin])
   const onPendingCount = useCallback((n) => { setPending(n); lastPending.current = n }, [])
-  const goTab = useCallback((id) => { setTab(id); setPage(null) }, [])
+  const goTab = useCallback((id) => { setTab(id); setPage(null); setViewUser(null) }, [])
 
   return (
     <div className="app">
@@ -118,6 +154,7 @@ export default function Console() {
             >
               <TabIcon id={t.id} />
               {t.label}
+              {t.id === 'monitoring' && alerts > 0 && <span className="tab-badge" aria-label={`${alerts} to review`}>{alerts}</span>}
               {t.id === 'people' && pending > 0 && <span className="tab-badge" aria-label={`${pending} waiting`}>{pending}</span>}
             </button>
           ))}
@@ -138,9 +175,18 @@ export default function Console() {
             {page === 'account' && <AccountPage />}
             {page === 'notifications' && <NotificationsPage onOpen={goTab} />}
             {!page && tab === 'screen' && <ScreeningTab />}
-            {!page && tab === 'history' && <HistoryTab isAdmin={isAdmin} />}
+            {!page && tab === 'history' && <HistoryTab />}
+            {!page && tab === 'monitoring' && <MonitoringTab onOpenCount={onAlertCount} />}
             {!page && tab === 'lists' && <ListsTab isAdmin={isAdmin} />}
-            {!page && tab === 'people' && isAdmin && <UsersTab selfId={me.id} onPendingCount={onPendingCount} />}
+            {!page && tab === 'people' && isAdmin && (
+              <>
+                {/* kept mounted while a person's history is open, so the filter and list are as they were on return */}
+                <div hidden={!!viewUser}>
+                  <UsersTab selfId={me.id} onPendingCount={onPendingCount} onOpenHistory={setViewUser} />
+                </div>
+                {viewUser && <UserHistoryPage key={viewUser.id} user={viewUser} onBack={() => setViewUser(null)} />}
+              </>
+            )}
           </Suspense>
         </ErrorBoundary>
       </main>

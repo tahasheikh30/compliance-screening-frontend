@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { screenApplicant } from '../../api'
 import ErrorBanner, { fieldError } from '../../components/ErrorBanner'
 import CaseReport from '../../components/CaseReport'
+import MonitorToggle from '../../components/MonitorToggle'
 import { MagnifyingGlassIcon, ScanningAnimation } from '../../components/ui'
 import { SOURCES, SOURCE_ORDER, overallInfo } from '../../lib/status'
 import { useToast } from '../../components/Toaster'
@@ -42,6 +43,7 @@ function IndividualScreening() {
   const [cnicTouched, setCnicTouched] = useState(false)
   const [fatherName, setFatherName] = useState('')
   const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD)
+  const [monitor, setMonitor] = useState(false)       // keep watching this person after the screening
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [caseData, setCaseData] = useState(null)
@@ -64,7 +66,7 @@ function IndividualScreening() {
 
   async function doSubmit() {
     const run = { full_name: fullName.trim(), dob, nationality: nationality.trim(), threshold,
-      cnic: cnicDigits, father_name: fatherName.trim() }
+      cnic: cnicDigits, father_name: fatherName.trim(), monitor }
     setLoading(true)
     setError(null)
     setCaseData(null)
@@ -76,7 +78,9 @@ function IndividualScreening() {
       // also reaches the person if they moved to another tab while the 20 to 40 seconds went by
       const info = overallInfo(data.overall_status)
       const kind = { bad: 'error', warn: 'warn', good: 'success' }[info.tone] || 'info'
-      toast[kind](`Screening complete: ${info.stamp}`, { message: `${data.full_name}. ${info.headline}.`, to: 'history' })
+      toast[kind](`Screening complete: ${info.stamp}`, {
+        message: `${data.full_name}. ${info.headline}.${data.monitored ? ' Now under continuous monitoring.' : ''}`, to: 'history',
+      })
     } catch (err) {
       setError(err)
       toast.error('Screening did not finish', { message: err?.message || 'Please try again.', to: 'history' })
@@ -100,6 +104,7 @@ function IndividualScreening() {
     setCnicTouched(false)
     setFatherName('')
     setThreshold(DEFAULT_THRESHOLD)
+    setMonitor(false)
     setError(null)
     setCaseData(null)
   }
@@ -211,6 +216,17 @@ function IndividualScreening() {
             </span>
           </div>
 
+          <label className="check-row" htmlFor="monitor-input">
+            <input id="monitor-input" type="checkbox" checked={monitor} onChange={(e) => setMonitor(e.target.checked)} />
+            <span>
+              <span className="field-label">Keep monitoring this person</span>
+              <span className="field-hint">
+                Screen them again automatically whenever a sanctions list changes, and be told about any new match.
+                Only you will see the alerts.
+              </span>
+            </span>
+          </label>
+
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={loading || !fullName.trim() || cnicInvalid}>
               {loading ? 'Screening...' : 'Run screening'}
@@ -229,7 +245,10 @@ function IndividualScreening() {
         <ErrorBanner error={error} onRetry={doSubmit} onDismiss={() => setError(null)} />
         {loading && <ScanningAnimation />}
         {!loading && caseData && (
-          <CaseReport key={reportKey.current} ref={headingRef} caseData={caseData} applicant={submitted} />
+          <>
+            <CaseReport key={reportKey.current} ref={headingRef} caseData={caseData} applicant={submitted} />
+            <MonitorToggle key={`monitor-${reportKey.current}`} applicantId={caseData.applicant_id} monitored={!!caseData.monitored} />
+          </>
         )}
         {!loading && !caseData && !error && <EmptyState />}
       </div>

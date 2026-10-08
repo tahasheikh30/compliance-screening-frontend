@@ -26,8 +26,20 @@ made of several lists (the FIA publishes more than one Red Book) shows each
 list with its record count, and is marked **Incomplete** if one could not be
 read, or if the NACTA copy is out of date.
 
-**History.** Every past screening, searchable by name and filterable by
-outcome. Opening one shows the same full report and evidence download.
+**History.** Your own past screenings, searchable by name and filterable by
+outcome. Opening one shows the same full report and evidence download, and a
+switch to start or stop continuous monitoring of that person. An administrator
+sees only their own screenings here too.
+
+**Monitoring.** Tick "Keep monitoring this person" when screening, or start it
+from an opened case. A monitored person is screened again whenever a sanctions
+list changes. A new potential match raises a notification in the app and appears
+on this tab, where you confirm it or dismiss it with a note. Only the person who
+ran the screening sees its alerts, an administrator included. News is not part
+of monitoring.
+
+**People (administrators).** Select a person to open their screening history on
+its own page, read only, with a back button.
 
 **Lists.** Every list on its own row (the FIA Red Books and the two OFAC lists
 are shown one by one), with whether it could be read, its record count and how
@@ -111,7 +123,7 @@ src/
   components/        shared pieces: CaseReport, ErrorBanner, ConfirmDialog, dialogs, ui
   lib/               config, formatting, status helpers, navigation, idle timer
   pages/             one file per screen
-    console/         the tabs shown once signed in: Screening, History, Lists, People
+    console/         the tabs shown once signed in: Screening, History, Monitoring, Lists, People
   __tests__/
 ```
 

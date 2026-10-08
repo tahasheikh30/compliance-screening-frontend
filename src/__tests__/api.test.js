@@ -55,7 +55,7 @@ describe('who is calling', () => {
     fetchMock.mockResolvedValue(json([]))
     await api.listApplicants()
     const [url, init] = fetchMock.mock.calls[0]
-    expect(url).toBe('/api/applicants')
+    expect(url).toBe('/api/applicants?mine=true&limit=200')
     expect(init.headers['X-API-Key']).toBe('test-app-key')
     expect(init.headers.Authorization).toBe('Bearer tok-1')
     expect(init.headers['X-Request-ID']).toMatch(/^[A-Za-z0-9._-]{8,64}$/)
@@ -94,11 +94,13 @@ describe('who is calling', () => {
     await api.listUsers()
     await api.setUserStatus('abc-1', 'approved')
     await api.setUserRole('abc-1', 'admin')
-    await api.listApplicants({ mine: true })
+    await api.listApplicants()
+    await api.listUserApplicants('abc-1')
     const calls = fetchMock.mock.calls.map(([u, i]) => `${i.method || 'GET'} ${u}`)
     expect(calls).toEqual([
       'GET /api/me', 'GET /api/admin/users?status=pending', 'GET /api/admin/users',
-      'POST /api/admin/users/abc-1/status', 'POST /api/admin/users/abc-1/role', 'GET /api/applicants?mine=true',
+      'POST /api/admin/users/abc-1/status', 'POST /api/admin/users/abc-1/role', 'GET /api/applicants?mine=true&limit=200',
+      'GET /api/admin/users/abc-1/applicants?limit=200',
     ])
     expect(JSON.parse(fetchMock.mock.calls[3][1].body)).toEqual({ status: 'approved' })
     expect(JSON.parse(fetchMock.mock.calls[4][1].body)).toEqual({ role: 'admin' })

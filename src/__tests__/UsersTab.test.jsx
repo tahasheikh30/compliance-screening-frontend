@@ -115,7 +115,18 @@ describe('People', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Everyone' }))
     const row = (await screen.findByText('boss@example.com')).closest('tr')
     expect(within(row).getByText('This is you')).toBeTruthy()
-    expect(within(row).queryByRole('button')).toBeNull()
+    // the only control on your own row opens your history: no decline, no demote, no approve
+    const buttons = within(row).getAllByRole('button')
+    expect(buttons).toHaveLength(1)
+    expect(buttons[0].getAttribute('aria-label')).toBe('View screenings by boss@example.com')
+  })
+
+  it('opens a person\'s history when their name is selected', async () => {
+    const onOpenHistory = vi.fn()
+    render(<UsersTab selfId="self" onOpenHistory={onOpenHistory} />)
+    await screen.findByText('newbie@example.com')
+    fireEvent.click(screen.getByRole('button', { name: 'View screenings by newbie@example.com' }))
+    expect(onOpenHistory).toHaveBeenCalledWith(expect.objectContaining({ id: 'p1', email: 'newbie@example.com' }))
   })
 
   it('shows the server\'s refusal to remove the last administrator', async () => {

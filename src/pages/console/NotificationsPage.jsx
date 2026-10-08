@@ -8,7 +8,7 @@ function when(at) {
   return at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-const WHERE = { screen: 'Screening', history: 'History', lists: 'Lists', people: 'People' }
+const WHERE = { screen: 'Screening', history: 'History', monitoring: 'Monitoring', lists: 'Lists', people: 'People' }
 
 /** Everything that popped up as a message this session, newest first. Opening the page marks it all read. */
 export default function NotificationsPage({ onOpen }) {

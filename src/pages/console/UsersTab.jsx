@@ -23,7 +23,7 @@ const STATUS_PILL = {
  * Anything that removes access or grants admin asks first. The server has the final word: it refuses to
  * remove the last administrator, and says so.
  */
-export default function UsersTab({ selfId, onPendingCount }) {
+export default function UsersTab({ selfId, onPendingCount, onOpenHistory }) {
   const toast = useToast()
   const [users, setUsers] = useState(null)
   const [error, setError] = useState(null)
@@ -74,7 +74,7 @@ export default function UsersTab({ selfId, onPendingCount }) {
       <div className="folder-tab">Administration</div>
       <h1 id="users-heading">People</h1>
       <p className="lead">
-        New accounts wait here until you approve them. Approving or declining takes effect on their next action.
+        New accounts wait here until you approve them. Approving or declining takes effect on their next action. Select a person to see their screening history.
       </p>
 
       <div className="filter-group" role="group" aria-label="Show">
@@ -106,7 +106,8 @@ export default function UsersTab({ selfId, onPendingCount }) {
                 return (
                   <tr key={u.id}>
                     <td>
-                      <strong className="user-email">{u.email}</strong>{self && <span className="row-sub">This is you</span>}
+                      <button type="button" className="row-btn user-email" onClick={() => onOpenHistory?.(u)}
+                        aria-label={`View screenings by ${u.email}`}>{u.email}</button>{self && <span className="row-sub">This is you</span>}
                       <span className="row-sub">Signed up {fmtDateTime(u.created_at)}</span>
                     </td>
                     <td>
@@ -138,7 +139,7 @@ export default function UsersTab({ selfId, onPendingCount }) {
                             <button type="button" className="btn btn-quiet btn-small" disabled={busy}
                               onClick={() => ask(u, {
                                 title: `Remove administrator rights from ${u.email}?`,
-                                body: 'They keep their account but can no longer approve people, manage the lists or see other people\'s screenings.',
+                                body: 'They keep their account but can no longer approve people, manage the lists or open other people\'s screening history.',
                                 label: 'Remove rights', danger: true,
                                 run: () => setUserRole(u.id, 'user'),
                               })}>
@@ -148,7 +149,7 @@ export default function UsersTab({ selfId, onPendingCount }) {
                             <button type="button" className="btn btn-quiet btn-small" disabled={busy}
                               onClick={() => ask(u, {
                                 title: `Make ${u.email} an administrator?`,
-                                body: 'They will be able to approve people, manage the lists and see everyone\'s screenings.',
+                                body: 'They will be able to approve people, manage the lists and open each person\'s screening history from this tab.',
                                 label: 'Make administrator', danger: false,
                                 run: () => setUserRole(u.id, 'admin'),
                               })}>

@@ -1717,3 +1717,43 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
   .legal-sheet { padding: 26px 20px 30px; }
   .legal-sheet h1 { font-size: 28px; }
 }
+
+/* ---------------------------------------------------------------------------
+   Continuous monitoring and per-person history
+   --------------------------------------------------------------------------- */
+.check-row { display: flex; align-items: flex-start; gap: 12px; margin: 4px 0 18px; cursor: pointer; }
+.check-row input[type='checkbox'] { flex: none; width: 18px; height: 18px; margin-top: 2px; }
+.check-row .field-label, .check-row .field-hint { display: block; }
+
+.monitor-toggle {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px;
+  margin-top: 14px; padding: 14px 16px;
+  background: var(--inset-2); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.monitor-toggle > div { flex: 1 1 260px; min-width: 0; }
+.monitor-toggle-title { font-weight: 700; }
+.monitor-toggle .banner { flex-basis: 100%; }
+
+.monitor-summary { margin: 4px 0 10px; color: var(--text); }
+.monitor-sources { margin: 0 0 16px; color: var(--text-soft); }
+.monitor-sources summary { cursor: pointer; }
+.monitor-sources ul { list-style: none; margin: 10px 0 8px; padding: 0; display: grid; gap: 6px; }
+.monitor-sources li { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+.alert-list { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.alert-card {
+  padding: 16px 18px; background: var(--inset-2);
+  border: 1px solid var(--line); border-left: 4px solid var(--amber-dark); border-radius: var(--radius);
+}
+.alert-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 16px; }
+.alert-name { margin: 0; font-size: 1.1rem; overflow-wrap: anywhere; }
+.alert-tags { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.alert-matched { margin: 10px 0 0; overflow-wrap: anywhere; }
+.alert-details { margin-top: 10px; }
+.alert-details summary { cursor: pointer; color: var(--gold-hi); }
+.alert-details .matches { margin-top: 10px; }
+.alert-decide { margin-top: 14px; display: grid; gap: 10px; }
+.alert-card > .row-actions { margin-top: 12px; }
+
+.back-btn { margin-bottom: 10px; }
+@media (max-width: 640px) { .alert-tags { align-items: flex-start; } }

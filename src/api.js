@@ -215,8 +215,9 @@ const SCREEN_TIMEOUT_MS = 120000
 const MAYBE_FINISHED_HINT = 'The screening may still have finished on the server. Open the History tab and '
   + 'check before running it again, so the applicant is not recorded twice.'
 
-export async function screenApplicant({ full_name, dob, nationality, threshold, cnic, father_name }) {
+export async function screenApplicant({ full_name, dob, nationality, threshold, cnic, father_name, monitor }) {
   const body = { full_name }
+  if (monitor) body.monitor = true         // keep watching this person: screened again whenever a list changes
   if (dob) body.dob = dob
   if (nationality) body.nationality = nationality
   if (cnic) body.cnic = cnic
@@ -244,9 +245,15 @@ export async function screenApplicant({ full_name, dob, nationality, threshold, 
   }
 }
 
-// Everyone sees their own screenings. An administrator sees everyone's, or only their own with mine.
-export async function listApplicants({ mine = false } = {}) {
-  return apiJson(`/applicants${mine ? '?mine=true' : ''}`)
+// History is always the signed in person's own screenings, administrators included. An administrator reads
+// someone else's from the People tab (listUserApplicants). The backend returns at most 200 per request.
+export async function listApplicants() {
+  return apiJson('/applicants?mine=true&limit=200')
+}
+
+// Administrators only: one person's screening history.
+export async function listUserApplicants(userId) {
+  return apiJson(`/admin/users/${encodeURIComponent(userId)}/applicants?limit=200`)
 }
 
 export async function getApplicant(id) {
@@ -295,5 +302,37 @@ export async function uploadNacta(file) {
     headers: { 'Content-Type': file.type || 'application/octet-stream' },
     body: file,
     timeoutMs: 120000,
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Continuous monitoring
+//
+// A screened person can be kept under watch: when a sanctions list changes, they are screened again and any
+// NEW potential match becomes an alert. Monitoring is private to the person who ran the screening, an
+// administrator included: every call below sees only the signed in person's own screenings and alerts.
+// ---------------------------------------------------------------------------
+
+/** { enabled, interval_seconds, monitored_applicants, open_alerts, sources: [{ source, last_checked_at, ... }] } */
+export async function getMonitoringStatus({ background = false } = {}) {
+  return apiJson('/monitoring/status', { track: !background })
+}
+
+/** status: 'open' | 'confirmed' | 'dismissed'. Newest first. */
+export async function listAlerts(status = 'open') {
+  return apiJson(`/monitoring/alerts?status=${encodeURIComponent(status)}&limit=200`)
+}
+
+export async function decideAlert(id, status, note) {
+  return apiJson(`/monitoring/alerts/${encodeURIComponent(id)}/decision`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status, ...(note ? { note } : {}) }),
+  })
+}
+
+/** Start or stop watching a screened person. Starting also checks them against the current lists at once. */
+export async function setMonitoring(applicantId, enabled) {
+  return apiJson(`/applicants/${encodeURIComponent(applicantId)}/monitoring`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }),
   })
 }
