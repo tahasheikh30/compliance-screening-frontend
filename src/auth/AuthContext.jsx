@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { getMe, SESSION_ENDED_EVENT, ACCOUNT_CHANGED_EVENT } from '../api'
 import { getSupabase } from '../lib/supabase'
 import { friendlyAuthError } from '../lib/authErrors'
+import { ApiError } from '../lib/apiError'
 import { clearActivity, idleExpired, touch, watchActivity } from '../lib/idle'
 import { forget } from '../lib/readCache'
 
@@ -157,9 +158,26 @@ export function AuthProvider({ children }) {
     return { confirmEmail: !data.session }
   }, [])
 
-  /** Sets a new password for the signed in person. Supabase may ask them to have signed in recently. */
-  const changePassword = useCallback(async (password) => {
-    const { error } = await getSupabase().auth.updateUser({ password })
+  /**
+   * Sets a new password for the signed in person, after checking the current one. The check is a fresh
+   * password sign in for the same address (it needs a Turnstile token when CAPTCHA protection is on), so
+   * someone at an unlocked computer cannot change the password without knowing the old one.
+   */
+  const changePassword = useCallback(async (currentPassword, newPassword, captchaToken) => {
+    const email = meRef.current?.email
+    if (!email) throw friendlyAuthError(null)
+    const { error: verifyError } = await getSupabase().auth.signInWithPassword({
+      email,
+      password: currentPassword,
+      ...(captchaToken ? { options: { captchaToken } } : {}),
+    })
+    if (verifyError) {
+      if (verifyError.code === 'invalid_credentials' || String(verifyError.message || '').toLowerCase().includes('invalid login credentials')) {
+        throw new ApiError({ code: 'SIGN_IN_FAILED', message: 'Your current password is not correct.', hint: 'Check it and try again.' })
+      }
+      throw friendlyAuthError(verifyError)
+    }
+    const { error } = await getSupabase().auth.updateUser({ password: newPassword })
     if (error) throw friendlyAuthError(error)
     touch()
   }, [])

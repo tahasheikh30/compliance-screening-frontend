@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useAuth, MIN_PASSWORD_LENGTH } from '../../auth/AuthContext'
 import ErrorBanner from '../../components/ErrorBanner'
+import TurnstileWidget from '../../components/TurnstileWidget'
 import { useToast } from '../../components/Toaster'
 import { Pill } from '../../components/ui'
 import { ApiError } from '../../lib/apiError'
+import { config } from '../../lib/config'
 import { fmtDateTime } from '../../lib/format'
 
 const STATUS_PILL = {
@@ -16,12 +18,16 @@ const STATUS_PILL = {
 export default function AccountPage() {
   const { me, isAdmin, changePassword } = useAuth()
   const toast = useToast()
+  const [current, setCurrent] = useState('')
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
   const [done, setDone] = useState(false)
+  const captchaOn = Boolean(config.turnstileSiteKey)      // checking the current password is a sign in, so it needs the same token
+  const [captchaToken, setCaptchaToken] = useState(null)
+  const captcha = useRef(null)
 
   const status = STATUS_PILL[me.status] || { tone: 'warn', label: me.status }
 
@@ -34,15 +40,21 @@ export default function AccountPage() {
     if (busy) return
     setError(null)
     setDone(false)
+    if (!current) return problem('Enter your current password.')
     if (!password) return problem('Enter a new password.')
     if (password.length < MIN_PASSWORD_LENGTH) {
       return problem(`Use at least ${MIN_PASSWORD_LENGTH} characters for the password.`,
         'A few unrelated words make a strong, easy to remember password.')
     }
     if (password !== confirm) return problem('The two passwords do not match.')
+    if (password === current) return problem('The new password must be different from your current one.')
+    if (captchaOn && !captchaToken) {
+      return problem('Complete the security check first.', 'Wait for the check above the button to finish.')
+    }
     setBusy(true)
     try {
-      await changePassword(password)
+      await changePassword(current, password, captchaToken)
+      setCurrent('')
       setPassword('')
       setConfirm('')
       setDone(true)
@@ -51,6 +63,7 @@ export default function AccountPage() {
       setError(err)
     } finally {
       setBusy(false)
+      if (captchaOn) captcha.current?.reset()      // a token works once: ask for a fresh one after every attempt
     }
   }
 
@@ -82,10 +95,15 @@ export default function AccountPage() {
         <div className="folder-tab">Security</div>
         <h1 id="password-heading">Change password</h1>
         <p className="lead">
-          Choose a new password of at least {MIN_PASSWORD_LENGTH} characters. You stay signed in on this device.
+          Enter your current password, then choose a new one of at least {MIN_PASSWORD_LENGTH} characters. You stay signed in on this device.
         </p>
 
         <form onSubmit={submit} className="form" noValidate>
+          <label className="field" htmlFor="current-password">
+            <span className="field-label">Current password</span>
+            <input id="current-password" type={show ? 'text' : 'password'} value={current} autoComplete="current-password"
+              onChange={(e) => setCurrent(e.target.value)} />
+          </label>
           <label className="field" htmlFor="new-password">
             <span className="field-label">New password</span>
             <input id="new-password" type={show ? 'text' : 'password'} value={password} autoComplete="new-password"
@@ -100,6 +118,7 @@ export default function AccountPage() {
           <label className="check-line">
             <input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Show passwords
           </label>
+          {captchaOn && <TurnstileWidget ref={captcha} siteKey={config.turnstileSiteKey} onToken={setCaptchaToken} />}
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={busy}>
               {busy ? 'Saving...' : 'Change password'}
