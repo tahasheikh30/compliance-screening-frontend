@@ -129,9 +129,9 @@ export default function SiteFooter({ inPlace = false }) {
               rel="noopener noreferrer"
             >
               <img
-                src="/packages_logo_footer.png"
-                width="309"
-                height="274"
+                src="/packages_logo_footer.webp"
+                width="189"
+                height="168"
                 loading="lazy"
                 decoding="async"
                 alt={site.company}

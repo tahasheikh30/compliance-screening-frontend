@@ -82,7 +82,7 @@
 
 * { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; background-color: var(--bg-deep); }
 
 body {
   margin: 0;
@@ -91,11 +91,23 @@ body {
   font-size: 15px;
   line-height: 1.55;
   min-height: 100vh;
+}
+
+/* The page backdrop. It used to be `background: ... fixed` on the body, which makes the browser repaint the whole
+   window behind the content on every scroll frame (on the long information pages that grew into a stall of
+   seconds per frame after a few screens of scrolling). As its own fixed layer it is painted once and only moved.
+   The plain colour lives on <html>, not <body>: a background on <body> would paint over this layer. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  contain: strict;
+  pointer-events: none;
   background:
     radial-gradient(60% 46% at 86% -4%, rgba(216, 190, 128, 0.15), transparent 70%),
     radial-gradient(48% 42% at 0% 100%, rgba(63, 98, 112, 0.3), transparent 70%),
-    linear-gradient(180deg, var(--bg-deep) 0%, var(--desk) 100%) fixed;
-  background-color: var(--bg-deep);
+    linear-gradient(180deg, var(--bg-deep) 0%, var(--desk) 100%);
 }
 
 h1, h2, h3, p, ul, dl, dd, figure { margin: 0; }

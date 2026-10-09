@@ -15,7 +15,7 @@ export default function InfoLayout({ title, current, children }) {
   useEffect(() => {
     const previous = document.title;
     document.title = `${title} | Sentinel by Packages`;
-    window.scrollTo?.(0, 0);
+    window.scrollTo?.({ top: 0, left: 0, behavior: "instant" });
     if (arrivedByNavigation()) mainRef.current?.focus({ preventScroll: true });
     return () => {
       document.title = previous;
