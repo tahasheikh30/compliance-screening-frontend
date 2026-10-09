@@ -106,7 +106,8 @@ describe('ProfileMenu', () => {
 })
 
 describe('AccountPage', () => {
-  const fill = (a, b) => {
+  const fill = (a, b, current = 'the-current-password') => {
+    fireEvent.change(document.getElementById('current-password'), { target: { value: current } })
     fireEvent.change(document.getElementById('new-password'), { target: { value: a } })
     fireEvent.change(document.getElementById('confirm-password'), { target: { value: b } })
     fireEvent.click(screen.getByRole('button', { name: 'Change password' }))
@@ -132,9 +133,28 @@ describe('AccountPage', () => {
     render(<ToastProvider><AccountPage /></ToastProvider>)
     fill('a-long-enough-password', 'a-long-enough-password')
     await waitFor(() => expect(screen.getAllByText('Password changed').length).toBeGreaterThan(0))
-    expect(changePassword).toHaveBeenCalledWith('a-long-enough-password')
+    expect(changePassword).toHaveBeenCalledWith('the-current-password', 'a-long-enough-password', null)
+    expect(document.getElementById('current-password').value).toBe('')
     expect(document.getElementById('new-password').value).toBe('')
     expect(screen.getByText('Your password was changed.')).toBeTruthy()
+  })
+
+  it('asks for the current password and refuses a new one that is the same', () => {
+    render(<ToastProvider><AccountPage /></ToastProvider>)
+    fill('a-long-enough-password', 'a-long-enough-password', '')
+    expect(screen.getByText('Enter your current password.')).toBeTruthy()
+    fill('a-long-enough-password', 'a-long-enough-password', 'a-long-enough-password')
+    expect(screen.getByText('The new password must be different from your current one.')).toBeTruthy()
+    expect(changePassword).not.toHaveBeenCalled()
+  })
+
+  it('shows the reason when the current password is wrong', async () => {
+    const { ApiError } = await import('../lib/apiError')
+    changePassword.mockRejectedValue(new ApiError({ code: 'SIGN_IN_FAILED', message: 'Your current password is not correct.' }))
+    render(<ToastProvider><AccountPage /></ToastProvider>)
+    fill('a-long-enough-password', 'a-long-enough-password', 'not-my-password-1')
+    await waitFor(() => expect(screen.getByText('Your current password is not correct.')).toBeTruthy())
+    expect(screen.queryByText('Your password was changed.')).toBeNull()
   })
 
   it('shows the reason when the change is refused', async () => {
