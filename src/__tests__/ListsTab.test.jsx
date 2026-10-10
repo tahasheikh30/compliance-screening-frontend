@@ -9,8 +9,9 @@ vi.mock('../api', () => ({
   getPepStatus: vi.fn(),
   uploadPep: vi.fn(),
   deletePepUpload: vi.fn(),
+  refreshPep: vi.fn(),
 }))
-import { getListsStatus, getNactaStatus, reloadLists, getPepStatus, uploadPep, deletePepUpload } from '../api'
+import { getListsStatus, getNactaStatus, reloadLists, getPepStatus, uploadPep, deletePepUpload, refreshPep } from '../api'
 import ListsTab from '../pages/console/ListsTab'
 
 afterEach(() => { cleanup(); vi.clearAllMocks() })
@@ -34,7 +35,7 @@ const status = (over = {}) => ({
 })
 const pepStatus = (over = {}) => ({
   wikidata: { loaded: true, records: 900, uploaded_at: '2026-10-08T00:00:00+00:00', age_days: 2 },
-  upload: { loaded: false }, wikidata_enabled: true, refresh_days: 7, lookback_years: 5, required: false, ...over,
+  upload: { loaded: false }, wikidata_enabled: true, fetch: { running: false, error: null }, refresh_days: 7, lookback_years: 5, required: false, ...over,
 })
 const nacta = (over = {}) => ({ loaded: true, source: 'upload', filename: 'nacta.json', records: 5294, uploaded_at: '2026-10-01T00:00:00+00:00', age_days: 2, max_age_days: 30, stale: false, ...over })
 
@@ -156,5 +157,16 @@ describe('ListsTab', () => {
     setup(status(), nacta(), pepStatus({ wikidata: { loaded: false }, required: true }))
     expect(await screen.findByText(/No PEP data is loaded/)).toBeTruthy()
     expect(screen.getByText(/manual review until some is loaded/)).toBeTruthy()
+  })
+
+  it('lets an administrator start a Wikidata fetch, shows it running, and shows why a fetch failed', async () => {
+    refreshPep.mockResolvedValue(pepStatus({ fetch: { running: true, error: null } }))
+    setup(status(), nacta(), pepStatus({ wikidata: { loaded: false } }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Fetch from Wikidata now' }))
+    await waitFor(() => expect(refreshPep).toHaveBeenCalled())
+    expect(await screen.findByText(/Fetching the PEP list from Wikidata now/)).toBeTruthy()
+    cleanup()
+    setup(status(), nacta(), pepStatus({ wikidata: { loaded: false }, fetch: { running: false, error: 'HTTP 504 from query.wikidata.org' } }))
+    expect(await screen.findByText(/last fetch from Wikidata failed: HTTP 504 from query.wikidata.org/)).toBeTruthy()
   })
 })

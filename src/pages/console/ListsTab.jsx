@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getListsStatus, reloadLists, getNactaStatus, uploadNacta, getPepStatus, uploadPep, deletePepUpload } from '../../api'
+import { getListsStatus, reloadLists, getNactaStatus, uploadNacta, getPepStatus, uploadPep, deletePepUpload, refreshPep } from '../../api'
 import ErrorBanner from '../../components/ErrorBanner'
 import { Pill } from '../../components/ui'
 import { fmtAge, fmtNum, fmtDateTime, plural, safeUrl } from '../../lib/format'
@@ -208,6 +208,29 @@ function PepPanel({ onChanged, isAdmin }) {
 
   useEffect(() => { load() }, [load])
 
+  // while the server is fetching from Wikidata, look again every few seconds; when it ends, refresh the list table too
+  const fetching = !!status?.fetch?.running
+  useEffect(() => {
+    if (!fetching) return undefined
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [fetching, load])
+  const wasFetching = useRef(false)
+  useEffect(() => {
+    if (wasFetching.current && !fetching) onChanged?.()
+    wasFetching.current = fetching
+  }, [fetching, onChanged])
+
+  async function fetchNow() {
+    setUploadError(null)
+    try {
+      setStatus(remember('lists:pep', await refreshPep()))
+      toast.info('Fetching from Wikidata', { message: 'This runs in the background and can take a minute or two.', log: false })
+    } catch (err) {
+      setUploadError(err)
+    }
+  }
+
   async function upload(e) {
     e.preventDefault()
     if (!file) return
@@ -262,6 +285,10 @@ function PepPanel({ onChanged, isAdmin }) {
       <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
       {status && (
         <>
+          {fetching && <p className="notice" role="status">Fetching the PEP list from Wikidata now. This can take a minute or two.</p>}
+          {!fetching && status.fetch?.error && (
+            <p className="notice notice-warn">The last fetch from Wikidata failed: {status.fetch.error}.{wd?.loaded ? ' The last good copy is still used.' : ''}</p>
+          )}
           {status.wikidata_enabled ? (
             wd?.loaded
               ? <p>Wikidata copy: {plural(wd.records, 'person', 'people')}, fetched {fmtDateTime(wd.uploaded_at)} ({age(wd.age_days)}). People who left office more than {status.lookback_years} {status.lookback_years === 1 ? 'year' : 'years'} ago are not included.</p>
@@ -301,6 +328,11 @@ function PepPanel({ onChanged, isAdmin }) {
             </button>
             {own?.loaded && (
               <button type="button" className="btn btn-quiet" onClick={remove} disabled={busy}>Remove my list</button>
+            )}
+            {status?.wikidata_enabled && (
+              <button type="button" className="btn btn-quiet" onClick={fetchNow} disabled={busy || fetching}>
+                {fetching ? 'Fetching...' : 'Fetch from Wikidata now'}
+              </button>
             )}
           </form>
           <ErrorBanner error={uploadError} onDismiss={() => setUploadError(null)} />
