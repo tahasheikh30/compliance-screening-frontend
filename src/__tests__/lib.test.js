@@ -126,3 +126,18 @@ describe('NACTA and CNIC', () => {
     expect(cnicMatches(null)).toEqual([])
   })
 })
+
+describe('PEP results', () => {
+  const row = (source, status, extra = {}) => ({ source, status, ...extra })
+  it('counts a PEP match on its own, never as a sanctions match', () => {
+    const s = summarize({ results: [row('UNSC', 'CLEAR'), row('PEP', 'REVIEW', { match_count: 2, matches: [{}, {}] })] })
+    expect(s.pep).toBe(2)
+    expect(s.sanctions).toBe(0)
+  })
+
+  it('explains a PEP review and keeps PEP between NACTA and the news in the list order', () => {
+    expect(nextStep('MANUAL_REVIEW', { pep: 1, news: 0, notScreened: 0, partial: 0 })).toMatch(/politically exposed person.*not a sanctions match/)
+    expect(SOURCE_ORDER.indexOf('PEP')).toBe(SOURCE_ORDER.indexOf('NACTA') + 1)
+    expect(SOURCES.PEP.short).toBe('PEP')
+  })
+})

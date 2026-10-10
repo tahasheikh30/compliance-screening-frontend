@@ -610,7 +610,7 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px 
 
 .tally {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 10px;
   margin: 16px 0 4px;
 }

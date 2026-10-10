@@ -78,6 +78,13 @@ export function MatchItem({ match, applicantHasDob }) {
         <Fact label="List">{match.list}</Fact>
         <Fact label="Type">{match.type}</Fact>
         <Fact label="Programme">{match.programs}</Fact>
+        {match.pep_level && (
+          <Fact label="PEP level">
+            <Pill tone="warn">{match.pep_level}</Pill>
+            {match.province ? ` ${match.province}` : ""}
+          </Fact>
+        )}
+        <Fact label="Office held">{match.position}</Fact>
         <Fact label="Date of birth">
           {match.dob || "Not listed"}
           {applicantHasDob && match.dob_year_match === "Yes" && (
@@ -363,6 +370,12 @@ const CaseReport = forwardRef(function CaseReport(
             {fmtNum(sum.sanctions)}
           </dd>
         </div>
+        {sum.pep > 0 && (
+          <div>
+            <dt>PEP matches</dt>
+            <dd className="tally-warn">{fmtNum(sum.pep)}</dd>
+          </div>
+        )}
         <div>
           <dt>News leads</dt>
           <dd className={sum.news ? "tally-warn" : ""}>{fmtNum(sum.news)}</dd>

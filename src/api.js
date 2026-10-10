@@ -379,6 +379,28 @@ export async function uploadNacta(file) {
 }
 
 // ---------------------------------------------------------------------------
+// Politically exposed persons (national and provincial)
+// ---------------------------------------------------------------------------
+
+export async function getPepStatus() {
+  return apiJson('/admin/pep')
+}
+
+// An administrator's own PEP list (CSV, JSON or XML), sent as the raw request body.
+export async function uploadPep(file) {
+  return apiJson(`/admin/pep?filename=${encodeURIComponent(file.name)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+    timeoutMs: 120000,
+  })
+}
+
+export async function deletePepUpload() {
+  return apiJson('/admin/pep', { method: 'DELETE' })
+}
+
+// ---------------------------------------------------------------------------
 // Continuous monitoring
 //
 // A screened person can be kept under watch: when a sanctions list changes, they are screened again and any
