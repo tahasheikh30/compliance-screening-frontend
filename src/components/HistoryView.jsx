@@ -45,9 +45,10 @@ const HistoryRow = memo(function HistoryRow({ row, on, onOpen }) {
  *   heading     the page title
  *   emptyText   what to say when there are no screenings at all
  *   canMonitor  show the monitoring switch on an opened case (only for the person's own screenings)
- *   lead        optional content above the tools (a back button, a description)
+ *   lead        optional content above the tools (a description)
+ *   above       optional content above the whole card, left aligned with it (a back button)
  */
-export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyText, canMonitor = false, lead = null }) {
+export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyText, canMonitor = false, lead = null, above = null }) {
   const [rows, setRows] = useState(() => peek(cacheKey))   // the last answer, shown at once while it refreshes
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
@@ -114,6 +115,8 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
   }, [cacheKey])
 
   return (
+    <>
+    {above && <div className="page-back">{above}</div>}
     <div className="workspace workspace-history">
       <section className="sheet history" aria-labelledby="history-heading">
         <div className="folder-tab">History</div>
@@ -185,5 +188,6 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
         )}
       </div>
     </div>
+    </>
   )
 }

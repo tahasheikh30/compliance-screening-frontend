@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { clearMyHistory } from '../../api'
 import { useAuth, MIN_PASSWORD_LENGTH } from '../../auth/AuthContext'
 import ErrorBanner from '../../components/ErrorBanner'
 import TurnstileWidget from '../../components/TurnstileWidget'
@@ -28,6 +29,28 @@ export default function AccountPage() {
   const captchaOn = Boolean(config.turnstileSiteKey)      // checking the current password is a sign in, so it needs the same token
   const [captchaToken, setCaptchaToken] = useState(null)
   const captcha = useRef(null)
+
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [clearing, setClearing] = useState(false)
+  const [clearError, setClearError] = useState(null)
+
+  async function clearHistory() {
+    if (clearing) return
+    setClearing(true)
+    setClearError(null)
+    try {
+      const { deleted, kept_monitored: kept } = await clearMyHistory()
+      setConfirmClear(false)
+      toast.success('Search history cleared', {
+        message: `${deleted} ${deleted === 1 ? 'screening' : 'screenings'} deleted.`
+          + (kept ? ` ${kept} under continuous monitoring ${kept === 1 ? 'was' : 'were'} kept. Stop monitoring first to delete ${kept === 1 ? 'it' : 'them'}.` : ''),
+      })
+    } catch (err) {
+      setClearError(err)
+    } finally {
+      setClearing(false)
+    }
+  }
 
   const status = STATUS_PILL[me.status] || { tone: 'warn', label: me.status }
 
@@ -128,6 +151,30 @@ export default function AccountPage() {
 
         {done && <p className="account-done" role="status">Your password was changed.</p>}
         <ErrorBanner error={error} onDismiss={() => setError(null)} />
+      </section>
+
+      <section className="sheet" aria-labelledby="privacy-heading">
+        <div className="folder-tab">Privacy</div>
+        <h1 id="privacy-heading">Search history</h1>
+        <p className="lead">
+          Delete the screenings you have run. This removes them, with their results and evidence reports, from your
+          History tab. Screenings under continuous monitoring are kept so the monitoring does not stop silently.
+          Other people's screenings are not affected, and the deletion is recorded in the audit log.
+        </p>
+        {!confirmClear ? (
+          <div className="form-actions">
+            <button type="button" className="btn btn-quiet" onClick={() => setConfirmClear(true)}>Clear search history</button>
+          </div>
+        ) : (
+          <div role="alertdialog" aria-labelledby="clear-confirm-text" className="form-actions">
+            <p id="clear-confirm-text">This cannot be undone. Delete your screening history?</p>
+            <button type="button" className="btn btn-primary" onClick={clearHistory} disabled={clearing}>
+              {clearing ? 'Deleting...' : 'Yes, delete it'}
+            </button>
+            <button type="button" className="btn btn-quiet" onClick={() => setConfirmClear(false)} disabled={clearing}>Cancel</button>
+          </div>
+        )}
+        <ErrorBanner error={clearError} onDismiss={() => setClearError(null)} />
       </section>
     </div>
   )
