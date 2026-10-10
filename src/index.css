@@ -1765,5 +1765,7 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 .alert-decide { margin-top: 14px; display: grid; gap: 10px; }
 .alert-card > .row-actions { margin-top: 12px; }
 
-.back-btn { margin-bottom: 10px; }
+.back-btn { margin-bottom: 0; }
+/* a back button above a page's card, left aligned with the card */
+.page-back { max-width: 1200px; margin: 0 auto 14px; text-align: left; }
 @media (max-width: 640px) { .alert-tags { align-items: flex-start; } }

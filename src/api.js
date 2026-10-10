@@ -265,6 +265,16 @@ export async function listUserApplicants(userId) {
   return apiJson(`/admin/users/${encodeURIComponent(userId)}/applicants?limit=200`)
 }
 
+/**
+ * Delete the signed in person's own screening history. Screenings under continuous monitoring are kept (the answer
+ * says how many). Returns { deleted, kept_monitored }.
+ */
+export async function clearMyHistory() {
+  const out = await apiJson('/account/history', { method: 'DELETE' })
+  forget('history:')      // the cached lists are the history that was just deleted
+  return out
+}
+
 export async function getApplicant(id) {
   return apiJson(`/applicants/${id}`)
 }
