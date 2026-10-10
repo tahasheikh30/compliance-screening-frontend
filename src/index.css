@@ -676,12 +676,12 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px 
 .source-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
 .source-head h3 { font-family: var(--font-serif); font-size: 18px; font-weight: 700; letter-spacing: -0.005em; }
 .source-meta { font-size: 13px; color: var(--text-soft); font-variant-numeric: tabular-nums; }
-.source-detail { margin-top: 8px; color: var(--text-soft); }
+.source-detail { margin-top: 8px; color: var(--text-soft); overflow-wrap: anywhere; }
 
 .lists-screened { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
 .lists-screened-title { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-soft); margin-bottom: 4px; }
-.lists-screened li { display: flex; justify-content: space-between; gap: 16px; padding: 4px 0; font-size: 14px; }
-.lists-screened-state { color: var(--text-soft); text-align: right; font-variant-numeric: tabular-nums; }
+.lists-screened li { display: flex; justify-content: space-between; gap: 16px; padding: 4px 0; font-size: 14px; overflow-wrap: anywhere; }
+.lists-screened-state { min-width: 0; color: var(--text-soft); text-align: right; font-variant-numeric: tabular-nums; }
 .lists-screened-bad { color: var(--red-dark); font-weight: 600; }
 .lists-screened-bad .lists-screened-state { color: var(--red-dark); }
 
