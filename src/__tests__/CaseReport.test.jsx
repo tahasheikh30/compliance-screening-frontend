@@ -22,6 +22,21 @@ const base = (results, overall) => ({
 })
 
 describe('CaseReport', () => {
+  it('shows a PEP match with its level and office, counted apart from watch-list matches', () => {
+    const pep = match({ list: 'Politically Exposed Persons (national and provincial)', id: 'PEP-UP-2', primary_name: 'QUILLON FARIDANI',
+      programs: 'PEP, Provincial, Punjab', pep_level: 'Provincial', province: 'Punjab', dob: '', dob_year_match: 'n/a',
+      position: 'Member of the Provincial Assembly of the Punjab' })
+    const data = base([result('UNSC', 'CLEAR'), result('PEP', 'REVIEW', { matches: [pep], match_count: 1 })], 'MANUAL_REVIEW')
+    render(<CaseReport caseData={data} applicant={{}} />)
+    expect(screen.getByText('QUILLON FARIDANI')).toBeTruthy()
+    expect(screen.getByText('Provincial')).toBeTruthy()
+    expect(screen.getByText('Member of the Provincial Assembly of the Punjab')).toBeTruthy()
+    expect(screen.getByText('PEP matches')).toBeTruthy()
+    expect(screen.getByText(/not a sanctions match/)).toBeTruthy()
+    const watch = screen.getByText('Watch-list matches').closest('div')
+    expect(watch.textContent).toMatch(/0$/)
+  })
+
   it('shows a stamped escalation with the match, flags and evidence button', () => {
     const data = base([
       result('UNSC', 'HIT', { matches: [match()], match_count: 1, evidence_file: 'evidence_x.pdf', id: 11 }),

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getListsStatus, reloadLists, getNactaStatus, uploadNacta } from '../../api'
+import { getListsStatus, reloadLists, getNactaStatus, uploadNacta, getPepStatus, uploadPep, deletePepUpload } from '../../api'
 import ErrorBanner from '../../components/ErrorBanner'
 import { Pill } from '../../components/ui'
 import { fmtAge, fmtNum, fmtDateTime, plural, safeUrl } from '../../lib/format'
@@ -7,7 +7,7 @@ import { SOURCES } from '../../lib/status'
 import { useToast } from '../../components/Toaster'
 import { peek, remember } from '../../lib/readCache'
 
-const LIST_KEYS = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA']
+const LIST_KEYS = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA', 'PEP']
 
 
 /** One row per list. A source made of several lists (the FIA Red Books, the two OFAC lists) gets a row for each. */
@@ -21,7 +21,7 @@ function listRows(key, s) {
       ok: false,
       pill: { tone: 'warn', label: 'Not loaded yet' },
       records: null,
-      loaded: key === 'NACTA' ? 'Loads from the uploaded file' : 'Downloads on the next screening',
+      loaded: key === 'NACTA' ? 'Loads from the uploaded file' : key === 'PEP' ? 'Loads from Wikidata and your list' : 'Downloads on the next screening',
     }]
   }
   return lists.map((l) => {
@@ -183,6 +183,144 @@ function NactaPanel({ onChanged, isAdmin }) {
   )
 }
 
+/**
+ * Politically exposed persons. There is no official Pakistani PEP list, so the server keeps a copy of national and
+ * provincial office holders from Wikidata (refreshed in the background) and an administrator can add their own list.
+ */
+function PepPanel({ onChanged, isAdmin }) {
+  const toast = useToast()
+  const [status, setStatus] = useState(() => peek('lists:pep'))
+  const [error, setError] = useState(null)
+  const [file, setFile] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+  const [uploadError, setUploadError] = useState(null)
+  const inputRef = useRef(null)
+
+  const load = useCallback(async () => {
+    setError(null)
+    try {
+      setStatus(remember('lists:pep', await getPepStatus()))
+    } catch (err) {
+      setError(err)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function upload(e) {
+    e.preventDefault()
+    if (!file) return
+    setBusy(true)
+    setUploadError(null)
+    setResult(null)
+    try {
+      setResult(await uploadPep(file))
+      toast.success('PEP list uploaded', { to: 'lists' })
+      setFile(null)
+      if (inputRef.current) inputRef.current.value = ''
+      await load()
+      onChanged?.()
+    } catch (err) {
+      setUploadError(err)
+      toast.error('PEP upload failed', { message: err?.message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function remove() {
+    setBusy(true)
+    setUploadError(null)
+    try {
+      await deletePepUpload()
+      setResult(null)
+      toast.success('PEP list removed', { to: 'lists' })
+      await load()
+      onChanged?.()
+    } catch (err) {
+      setUploadError(err)
+      toast.error('Could not remove the PEP list', { message: err?.message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const age = (d) => (d == null ? '' : d < 1 ? 'today' : `${Math.floor(d)} ${Math.floor(d) === 1 ? 'day' : 'days'} ago`)
+  const wd = status?.wikidata
+  const own = status?.upload
+
+  return (
+    <div className="nacta-panel pep-panel">
+      <h2>Politically exposed persons (PEPs)</h2>
+      <p className="lead">
+        Pakistan publishes no official PEP list. Screening uses national and provincial office holders from Wikidata
+        (the Senate and National Assembly, ministers, chief ministers, governors, provincial assemblies and similar),
+        refreshed in the background, together with any list your administrator uploads. A PEP match is not a
+        sanctions hit: it sends the applicant to manual review for enhanced due diligence.
+      </p>
+      <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
+      {status && (
+        <>
+          {status.wikidata_enabled ? (
+            wd?.loaded
+              ? <p>Wikidata copy: {plural(wd.records, 'person', 'people')}, fetched {fmtDateTime(wd.uploaded_at)} ({age(wd.age_days)}). People who left office more than {status.lookback_years} {status.lookback_years === 1 ? 'year' : 'years'} ago are not included.</p>
+              : <p className="notice notice-warn">The Wikidata copy has not been fetched yet. It is fetched in the background; check again in a minute or two.</p>
+          ) : (
+            <p>The Wikidata fetch is switched off on the server. Only the uploaded list is used.</p>
+          )}
+          {own?.loaded
+            ? <p><strong>{own.filename}</strong>: {plural(own.records, 'person', 'people')}, uploaded {fmtDateTime(own.uploaded_at)} ({age(own.age_days)}).</p>
+            : <p className="muted">No list of your own has been uploaded.</p>}
+          {!wd?.loaded && !own?.loaded && (
+            <p className="notice notice-warn">
+              No PEP data is loaded, so PEPs are not being checked.{status.required ? ' Every screening goes to manual review until some is loaded.' : ''}
+            </p>
+          )}
+        </>
+      )}
+      {isAdmin ? (
+        <>
+          <form onSubmit={upload} className="nacta-upload">
+            <label className="field" htmlFor="pep-file">
+              <span className="field-label">Your own PEP list (CSV, JSON or XML)</span>
+              <input
+                id="pep-file"
+                ref={inputRef}
+                type="file"
+                accept=".csv,.json,.xml,.txt,text/csv,application/json,text/xml,text/plain"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+              <span className="field-hint">
+                Columns: Name (required), Position, Level (National or Provincial), Province, CNIC, Father Name, Date of Birth, Aliases, Party.
+                A new upload replaces your previous one; the Wikidata copy is not affected.
+              </span>
+            </label>
+            <button type="submit" className="btn btn-primary" disabled={!file || busy}>
+              {busy ? 'Working...' : 'Upload PEP list'}
+            </button>
+            {own?.loaded && (
+              <button type="button" className="btn btn-quiet" onClick={remove} disabled={busy}>Remove my list</button>
+            )}
+          </form>
+          <ErrorBanner error={uploadError} onDismiss={() => setUploadError(null)} />
+        </>
+      ) : (
+        <p className="field-hint">An administrator manages the PEP list.</p>
+      )}
+      {result && (
+        <div className="reload-result" role="status">
+          <p>
+            <strong>{plural(result.records, 'person', 'people')} loaded</strong>: {fmtNum(result.national)} national, {fmtNum(result.provincial)} provincial.
+            {result.rows_skipped > 0 && ` ${fmtNum(result.rows_skipped)} rows without a name were skipped.`}
+          </p>
+          {(result.warnings || []).map((w) => <p key={w} className="notice notice-warn">{w}</p>)}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ListsTab({ isAdmin = true }) {
   const toast = useToast()
   const [status, setStatus] = useState(() => peek('lists:status'))   // the last answer, shown at once while it refreshes
@@ -287,6 +425,7 @@ export default function ListsTab({ isAdmin = true }) {
         <ErrorBanner error={reloadError} onDismiss={() => setReloadError(null)} />
 
         <NactaPanel onChanged={load} isAdmin={isAdmin} />
+        <PepPanel onChanged={load} isAdmin={isAdmin} />
 
         {reloaded && (
           <p className="reload-summary" role="status">

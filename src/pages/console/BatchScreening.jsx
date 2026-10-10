@@ -210,6 +210,7 @@ function Results({ batch, onNew, onOpen }) {
               <th scope="col">Applicant</th>
               <th scope="col">Outcome</th>
               <th scope="col" className="num">Matches</th>
+              <th scope="col" className="num">PEP</th>
               <th scope="col" className="num">News</th>
               <th scope="col"><span className="visually-hidden">Open</span></th>
             </tr>
@@ -227,6 +228,7 @@ function Results({ batch, onNew, onOpen }) {
                   </td>
                   <td>{screened ? <Pill tone={info.tone}>{info.stamp}</Pill> : <Pill tone="warn">Not screened</Pill>}</td>
                   <td className="num">{screened ? r.sanctions : ''}</td>
+                  <td className="num">{screened ? r.pep ?? 0 : ''}</td>
                   <td className="num">{screened ? r.news : ''}</td>
                   <td className="num">
                     {screened && <button type="button" className="row-btn batch-open" onClick={() => onOpen(r)}>View case</button>}

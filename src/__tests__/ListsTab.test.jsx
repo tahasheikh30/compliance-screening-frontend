@@ -6,8 +6,11 @@ vi.mock('../api', () => ({
   reloadLists: vi.fn(),
   getNactaStatus: vi.fn(),
   uploadNacta: vi.fn(),
+  getPepStatus: vi.fn(),
+  uploadPep: vi.fn(),
+  deletePepUpload: vi.fn(),
 }))
-import { getListsStatus, getNactaStatus, reloadLists } from '../api'
+import { getListsStatus, getNactaStatus, reloadLists, getPepStatus, uploadPep, deletePepUpload } from '../api'
 import ListsTab from '../pages/console/ListsTab'
 
 afterEach(() => { cleanup(); vi.clearAllMocks() })
@@ -26,13 +29,19 @@ const status = (over = {}) => ({
     ],
   },
   NACTA: { cached: true, age_seconds: 5, records: 5294, error: null, lists: [ok('NACTA Proscribed Persons (Fourth Schedule)', 5294)] },
+  PEP: { cached: true, age_seconds: 5, records: 900, error: null, lists: [ok('PEP list from Wikidata (national and provincial office holders)', 900)] },
   ...over,
+})
+const pepStatus = (over = {}) => ({
+  wikidata: { loaded: true, records: 900, uploaded_at: '2026-10-08T00:00:00+00:00', age_days: 2 },
+  upload: { loaded: false }, wikidata_enabled: true, refresh_days: 7, lookback_years: 5, required: false, ...over,
 })
 const nacta = (over = {}) => ({ loaded: true, source: 'upload', filename: 'nacta.json', records: 5294, uploaded_at: '2026-10-01T00:00:00+00:00', age_days: 2, max_age_days: 30, stale: false, ...over })
 
-function setup(s = status(), n = nacta()) {
+function setup(s = status(), n = nacta(), p = pepStatus()) {
   getListsStatus.mockResolvedValue(s)
   getNactaStatus.mockResolvedValue(n)
+  getPepStatus.mockResolvedValue(p)
   return render(<ListsTab />)
 }
 
@@ -117,5 +126,35 @@ describe('ListsTab', () => {
     await waitFor(() => screen.getByText('FIA Red Book 2025'))
     fireEvent.click(screen.getByRole('button', { name: 'Reload all lists now' }))
     await waitFor(() => expect(screen.getAllByRole('status').map((e) => e.textContent).join(' ')).toMatch(/Every list loaded/))
+  })
+
+  it('lists the PEP source and explains that a PEP is not a sanctions hit', async () => {
+    setup()
+    await waitFor(() => expect(screen.getByText('PEP list from Wikidata (national and provincial office holders)')).toBeTruthy())
+    expect(await screen.findByText(/not a\s+sanctions hit/)).toBeTruthy()
+    expect(await screen.findByText(/Wikidata copy: 900 people/)).toBeTruthy()
+  })
+
+  it('uploads an administrator PEP list and reports national and provincial counts', async () => {
+    uploadPep.mockResolvedValue({ records: 4, national: 1, provincial: 3, rows_skipped: 0, warnings: ['No usable CNIC numbers were found, so matching will rely on names alone.'] })
+    setup()
+    const input = await screen.findByLabelText(/Your own PEP list/)
+    const file = new File(['Name,Position\nX,Senator'], 'pep.csv', { type: 'text/csv' })
+    fireEvent.change(input, { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Upload PEP list' }))
+    await waitFor(() => expect(uploadPep).toHaveBeenCalledWith(file))
+    expect(await screen.findByText(/1 national, 3 provincial/)).toBeTruthy()
+    expect(screen.getByText(/No usable CNIC numbers/)).toBeTruthy()
+  })
+
+  it('lets an administrator remove their own list, and warns when no PEP data is loaded at all', async () => {
+    deletePepUpload.mockResolvedValue(pepStatus())
+    setup(status(), nacta(), pepStatus({ upload: { loaded: true, filename: 'pep.csv', records: 4, uploaded_at: '2026-10-09T00:00:00+00:00', age_days: 1 } }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove my list' }))
+    await waitFor(() => expect(deletePepUpload).toHaveBeenCalled())
+    cleanup()
+    setup(status(), nacta(), pepStatus({ wikidata: { loaded: false }, required: true }))
+    expect(await screen.findByText(/No PEP data is loaded/)).toBeTruthy()
+    expect(screen.getByText(/manual review until some is loaded/)).toBeTruthy()
   })
 })
