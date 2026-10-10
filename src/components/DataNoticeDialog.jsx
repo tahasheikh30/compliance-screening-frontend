@@ -65,7 +65,8 @@ export default function DataNoticeDialog({ onClose }) {
         <p>
           The applicant is checked against the UN Security Council list, the
           OFAC SDN and Consolidated lists, the UK Sanctions List, the FIA Red
-          Books and the NACTA Proscribed Persons list, solely for
+          Books, the NACTA Proscribed Persons list and a list of politically
+          exposed persons (national and provincial office holders), solely for
           account-opening AML/KYC screening. The NACTA list is a file that staff
           upload to the server. The result and any evidence PDF are stored on
           the server so a compliance officer can review the finding later.

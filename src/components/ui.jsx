@@ -48,6 +48,8 @@ const SCAN_SOURCES = [
   "OFAC",
   "UK Sanctions List",
   "FIA Red Book",
+  "NACTA",
+  "Politically exposed persons",
   "News search",
 ];
 
