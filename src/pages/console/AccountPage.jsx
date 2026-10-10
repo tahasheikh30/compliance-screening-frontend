@@ -92,27 +92,53 @@ export default function AccountPage() {
 
   return (
     <div className="workspace workspace-account">
-      <section className="sheet" aria-labelledby="account-heading">
-        <div className="folder-tab">Account</div>
-        <h1 id="account-heading">Your account</h1>
+      <div className="account-col">
+        <section className="sheet" aria-labelledby="account-heading">
+          <div className="folder-tab">Account</div>
+          <h1 id="account-heading">Your account</h1>
 
-        <div className="account-id">
-          <span className="avatar avatar-large" aria-hidden="true">{(me.email || '?').charAt(0).toUpperCase()}</span>
-          <div className="account-id-text">
-            <p className="account-email">{me.email}</p>
-            <p className="account-pills">
-              <Pill tone={isAdmin ? 'good' : 'warn'}>{isAdmin ? 'Administrator' : 'User'}</Pill>{' '}
-              <Pill tone={status.tone}>{status.label}</Pill>
-            </p>
+          <div className="account-id">
+            <span className="avatar avatar-large" aria-hidden="true">{(me.email || '?').charAt(0).toUpperCase()}</span>
+            <div className="account-id-text">
+              <p className="account-email">{me.email}</p>
+              <p className="account-pills">
+                <Pill tone={isAdmin ? 'good' : 'warn'}>{isAdmin ? 'Administrator' : 'User'}</Pill>{' '}
+                <Pill tone={status.tone}>{status.label}</Pill>
+              </p>
+            </div>
           </div>
-        </div>
 
-        <dl className="facts account-facts">
-          <div className="fact"><dt>Email</dt><dd>{me.email}</dd></div>
-          <div className="fact"><dt>Role</dt><dd>{isAdmin ? 'Administrator' : 'User'}</dd></div>
-          {me.created_at && <div className="fact"><dt>Member since</dt><dd>{fmtDateTime(me.created_at)}</dd></div>}
-        </dl>
-      </section>
+          <dl className="facts account-facts">
+            <div className="fact"><dt>Email</dt><dd>{me.email}</dd></div>
+            <div className="fact"><dt>Role</dt><dd>{isAdmin ? 'Administrator' : 'User'}</dd></div>
+            {me.created_at && <div className="fact"><dt>Member since</dt><dd>{fmtDateTime(me.created_at)}</dd></div>}
+          </dl>
+        </section>
+
+        <section className="sheet" aria-labelledby="privacy-heading">
+          <div className="folder-tab">Privacy</div>
+          <h1 id="privacy-heading">Search history</h1>
+          <p className="lead">
+            Delete the screenings you have run. This removes them, with their results and evidence reports, from your
+            History tab. Screenings under continuous monitoring are kept so the monitoring does not stop silently.
+            Other people's screenings are not affected, and the deletion is recorded in the audit log.
+          </p>
+          {!confirmClear ? (
+            <div className="form-actions">
+              <button type="button" className="btn btn-quiet" onClick={() => setConfirmClear(true)}>Clear search history</button>
+            </div>
+          ) : (
+            <div role="alertdialog" aria-labelledby="clear-confirm-text" className="form-actions">
+              <p id="clear-confirm-text">This cannot be undone. Delete your screening history?</p>
+              <button type="button" className="btn btn-primary" onClick={clearHistory} disabled={clearing}>
+                {clearing ? 'Deleting...' : 'Yes, delete it'}
+              </button>
+              <button type="button" className="btn btn-quiet" onClick={() => setConfirmClear(false)} disabled={clearing}>Cancel</button>
+            </div>
+          )}
+          <ErrorBanner error={clearError} onDismiss={() => setClearError(null)} />
+        </section>
+      </div>
 
       <section className="sheet" aria-labelledby="password-heading">
         <div className="folder-tab">Security</div>
@@ -151,30 +177,6 @@ export default function AccountPage() {
 
         {done && <p className="account-done" role="status">Your password was changed.</p>}
         <ErrorBanner error={error} onDismiss={() => setError(null)} />
-      </section>
-
-      <section className="sheet" aria-labelledby="privacy-heading">
-        <div className="folder-tab">Privacy</div>
-        <h1 id="privacy-heading">Search history</h1>
-        <p className="lead">
-          Delete the screenings you have run. This removes them, with their results and evidence reports, from your
-          History tab. Screenings under continuous monitoring are kept so the monitoring does not stop silently.
-          Other people's screenings are not affected, and the deletion is recorded in the audit log.
-        </p>
-        {!confirmClear ? (
-          <div className="form-actions">
-            <button type="button" className="btn btn-quiet" onClick={() => setConfirmClear(true)}>Clear search history</button>
-          </div>
-        ) : (
-          <div role="alertdialog" aria-labelledby="clear-confirm-text" className="form-actions">
-            <p id="clear-confirm-text">This cannot be undone. Delete your screening history?</p>
-            <button type="button" className="btn btn-primary" onClick={clearHistory} disabled={clearing}>
-              {clearing ? 'Deleting...' : 'Yes, delete it'}
-            </button>
-            <button type="button" className="btn btn-quiet" onClick={() => setConfirmClear(false)} disabled={clearing}>Cancel</button>
-          </div>
-        )}
-        <ErrorBanner error={clearError} onDismiss={() => setClearError(null)} />
       </section>
     </div>
   )
