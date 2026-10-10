@@ -200,7 +200,7 @@ function IndividualScreening() {
             </label>
           </div>
           <p id="cnic-hint" className="field-hint field-hint-block">
-            All of these except the name are optional. A CNIC that equals a CNIC on the NACTA or FIA Red Book lists
+            All of these except the name are optional. A CNIC that equals a CNIC on the NACTA, FIA Red Book or PEP lists
             is reported as a match whatever the name looks like, so enter it whenever you have it. The others,
             including the province, are shown next to each match as supporting evidence and never remove one.
           </p>
