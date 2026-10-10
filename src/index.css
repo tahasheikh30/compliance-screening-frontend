@@ -324,7 +324,7 @@ h1, h2, h3 { text-wrap: balance; }
 .field-hint-block { margin-top: -6px; }
 .field-error { font-size: 13px; color: var(--red-dark); font-weight: 600; }
 
-input[type='text'], input[type='email'], input[type='password'], input[type='search'], input[type='date'], input:not([type]), select {
+input[type='text'], input[type='email'], input[type='password'], input[type='search'], input[type='date'], input:not([type]), select, textarea {
   font: inherit;
   color: var(--text);
   background: var(--inset);
@@ -335,14 +335,14 @@ input[type='text'], input[type='email'], input[type='password'], input[type='sea
   min-height: 44px;
   transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
-input:hover:not(:focus):not([aria-invalid='true']), select:hover:not(:focus) { border-color: rgba(232, 236, 238, 0.38); }
-input:focus-visible, select:focus-visible {
+input:hover:not(:focus):not([aria-invalid='true']), select:hover:not(:focus), textarea:hover:not(:focus) { border-color: rgba(232, 236, 238, 0.38); }
+input:focus-visible, select:focus-visible, textarea:focus-visible {
   outline: none;
   border-color: var(--gold);
   background: rgba(10, 16, 20, 0.6);
   box-shadow: 0 0 0 3px rgba(216, 190, 128, 0.22);
 }
-input::placeholder { color: #8796A0; }
+input::placeholder, textarea::placeholder { color: #8796A0; }
 input[aria-invalid='true'] { border-color: var(--red-dark); box-shadow: 0 0 0 3px rgba(240, 166, 162, 0.14); }
 input[type='checkbox'] { accent-color: var(--gold); }
 select { appearance: none; cursor: pointer; padding-right: 38px; color-scheme: dark;
@@ -1769,3 +1769,13 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 /* a back button above a page's card, left aligned with the card */
 .page-back { max-width: 1200px; margin: 0 auto 14px; text-align: left; }
 @media (max-width: 640px) { .alert-tags { align-items: flex-start; } }
+
+/* a reviewer's decision on a screening, under the case */
+.review-panel {
+  margin-top: 14px; padding: 14px 16px; display: grid; gap: 10px;
+  background: var(--inset-2); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.review-panel textarea { width: 100%; resize: vertical; min-height: 56px; font: inherit; }
+.history-actions { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 10px; }
+.coverage-input { width: 100%; min-height: 110px; font: inherit; resize: vertical; }
+.coverage-result .found { color: var(--red-dark, #b3261e); }

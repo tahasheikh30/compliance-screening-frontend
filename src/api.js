@@ -275,6 +275,22 @@ export async function clearMyHistory() {
   return out
 }
 
+/** Record a decision (cleared, confirmed or escalated; null to undo) and a note on a screening. */
+export async function reviewApplicant(id, decision, note) {
+  const out = await apiJson(`/applicants/${id}/review`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision, note: note || null }),
+  })
+  forget('history:')      // the cached lists show the old decision
+  return out
+}
+
+/** Names you expect to be on the lists, checked against them (administrators). Nothing is saved. */
+export async function checkCoverage(names) {
+  return apiJson('/admin/coverage', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ names }),
+  })
+}
+
 export async function getApplicant(id) {
   return apiJson(`/applicants/${id}`)
 }
@@ -290,6 +306,12 @@ async function saveResponse(res, filename) {
   a.click()
   a.remove()
   window.URL.revokeObjectURL(url)
+}
+
+/** Save your screening history as a CSV file. */
+export async function exportHistory() {
+  const res = await request('/export/history.csv', { timeoutMs: 60000 })
+  await saveResponse(res, 'screening-history.csv')
 }
 
 export async function downloadEvidence(resultId, filename) {
