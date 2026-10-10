@@ -3,6 +3,7 @@ import { getApplicant } from '../api'
 import ErrorBanner from './ErrorBanner'
 import CaseReport from './CaseReport'
 import MonitorToggle from './MonitorToggle'
+import ReviewPanel, { decisionLabel } from './ReviewPanel'
 import { Pill } from './ui'
 import { fmtDateTime } from '../lib/format'
 import { overallInfo } from '../lib/status'
@@ -29,6 +30,7 @@ const HistoryRow = memo(function HistoryRow({ row, on, onOpen }) {
         </button>
         <span className="row-sub">{fmtDateTime(row.submitted_at)}</span>
         <span className="row-sub mono">#{String(row.id).padStart(5, '0')}</span>
+        {row.review_decision && <span className="row-sub">Decision: {decisionLabel(row.review_decision)}</span>}
         {row.monitored && <span className="row-sub">Under continuous monitoring</span>}
       </td>
       <td><Pill tone={info.tone}>{info.stamp}</Pill></td>
@@ -114,6 +116,11 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
     setRows((all) => (all ? remember(cacheKey, all.map((r) => (r.id === id ? { ...r, monitored } : r))) : all))
   }, [cacheKey])
 
+  // keep the row's decision in step when it is saved from the open case
+  const onDecision = useCallback((id, review_decision) => {
+    setRows((all) => (all ? remember(cacheKey, all.map((r) => (r.id === id ? { ...r, review_decision } : r))) : all))
+  }, [cacheKey])
+
   return (
     <>
     {above && <div className="page-back">{above}</div>}
@@ -177,6 +184,9 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
         {caseData && (
           <>
             <CaseReport key={caseData.applicant_id} ref={headingRef} caseData={caseData} applicant={selected} />
+            <ReviewPanel key={`review-${caseData.applicant_id}`} applicantId={caseData.applicant_id}
+              decision={caseData.review_decision} note={caseData.review_note} reviewedAt={caseData.reviewed_at}
+              onChange={(d) => onDecision(caseData.applicant_id, d)} />
             {canMonitor && (
               <MonitorToggle key={caseData.applicant_id} applicantId={caseData.applicant_id}
                 monitored={!!caseData.monitored} onChange={(m) => onMonitoring(caseData.applicant_id, m)} />

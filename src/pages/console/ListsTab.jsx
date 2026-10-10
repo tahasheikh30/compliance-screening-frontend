@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getListsStatus, reloadLists, getNactaStatus, uploadNacta, getPepStatus, uploadPep, deletePepUpload, refreshPep } from '../../api'
+import { getListsStatus, reloadLists, getNactaStatus, uploadNacta, getPepStatus, uploadPep, deletePepUpload, refreshPep, checkCoverage } from '../../api'
 import ErrorBanner from '../../components/ErrorBanner'
 import { Pill } from '../../components/ui'
 import { fmtAge, fmtNum, fmtDateTime, plural, safeUrl } from '../../lib/format'
@@ -353,6 +353,74 @@ function PepPanel({ onChanged, isAdmin }) {
   )
 }
 
+/**
+ * Administrators: paste names that should be on the lists (sanctioned persons, politicians) and see which are found
+ * and in which list. The way to check, after a deploy, that the lists cover the people you expect.
+ */
+function CoveragePanel() {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [result, setResult] = useState(null)
+
+  async function run(e) {
+    e.preventDefault()
+    const names = [...new Set(text.split(/\r?\n/).map((n) => n.trim()).filter(Boolean))].slice(0, 200)
+    if (!names.length || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      setResult(await checkCoverage(names))
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="nacta-panel coverage-panel">
+      <h2 id="coverage-heading">Check that names are on the lists</h2>
+      <p className="lead">
+        One name per line, in Latin letters (up to 200). Each is checked against every loaded list at the default
+        threshold. Nothing is saved to anyone's history.
+      </p>
+      <form onSubmit={run} className="form" noValidate>
+        <label className="field" htmlFor="coverage-names">
+          <span className="field-label">Names</span>
+          <textarea id="coverage-names" className="coverage-input" value={text} onChange={(e) => setText(e.target.value)} />
+        </label>
+        <div className="form-actions">
+          <button type="submit" className="btn btn-primary" disabled={busy || !text.trim()}>{busy ? 'Checking...' : 'Check names'}</button>
+        </div>
+      </form>
+      <ErrorBanner error={error} onDismiss={() => setError(null)} />
+      {result && (
+        <div className="coverage-result">
+          <p>{result.found} of {result.checked} found on the lists.</p>
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th scope="col">Name</th><th scope="col">Result</th></tr></thead>
+              <tbody>
+                {result.rows.map((r, i) => (
+                  <tr key={`${r.name}-${i}`}>
+                    <td>{r.name}</td>
+                    <td>
+                      {r.error ? <span className="muted">{r.error}</span>
+                        : r.found ? <span className="found">Found in {r.source}: {r.matched_name} ({r.score}%)</span>
+                          : <span className="muted">Not found</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ListsTab({ isAdmin = true }) {
   const toast = useToast()
   const [status, setStatus] = useState(() => peek('lists:status'))   // the last answer, shown at once while it refreshes
@@ -458,6 +526,7 @@ export default function ListsTab({ isAdmin = true }) {
 
         <NactaPanel onChanged={load} isAdmin={isAdmin} />
         <PepPanel onChanged={load} isAdmin={isAdmin} />
+        {isAdmin && <CoveragePanel />}
 
         {reloaded && (
           <p className="reload-summary" role="status">
