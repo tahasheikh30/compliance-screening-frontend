@@ -459,7 +459,7 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px 
 .empty-sources li {
   display: grid;
   grid-template-columns: 30px 170px 1fr;
-  align-items: baseline;
+  align-items: start;           /* number, name and description all start on the same line, however long the description is */
   gap: 12px;
   padding: 11px 0;
   border-bottom: 1px solid var(--line);
@@ -469,7 +469,8 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px 
   content: counter(src);
   display: grid;
   place-items: center;
-  align-self: center;
+  align-self: start;
+  margin-top: -3px;             /* centred on the first line of text */
   width: 26px;
   height: 26px;
   border: 1px solid var(--gold-line);
@@ -480,8 +481,8 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px 
   font-size: 12.5px;
   font-weight: 700;
 }
-.empty-source-name { font-weight: 700; }
-.empty-source-long { color: var(--text-soft); }
+.empty-source-name { font-weight: 700; line-height: 20px; }
+.empty-source-long { color: var(--text-soft); line-height: 20px; }
 
 /* --- scanning (the one animated moment, only while a request is running) -- */
 
@@ -1364,6 +1365,7 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 /* --- account page ------------------------------------------------------- */
 
 .workspace-account { grid-template-columns: repeat(2, minmax(0, 1fr)); max-width: 1000px; }
+.account-col { display: grid; gap: 32px; min-width: 0; align-content: start; }
 .account-id { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
 .avatar-large { width: 64px; height: 64px; font-size: 26px; }
 .account-id-text { min-width: 0; }
