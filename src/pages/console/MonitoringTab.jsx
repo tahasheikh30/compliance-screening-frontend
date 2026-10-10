@@ -19,6 +19,12 @@ const DECIDED = {
   dismissed: { tone: 'good', label: 'Dismissed' },
 }
 
+function every(seconds) {
+  const s = Number(seconds)
+  if (s >= 86400) return s < 172800 ? 'once a day' : `every ${plural(Math.round(s / 86400), 'day', 'days')}`
+  return `about every ${minutes(s)}`
+}
+
 function minutes(seconds) {
   const m = Math.round(Number(seconds) / 60)
   return m < 60 ? plural(m, 'minute', 'minutes') : plural(Math.round(m / 60), 'hour', 'hours')
@@ -167,7 +173,7 @@ export default function MonitoringTab({ onOpenCount }) {
           <>
             <p className="monitor-summary" role="status">
               Watching <strong>{plural(status.monitored_applicants, 'person', 'people')}</strong>.{' '}
-              <strong>{plural(status.open_alerts, 'alert', 'alerts')}</strong> to review. Lists are checked for changes about every {minutes(status.interval_seconds)}.
+              <strong>{plural(status.open_alerts, 'alert', 'alerts')}</strong> to review. Lists are checked for changes {every(status.interval_seconds)}.
             </p>
             <details className="monitor-sources">
               <summary>When each list was last checked</summary>

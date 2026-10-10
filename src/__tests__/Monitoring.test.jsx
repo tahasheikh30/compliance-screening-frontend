@@ -18,7 +18,7 @@ async function load() {
 
 const health = { 'GET /api/health': { status: 'ok' } }
 const SOURCES = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA', 'ADVERSE_MEDIA'].map((source) => ({ source, last_checked_at: '2026-10-08T08:00:00+00:00' }))
-const status = (over = {}) => ({ enabled: true, interval_seconds: 900, monitored_applicants: 2, open_alerts: 0, sources: SOURCES, ...over })
+const status = (over = {}) => ({ enabled: true, interval_seconds: 86400, monitored_applicants: 2, open_alerts: 0, sources: SOURCES, ...over })
 const alert = (over = {}) => ({
   id: 11, applicant_id: 4, applicant_name: 'Hamza Example', source: 'UNSC', list: 'UN 1267', ref: 'QDi.1',
   matched_name: 'Hamza Exemplar', score: 93, status: 'open', created_at: '2026-10-08T09:00:00+00:00',
@@ -85,7 +85,7 @@ describe('the Monitoring tab', () => {
     await openTab({ 'GET /api/monitoring/status': status({ monitored_applicants: 0 }), 'GET /api/monitoring/alerts': [] })
     expect(await screen.findByText(/Nobody is being monitored yet/)).toBeTruthy()
     expect(screen.getByRole('status').textContent).toMatch(/Watching 0 people/)
-    expect(screen.getByRole('status').textContent).toMatch(/15 minutes/)
+    expect(screen.getByRole('status').textContent).toMatch(/once a day/)
   })
 
   it('warns when automatic checking is switched off on the server', async () => {
