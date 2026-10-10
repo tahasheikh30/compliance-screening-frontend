@@ -396,6 +396,11 @@ export async function uploadPep(file) {
   })
 }
 
+// Start fetching the Wikidata copy now. It runs in the background; poll getPepStatus for progress.
+export async function refreshPep() {
+  return apiJson('/admin/pep/refresh', { method: 'POST' })
+}
+
 export async function deletePepUpload() {
   return apiJson('/admin/pep', { method: 'DELETE' })
 }
