@@ -1781,3 +1781,12 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 .history-actions { display: flex; flex-wrap: wrap; gap: 8px 12px; margin: 0 0 10px; }
 .coverage-input { width: 100%; min-height: 110px; font: inherit; resize: vertical; }
 .coverage-result .found { color: var(--red-dark, #b3261e); }
+
+/* Touch devices: give small controls a comfortable tap target. */
+@media (pointer: coarse) {
+  .btn, .btn-small, .btn-ghost { min-height: 44px; }
+  .tab, .chip, .filter-chip { min-height: 40px; }
+}
+@media (max-width: 640px) {
+  html, body { overflow-x: hidden; }
+}
