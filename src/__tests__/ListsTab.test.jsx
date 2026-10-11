@@ -109,6 +109,17 @@ describe('ListsTab', () => {
     expect(screen.getByText(/Downloaded automatically from/)).toBeTruthy()
   })
 
+  it('keeps a long error behind a "Show the full error" toggle', async () => {
+    const s = status()
+    const full = "HTTPSConnectionPool(host='www.pap.gov.pk', port=443): Max retries exceeded with url: /members (Caused by)"
+    s.NACTA.lists[0].note = 'Could not be read this time: the site did not answer the server.'
+    s.NACTA.lists[0].detail = full
+    setup(s)
+    await waitFor(() => screen.getByText(/the site did not answer the server/))
+    expect(screen.getByText('Show the full error')).toBeTruthy()
+    expect(screen.getByText(full).closest('details').open).toBe(false)     // collapsed until opened
+  })
+
   it('summarises a reload by naming the lists that have a problem', async () => {
     setup()
     reloadLists.mockResolvedValue({ UNSC: { records: 100 }, FIA_REDBOOK: { records: 143 } })

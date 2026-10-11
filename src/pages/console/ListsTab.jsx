@@ -33,6 +33,7 @@ function listRows(key, s) {
       pill: ok ? { tone: 'good', label: 'Ready' } : { tone: 'bad', label: 'Problem' },
       reason: ok ? null : l.status,
       note: l.note || null,
+      detail: l.detail || null,
       source: safeUrl(l.source),
       sample: l.sample || null,
       records: ok ? l.records : 0,
@@ -490,6 +491,13 @@ export default function ListsTab({ isAdmin = true }) {
                         <span className="list-link">
                           <a href={r.source} target="_blank" rel="noopener noreferrer">Open the source file</a>
                         </span>
+                      )}
+                      {r.detail && (
+                        <details className="list-sample list-detail">
+                          <summary>Show the full error</summary>
+                          <pre>{r.detail}</pre>
+                          <CopyButton text={r.detail} />
+                        </details>
                       )}
                       {r.sample && (
                         <details className="list-sample">
