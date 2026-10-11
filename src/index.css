@@ -1790,3 +1790,8 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 @media (max-width: 640px) {
   html, body { overflow-x: hidden; }
 }
+
+/* A failed row: short reason up front, the raw error one tap away. */
+.list-detail { margin-top: 4px; }
+.list-detail summary { font-size: 13px; }
+.list-detail pre { max-height: 160px; }
