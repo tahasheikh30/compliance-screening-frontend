@@ -102,7 +102,7 @@ function WatchedRow({ person, busy, onStop }) {
     person.father_name && `Father: ${person.father_name}`,
     person.dob && `Born ${person.dob}`,
     person.monitored_since && `Watching since ${fmtDateTime(person.monitored_since)}`,
-    person.last_monitored_at ? `Last checked ${fmtDateTime(person.last_monitored_at)}` : 'Not re-checked yet',
+    person.last_monitored_at ? `Last checked ${fmtDateTime(person.last_monitored_at)}` : 'Not checked again yet',
   ].filter(Boolean)
   return (
     <li className="watch-row">
