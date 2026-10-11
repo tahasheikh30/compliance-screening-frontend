@@ -450,6 +450,11 @@ export async function getMonitoringStatus({ background = false } = {}) {
   return apiJson('/monitoring/status', { track: !background })
 }
 
+/** The people you are monitoring: [{ applicant_id, full_name, father_name, dob, monitored_since, last_monitored_at, open_alerts }]. */
+export async function listMonitoredPeople() {
+  return apiJson('/monitoring/people')
+}
+
 /** status: 'open' | 'confirmed' | 'dismissed'. Newest first. */
 export async function listAlerts(status = 'open') {
   return apiJson(`/monitoring/alerts?status=${encodeURIComponent(status)}&limit=200`)
