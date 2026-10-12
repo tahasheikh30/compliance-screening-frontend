@@ -15,6 +15,18 @@ function listRows(key, s) {
   const source = SOURCES[key]
   const lists = s?.lists || []
   if (lists.length === 0) {
+    // nothing came back for this source: an error from the server is a problem, otherwise it simply has not loaded yet
+    if (s?.error) {
+      return [{
+        id: key,
+        name: source.long,
+        ok: false,
+        pill: { tone: 'bad', label: 'Problem' },
+        reason: s.error,
+        records: 0,
+        loaded: 'Not loaded',
+      }]
+    }
     return [{
       id: key,
       name: source.long,
@@ -25,18 +37,21 @@ function listRows(key, s) {
     }]
   }
   return lists.map((l) => {
-    const ok = !l.status || l.status === 'OK'
+    // A list is only Ready when it reported no error, the source is loaded, and it holds at least one record.
+    const reason = l.status && l.status !== 'OK' ? l.status : s.error || null
+    const notLoaded = !reason && (!s.cached || !(l.records > 0))
+    const ok = !reason && !notLoaded
     return {
       id: `${key}-${l.list}`,
       name: l.list === key ? source.long : l.list,
       ok,
-      pill: ok ? { tone: 'good', label: 'Ready' } : { tone: 'bad', label: 'Problem' },
-      reason: ok ? null : l.status,
+      pill: reason ? { tone: 'bad', label: 'Problem' } : notLoaded ? { tone: 'warn', label: 'Not loaded yet' } : { tone: 'good', label: 'Ready' },
+      reason,
       note: l.note || null,
       detail: l.detail || null,
       source: safeUrl(l.source),
       sample: l.sample || null,
-      records: ok ? l.records : 0,
+      records: ok ? l.records : reason ? 0 : null,
       loaded: s.cached ? fmtAge(s.age_seconds) : 'Not loaded',
     }
   })

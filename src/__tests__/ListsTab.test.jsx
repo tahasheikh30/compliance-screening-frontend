@@ -101,6 +101,35 @@ describe('ListsTab', () => {
     expect(within(un).getByText(/ConnectionError: timed out/)).toBeTruthy()
   })
 
+  it('does not show Ready for a list that is not cached, is empty, or whose source reported an error', async () => {
+    setup(status({
+      // reported OK but the source is not in the server's memory: not loaded
+      UKSL: { cached: false, age_seconds: null, records: 10, error: null, lists: [ok('UK Sanctions List (FCDO)', 10)] },
+      // reported OK but holds no records: not loaded
+      NACTA: { cached: true, age_seconds: 5, records: 0, error: null, lists: [ok('NACTA Proscribed Persons (Fourth Schedule)', 0)] },
+      // the source failed and the list row carries no status of its own: still a problem
+      UNSC: { cached: true, age_seconds: 5, records: 0, error: 'The list could not be downloaded or read (timed out).',
+        lists: [{ list: 'UNSC', records: 0, source: null }] },
+      // the source failed and returned no lists at all
+      PEP: { cached: false, age_seconds: null, records: 0, error: 'The PEP list could not be read.', lists: [] },
+    }))
+    await waitFor(() => screen.getByText('UK Sanctions List (FCDO)'))
+    const row = (name) => screen.getByText(name).closest('tr')
+    expect(within(row('UK Sanctions List (FCDO)')).getByText('Not loaded yet')).toBeTruthy()
+    expect(within(row('UK Sanctions List (FCDO)')).queryByText('Ready')).toBeNull()
+    expect(within(row('NACTA Proscribed Persons (Fourth Schedule)')).getByText('Not loaded yet')).toBeTruthy()
+    expect(within(row('NACTA Proscribed Persons (Fourth Schedule)')).queryByText('Ready')).toBeNull()
+    const un = row('UN Security Council Consolidated List')
+    expect(within(un).getByText('Problem')).toBeTruthy()
+    expect(within(un).getByText(/could not be downloaded or read \(timed out\)/)).toBeTruthy()
+    expect(within(un).queryByText('Ready')).toBeNull()
+    const pep = row('Politically exposed persons (national and provincial, Pakistan)')   // no lists came back, so the source's own name
+    expect(within(pep).getByText('Problem')).toBeTruthy()
+    expect(within(pep).getByText('The PEP list could not be read.')).toBeTruthy()
+    // the lists that are fine still say Ready
+    expect(within(row('OFAC SDN List')).getByText('Ready')).toBeTruthy()
+  })
+
   it('shows the fallback note when the live NACTA download failed', async () => {
     const s = status()
     s.NACTA.lists[0].note = 'The live download from NACTA failed (timed out). Using the last good copy, 2 days old.'
