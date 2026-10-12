@@ -335,7 +335,7 @@ function PepPanel({ onChanged, isAdmin }) {
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
               />
               <span className="field-hint">
-                Columns: Name (required), Position, Level (National or Provincial), Province, CNIC, Father Name, Date of Birth, Aliases, Party.
+                Columns: Name (required), Position, Level (National, Provincial or Local), Province, CNIC, Father Name, Date of Birth, Aliases, Party.
                 A new upload replaces your previous one; the Wikidata copy is not affected.
               </span>
             </label>
