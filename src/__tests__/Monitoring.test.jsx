@@ -29,6 +29,7 @@ const calls = () => fetchMock.mock.calls.map(([u, i]) => `${(i?.method || 'GET')
 
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()   // the console remembers its open tab here, so one test must not start on another's tab
   window.history.replaceState(null, '', '/sign-in')
   h.supabase = makeSupabase({ session: sessionFor() })
   fetchMock = vi.fn()

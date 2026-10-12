@@ -53,9 +53,26 @@ function TabIcon({ id }) {
 }
 const PENDING_POLL_MS = 60000
 
+// The open tab survives a refresh. It is kept per person (a different user signing in on the same browser tab starts
+// on Screening) and only for this browser tab, so a new visit still opens on Screening. Storage can be blocked or
+// full, in which case the console simply behaves as before.
+const tabKey = (userId) => `console-tab:${userId}`
+function readTab(userId, isAdmin) {
+  try {
+    const saved = window.sessionStorage.getItem(tabKey(userId))
+    const valid = BASE_TABS.some((t) => t.id === saved) || (isAdmin && saved === PEOPLE_TAB.id)
+    return valid ? saved : 'screen'
+  } catch {
+    return 'screen'
+  }
+}
+function saveTab(userId, id) {
+  try { window.sessionStorage.setItem(tabKey(userId), id) } catch { /* not remembered */ }
+}
+
 export default function Console() {
   const { me, isAdmin, signOut } = useAuth()
-  const [tab, setTab] = useState('screen')
+  const [tab, setTab] = useState(() => readTab(me.id, isAdmin))
   const [page, setPage] = useState(null)            // 'account' | 'notifications' | null (a tab is showing)
   const toast = useToast()
   const { unread } = useNotifications()
@@ -131,7 +148,7 @@ export default function Console() {
 
   const tabs = useMemo(() => (isAdmin ? [...BASE_TABS, PEOPLE_TAB] : BASE_TABS), [isAdmin])
   const onPendingCount = useCallback((n) => { setPending(n); lastPending.current = n }, [])
-  const goTab = useCallback((id) => { setTab(id); setPage(null); setViewUser(null) }, [])
+  const goTab = useCallback((id) => { setTab(id); saveTab(me.id, id); setPage(null); setViewUser(null) }, [me.id])
 
   return (
     <div className="app">
