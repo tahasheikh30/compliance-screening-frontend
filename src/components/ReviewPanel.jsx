@@ -39,7 +39,7 @@ export default function ReviewPanel({ applicantId, decision: initial, note: init
       setSavedNote(out.review_note || '')
       if (!out.review_decision) setNote('')
       onChange?.(out.review_decision)
-      toast.success(next ? 'Decision saved' : 'Decision removed', { log: false })
+      toast.success(next ? 'Decision saved' : 'Decision removed', { category: 'screening', log: false })
     } catch (err) {
       setError(err)
     } finally {

@@ -42,6 +42,7 @@ const NOOP = {
   unread: 0,
   markAllRead() {},
   clearAll() {},
+  configure() {},
 };
 
 const MAX_VISIBLE = 4;
@@ -56,10 +57,27 @@ export function useNotifications() {
   return useContext(ToastContext) || NOOP;
 }
 
+/**
+ * Whether a message is shown, kept, both or neither, given the person's notification settings:
+ *   { enabled, popups, categories: { screening, monitoring, lists, account, admin } }
+ * An error is never dropped (a failed save or a failed screening must be seen), but with pop-ups off it is only
+ * kept in the list. A message with no category (or an unknown one) follows the master switch only.
+ */
+export function deliveryFor(settings, tone, category) {
+  if (!settings) return { popup: true, keep: true };
+  const off = !settings.enabled || (category && settings.categories?.[category] === false);
+  if (off && tone !== "error") return { popup: false, keep: false };
+  return { popup: settings.popups !== false, keep: true };
+}
+
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const nextId = useRef(1);
+  const settings = useRef(null); // the person's notification settings, set by the preferences provider
+  const configure = useCallback((next) => {
+    settings.current = next || null;
+  }, []);
 
   const dismiss = useCallback(
     (id) => setToasts((all) => all.filter((t) => t.id !== id)),
@@ -67,9 +85,11 @@ export function ToastProvider({ children }) {
   );
 
   const push = useCallback((tone, title, opts = {}) => {
-    const { message = "", to = null, log = true, duration } = opts;
+    const { message = "", to = null, log = true, duration, category = null } = opts;
     const id = nextId.current++;
-    setToasts((all) => {
+    const delivery = deliveryFor(settings.current, tone, category);
+    if (!delivery.keep) return id; // switched off in Settings: neither shown nor listed
+    if (delivery.popup) setToasts((all) => {
       // the same message twice in a row (a poll that keeps finding the same thing) is shown once
       if (
         all.some(
@@ -113,8 +133,8 @@ export function ToastProvider({ children }) {
 
   const unread = notifications.filter((n) => !n.read).length;
   const value = useMemo(
-    () => ({ toast, notifications, unread, markAllRead, clearAll }),
-    [toast, notifications, unread, markAllRead, clearAll],
+    () => ({ toast, notifications, unread, markAllRead, clearAll, configure }),
+    [toast, notifications, unread, markAllRead, clearAll, configure],
   );
 
   return (

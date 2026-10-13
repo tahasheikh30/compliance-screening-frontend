@@ -4,7 +4,7 @@ import axe from 'axe-core'
 
 vi.mock('../auth/AuthContext', () => ({
   MIN_PASSWORD_LENGTH: 12,
-  useAuth: () => ({ me: { id: 'u1', email: 'ana@example.com', role: 'admin', status: 'approved' }, isAdmin: true, changePassword: vi.fn() }),
+  useAuth: () => ({ me: { id: 'u1', email: 'ana@example.com', role: 'admin', status: 'approved' }, isAdmin: true, changePassword: vi.fn(), leaveWithNotice: vi.fn() }),
 }))
 vi.mock('../api', () => ({
   screenApplicant: vi.fn(), clearMyHistory: vi.fn(), exportHistory: vi.fn(), reviewApplicant: vi.fn(),
@@ -28,7 +28,7 @@ import HistoryTab from '../pages/console/HistoryTab'
 import MonitoringTab from '../pages/console/MonitoringTab'
 import ListsTab from '../pages/console/ListsTab'
 import UsersTab from '../pages/console/UsersTab'
-import AccountPage from '../pages/console/AccountPage'
+import AccountSection from '../components/settings/AccountSection'
 
 afterEach(cleanup)
 
@@ -45,7 +45,7 @@ const screens = [
   ['Monitoring', () => <MonitoringTab />, /monitor/i],
   ['Lists', () => <ListsTab isAdmin />, /Watch lists/],
   ['People', () => <UsersTab selfId="u1" onPendingCount={() => {}} onOpenHistory={() => {}} />, /bob@example.com/],
-  ['Account', () => <AccountPage />, /Change password/],
+  ['Account', () => <AccountSection />, /Change password/],
 ]
 
 describe('accessibility (structural rules)', () => {

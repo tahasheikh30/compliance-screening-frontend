@@ -4,6 +4,7 @@ import ErrorBanner from '../../components/ErrorBanner'
 import { Pill } from '../../components/ui'
 import { fmtAge, fmtNum, fmtDateTime, plural, safeUrl } from '../../lib/format'
 import { SOURCES } from '../../lib/status'
+import { usePreferences } from '../../lib/preferences'
 import { useToast } from '../../components/Toaster'
 import { peek, remember } from '../../lib/readCache'
 
@@ -102,14 +103,14 @@ function NactaPanel({ onChanged, isAdmin }) {
     setResult(null)
     try {
       setResult(await uploadNacta(file))
-      toast.success('NACTA list uploaded', { to: 'lists' })
+      toast.success('NACTA list uploaded', { category: 'lists', to: 'lists' })
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
       await load()
       onChanged?.()
     } catch (err) {
       setUploadError(err)
-      toast.error('NACTA upload failed', { message: err?.message })
+      toast.error('NACTA upload failed', { category: 'lists', message: err?.message })
     } finally {
       setBusy(false)
     }
@@ -241,7 +242,7 @@ function PepPanel({ onChanged, isAdmin }) {
     setUploadError(null)
     try {
       setStatus(remember('lists:pep', await refreshPep()))
-      toast.info('Fetching from Wikidata', { message: 'This runs in the background and can take a minute or two.', log: false })
+      toast.info('Fetching from Wikidata', { category: 'lists', message: 'This runs in the background and can take a minute or two.', log: false })
     } catch (err) {
       setUploadError(err)
     }
@@ -255,14 +256,14 @@ function PepPanel({ onChanged, isAdmin }) {
     setResult(null)
     try {
       setResult(await uploadPep(file))
-      toast.success('PEP list uploaded', { to: 'lists' })
+      toast.success('PEP list uploaded', { category: 'lists', to: 'lists' })
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
       await load()
       onChanged?.()
     } catch (err) {
       setUploadError(err)
-      toast.error('PEP upload failed', { message: err?.message })
+      toast.error('PEP upload failed', { category: 'lists', message: err?.message })
     } finally {
       setBusy(false)
     }
@@ -274,12 +275,12 @@ function PepPanel({ onChanged, isAdmin }) {
     try {
       await deletePepUpload()
       setResult(null)
-      toast.success('PEP list removed', { to: 'lists' })
+      toast.success('PEP list removed', { category: 'lists', to: 'lists' })
       await load()
       onChanged?.()
     } catch (err) {
       setUploadError(err)
-      toast.error('Could not remove the PEP list', { message: err?.message })
+      toast.error('Could not remove the PEP list', { category: 'lists', message: err?.message })
     } finally {
       setBusy(false)
     }
@@ -439,6 +440,8 @@ function CoveragePanel() {
 
 export default function ListsTab({ isAdmin = true }) {
   const toast = useToast()
+  const { prefs } = usePreferences()
+  const off = prefs.lists.off
   const [status, setStatus] = useState(() => peek('lists:status'))   // the last answer, shown at once while it refreshes
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -462,11 +465,11 @@ export default function ListsTab({ isAdmin = true }) {
     setReloaded(null)
     try {
       setReloaded(await reloadLists())
-      toast.success('Lists reloaded', { to: 'lists' })
+      toast.success('Lists reloaded', { category: 'lists', to: 'lists' })
       await load()
     } catch (err) {
       setReloadError(err)
-      toast.error('Could not reload the lists', { message: err?.message })
+      toast.error('Could not reload the lists', { category: 'lists', message: err?.message })
     } finally {
       setBusy(false)
     }
@@ -486,6 +489,12 @@ export default function ListsTab({ isAdmin = true }) {
           this page.{isAdmin ? ' Reload only if you want to be certain the next screening uses lists fetched right now.' : ''}
         </p>
 
+        {off.length > 0 && (
+          <p className="notice" role="note">
+            Switched off for you in Settings: {off.join(', ')}. {off.length === 1 ? 'It is' : 'They are'} skipped in your screenings and
+            shown as "Switched off" in the case. Turn {off.length === 1 ? 'it' : 'them'} back on under Settings, Lists.
+          </p>
+        )}
         <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
         {!status && !error && <p className="muted">Loading...</p>}
 

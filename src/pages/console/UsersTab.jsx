@@ -56,11 +56,11 @@ export default function UsersTab({ selfId, onPendingCount, onOpenHistory }) {
     setError(null)
     try {
       await change()
-      toast.success(done, { message: user.email })
+      toast.success(done, { category: 'admin', message: user.email })
       await load()
     } catch (err) {
       setError(err)
-      toast.error('Could not update the account', { message: err?.message })
+      toast.error('Could not update the account', { category: 'admin', message: err?.message })
     } finally {
       setBusyId(null)
     }

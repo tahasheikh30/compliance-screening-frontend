@@ -7,6 +7,7 @@ import SetupProblem from './pages/SetupProblem'
 import Splash from './pages/Splash'
 import GlobalLoader from './components/GlobalLoader'
 import { ToastProvider } from './components/Toaster'
+import { PreferencesProvider } from './lib/preferences'
 
 // Each screen is fetched only when it is shown. Someone who is already signed in never downloads the landing
 // page, the information pages or their styles, and a visitor never downloads the console.
@@ -111,11 +112,13 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <GlobalLoader />
-        <Suspense fallback={<Splash>Loading...</Splash>}>
-          <Router />
-        </Suspense>
-        <DeferredAnalytics />
+        <PreferencesProvider>
+          <GlobalLoader />
+          <Suspense fallback={<Splash>Loading...</Splash>}>
+            <Router />
+          </Suspense>
+          <DeferredAnalytics />
+        </PreferencesProvider>
       </ToastProvider>
     </AuthProvider>
   )

@@ -179,13 +179,13 @@ export default function MonitoringTab({ onOpenCount }) {
     try {
       await decideAlert(alert.id, next, note?.trim())
       toast.success(next === 'confirmed' ? 'Marked as a confirmed match' : next === 'dismissed' ? 'Alert dismissed' : 'Alert reopened',
-        { message: alert.applicant_name, log: false })
+        { category: 'monitoring', message: alert.applicant_name, log: false })
       await Promise.all([loadAlerts(), loadStatus()])
       // the other lists are out of date now
       ;['open', 'confirmed', 'dismissed'].filter((f) => f !== filter).forEach((f) => remember(`monitoring:alerts:${f}`, null))
     } catch (err) {
       setError(err)
-      toast.error('Could not save the decision', { message: err?.message })
+      toast.error('Could not save the decision', { category: 'monitoring', message: err?.message })
     } finally {
       setBusyId(null)
     }
@@ -197,13 +197,13 @@ export default function MonitoringTab({ onOpenCount }) {
     setError(null)
     try {
       await setMonitoring(person.applicant_id, false)
-      toast.success('Monitoring stopped', { message: person.full_name, log: false })
+      toast.success('Monitoring stopped', { category: 'monitoring', message: person.full_name, log: false })
       forget('monitoring:')
       forget('history:')                      // the history rows show whether someone is monitored
       await Promise.all([loadPeople(), loadStatus(), loadAlerts()])
     } catch (err) {
       setError(err)
-      toast.error('Could not stop monitoring', { message: err?.message })
+      toast.error('Could not stop monitoring', { category: 'monitoring', message: err?.message })
     } finally {
       setBusyId(null)
     }
