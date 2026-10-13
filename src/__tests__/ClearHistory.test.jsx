@@ -3,7 +3,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 
 vi.mock('../auth/AuthContext', () => ({
   MIN_PASSWORD_LENGTH: 12,
-  useAuth: () => ({ me: { id: 'u1', email: 'ana@example.com', role: 'user', status: 'approved' }, isAdmin: false, changePassword: vi.fn() }),
+  useAuth: () => ({ me: { id: 'u1', email: 'ana@example.com', role: 'user', status: 'approved' }, isAdmin: false, changePassword: vi.fn(), leaveWithNotice: vi.fn() }),
 }))
 vi.mock('../api', () => ({
   clearMyHistory: vi.fn(),
@@ -13,7 +13,7 @@ vi.mock('../api', () => ({
 }))
 
 import { ToastProvider } from '../components/Toaster'
-import AccountPage from '../pages/console/AccountPage'
+import AccountSection from '../components/settings/AccountSection'
 import UserHistoryPage from '../pages/console/UserHistoryPage'
 import { clearMyHistory } from '../api'
 
@@ -22,7 +22,7 @@ afterEach(() => { cleanup(); vi.clearAllMocks() })
 describe('clear search history (Account)', () => {
   it('asks to confirm, then clears and says what was kept', async () => {
     clearMyHistory.mockResolvedValue({ deleted: 3, kept_monitored: 1 })
-    render(<ToastProvider><AccountPage /></ToastProvider>)
+    render(<ToastProvider><AccountSection /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Clear search history' }))
     expect(clearMyHistory).not.toHaveBeenCalled()                       // nothing is deleted by the first click
     fireEvent.click(screen.getByRole('button', { name: 'Yes, delete it' }))
@@ -32,7 +32,7 @@ describe('clear search history (Account)', () => {
   })
 
   it('can be cancelled without deleting anything', () => {
-    render(<ToastProvider><AccountPage /></ToastProvider>)
+    render(<ToastProvider><AccountSection /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Clear search history' }))
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(clearMyHistory).not.toHaveBeenCalled()
@@ -41,7 +41,7 @@ describe('clear search history (Account)', () => {
 
   it('shows the error when it fails and deletes nothing it was not told to', async () => {
     clearMyHistory.mockRejectedValue(new Error('boom'))
-    render(<ToastProvider><AccountPage /></ToastProvider>)
+    render(<ToastProvider><AccountSection /></ToastProvider>)
     fireEvent.click(screen.getByRole('button', { name: 'Clear search history' }))
     fireEvent.click(screen.getByRole('button', { name: 'Yes, delete it' }))
     await waitFor(() => expect(clearMyHistory).toHaveBeenCalled())

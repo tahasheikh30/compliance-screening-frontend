@@ -21,6 +21,7 @@ const RESULT_STATUS = {
   CLEAR: { label: 'Clear', tone: 'good' },
   ERROR: { label: 'Not screened', tone: 'bad' },
   NOT_CONFIGURED: { label: 'Not screened', tone: 'bad' },
+  SKIPPED: { label: 'Switched off', tone: 'warn' },       // the analyst turned this list off in Settings
 }
 
 const OVERALL = {
@@ -52,6 +53,9 @@ export function overallInfo(status) {
 // What a person should do next. For a manual review the generic text is replaced
 // by what actually triggered it, so they know where to look first.
 export function nextStep(overall, sum) {
+  if (overall === 'AUTO_CLEAR' && sum.skipped > 0) {
+    return `Every list that was switched on was screened and nothing was found at this threshold. ${sum.skipped === 1 ? 'One list was' : `${sum.skipped} lists were`} switched off in Settings and not checked, so this does not cover ${sum.skipped === 1 ? 'it' : 'them'}. Automated name matching only, so it does not replace your normal checks.`
+  }
   if (overall !== 'MANUAL_REVIEW') return overallInfo(overall).next
   const parts = []
   if (sum.pep > 0) {
@@ -78,15 +82,17 @@ export function summarize(caseData) {
   let pep = 0
   let notScreened = 0
   let partial = 0
+  let skipped = 0
   for (const r of rows) {
     if (r.source === 'ADVERSE_MEDIA') news += (r.articles || []).length
     else if (r.source === 'PEP') pep += r.match_count ?? (r.matches || []).length   // not a sanction
     else sanctions += r.match_count ?? (r.matches || []).length
     if (r.status === 'ERROR' || r.status === 'NOT_CONFIGURED') notScreened += 1
     if (r.status === 'PARTIAL') partial += 1
+    if (r.status === 'SKIPPED') skipped += 1
   }
   const withEvidence = rows.find((r) => r.evidence_file)
-  return { sanctions, news, pep, notScreened, partial, evidenceResult: withEvidence || null }
+  return { sanctions, news, pep, notScreened, partial, skipped, evidenceResult: withEvidence || null }
 }
 
 export function orderedResults(results) {

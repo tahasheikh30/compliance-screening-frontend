@@ -8,7 +8,8 @@ import ProfileMenu from '../components/ProfileMenu'
 import { useNotifications, useToast } from '../components/Toaster'
 import { useActivity } from '../lib/activity'
 import ScreeningTab from './console/ScreeningTab'
-import AccountPage from './console/AccountPage'
+import SettingsModal from '../components/settings/SettingsModal'
+import { usePreferences } from '../lib/preferences'
 import NotificationsPage from './console/NotificationsPage'
 
 // The first tab is needed immediately; the rest are fetched the first time they are opened.
@@ -57,15 +58,16 @@ const PENDING_POLL_MS = 60000
 // on Screening) and only for this browser tab, so a new visit still opens on Screening. Storage can be blocked or
 // full, in which case the console simply behaves as before.
 const tabKey = (userId) => `console-tab:${userId}`
-function readTab(userId, isAdmin) {
+function savedTab(userId, isAdmin) {
   try {
     const saved = window.sessionStorage.getItem(tabKey(userId))
     const valid = BASE_TABS.some((t) => t.id === saved) || (isAdmin && saved === PEOPLE_TAB.id)
-    return valid ? saved : 'screen'
+    return valid ? saved : null
   } catch {
-    return 'screen'
+    return null
   }
 }
+const readTab = (userId, isAdmin) => savedTab(userId, isAdmin) || 'screen'
 function saveTab(userId, id) {
   try { window.sessionStorage.setItem(tabKey(userId), id) } catch { /* not remembered */ }
 }
@@ -73,7 +75,10 @@ function saveTab(userId, id) {
 export default function Console() {
   const { me, isAdmin, signOut } = useAuth()
   const [tab, setTab] = useState(() => readTab(me.id, isAdmin))
-  const [page, setPage] = useState(null)            // 'account' | 'notifications' | null (a tab is showing)
+  const [page, setPage] = useState(null)            // 'notifications' | null (a tab is showing)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const { prefs, loaded: prefsLoaded } = usePreferences()
+  const touchedTab = useRef(false)                    // the person has already picked a tab: their default no longer applies
   const toast = useToast()
   const { unread } = useNotifications()
   const lastPending = useRef(null)
@@ -105,7 +110,7 @@ export default function Console() {
         if (open > 0 && (lastAlerts.current === null || open > lastAlerts.current)) {
           toast.warn(
             open === 1 ? 'A monitored person has a possible new match' : `${open} monitoring alerts need review`,
-            { message: 'A watch list changed. Review it on the Monitoring tab.', to: 'monitoring', duration: 12000 },
+            { message: 'A watch list changed. Review it on the Monitoring tab.', to: 'monitoring', duration: 12000, category: 'monitoring' },
           )
         }
         onAlertCount(open)
@@ -131,7 +136,7 @@ export default function Console() {
         if (waiting.length > 0 && (lastPending.current === null || waiting.length > lastPending.current)) {
           toast.info(
             waiting.length === 1 ? '1 account is waiting for approval' : `${waiting.length} accounts are waiting for approval`,
-            { message: 'Review them on the People tab.', to: 'people' },
+            { message: 'Review them on the People tab.', to: 'people', category: 'admin' },
           )
         }
         lastPending.current = waiting.length
@@ -146,9 +151,14 @@ export default function Console() {
     return () => { active = false; clearInterval(timer); document.removeEventListener('visibilitychange', onVisible) }
   }, [isAdmin, toast])
 
+  // apply the person's chosen opening tab once their settings arrive, unless they already have a saved tab or have moved
+  useEffect(() => {
+    if (prefsLoaded && !savedTab(me.id, isAdmin) && !touchedTab.current) setTab(prefs.display.default_tab)
+  }, [prefsLoaded, prefs.display.default_tab, me.id, isAdmin])
+
   const tabs = useMemo(() => (isAdmin ? [...BASE_TABS, PEOPLE_TAB] : BASE_TABS), [isAdmin])
   const onPendingCount = useCallback((n) => { setPending(n); lastPending.current = n }, [])
-  const goTab = useCallback((id) => { setTab(id); saveTab(me.id, id); setPage(null); setViewUser(null) }, [me.id])
+  const goTab = useCallback((id) => { touchedTab.current = true; setTab(id); saveTab(me.id, id); setPage(null); setViewUser(null) }, [me.id])
 
   return (
     <div className="app">
@@ -180,7 +190,7 @@ export default function Console() {
           email={me.email}
           isAdmin={isAdmin}
           unread={unread}
-          onAccount={() => setPage('account')}
+          onSettings={() => setSettingsOpen(true)}
           onNotifications={() => setPage('notifications')}
           onSignOut={signOut}
         />
@@ -189,7 +199,6 @@ export default function Console() {
       <main className="main">
         <ErrorBoundary key={page || tab}>
           <Suspense fallback={<TabLoading />}>
-            {page === 'account' && <AccountPage />}
             {page === 'notifications' && <NotificationsPage onOpen={goTab} />}
             {!page && tab === 'screen' && <ScreeningTab />}
             {!page && tab === 'history' && <HistoryTab />}
@@ -207,6 +216,7 @@ export default function Console() {
           </Suspense>
         </ErrorBoundary>
       </main>
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
 
       <SiteFooter />
     </div>

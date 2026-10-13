@@ -308,6 +308,34 @@ async function saveResponse(res, filename) {
   window.URL.revokeObjectURL(url)
 }
 
+// ---------------------------------------------------------------------------
+// Settings, and switching off or deleting your own account
+// ---------------------------------------------------------------------------
+
+/** { preferences, switchable_sources }: the person's settings (defaults filled in) and which lists they may switch off. */
+export async function getPreferences() {
+  return apiJson('/account/preferences', { track: false })
+}
+
+/** Saves the whole settings document. A write is never retried, so a failed save is reported, not repeated. */
+export async function savePreferences(preferences) {
+  return apiJson('/account/preferences', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(preferences), track: false,
+  })
+}
+
+/** Switches the signed in person's own account off. Only an administrator can switch it back on. */
+export async function disableMyAccount() {
+  return apiJson('/account/disable', { method: 'POST' })
+}
+
+/** Deletes the signed in person's own account. They must type their own email address to confirm. */
+export async function deleteMyAccount(confirmEmail) {
+  return apiJson('/account', {
+    method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm_email: confirmEmail }),
+  })
+}
+
 /** Save your screening history as a CSV file. */
 export async function exportHistory() {
   const res = await request('/export/history.csv', { timeoutMs: 60000 })

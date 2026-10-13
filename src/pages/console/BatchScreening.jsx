@@ -3,6 +3,7 @@ import { cancelBatch, downloadBatchEvidence, downloadBatchResults, getApplicant,
 import CaseReport from '../../components/CaseReport'
 import ErrorBanner from '../../components/ErrorBanner'
 import MonitorToggle from '../../components/MonitorToggle'
+import { DEFAULT_THRESHOLD, usePreferences } from '../../lib/preferences'
 import { useToast } from '../../components/Toaster'
 import { Pill } from '../../components/ui'
 import { ApiError } from '../../lib/apiError'
@@ -10,7 +11,6 @@ import { fmtNum } from '../../lib/format'
 import { forget, peek, remember } from '../../lib/readCache'
 import { overallInfo, SOURCE_ORDER } from '../../lib/status'
 
-const DEFAULT_THRESHOLD = 85
 const POLL_MS = 1500
 const ACTIVE_KEY = 'batch:active'            // the batch on screen, remembered in memory only (never storage)
 const MAX_BYTES = 10 * 1024 * 1024
@@ -146,7 +146,7 @@ function Results({ batch, onNew, onOpen }) {
       await (kind === 'results' ? downloadBatchResults(batch.id) : downloadBatchEvidence(batch.id))
     } catch (err) {
       if (err instanceof ApiError && err.code === 'EVIDENCE_NOT_GENERATED') {
-        toast.info('No evidence PDFs', { message: 'An evidence PDF is only made when a row has a match or an adverse news lead.', log: false })
+        toast.info('No evidence PDFs', { category: 'screening', message: 'An evidence PDF is only made when a row has a match or an adverse news lead.', log: false })
       } else {
         setDownloadError(err)
       }
@@ -291,8 +291,15 @@ export default function BatchScreening() {
   const [file, setFile] = useState(null)
   const [error, setError] = useState(null)
   const [dragging, setDragging] = useState(false)
-  const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD)
-  const [monitor, setMonitor] = useState(false)
+  const { prefs } = usePreferences()
+  const defThreshold = prefs.screening.threshold ?? DEFAULT_THRESHOLD
+  const defMonitor = !!prefs.screening.monitor_by_default
+  const edited = useRef(false)                        // once the person changes these, their saved defaults stop applying
+  const [threshold, setThreshold] = useState(defThreshold)
+  const [monitor, setMonitor] = useState(defMonitor)
+  useEffect(() => {
+    if (!edited.current) { setThreshold(defThreshold); setMonitor(defMonitor) }
+  }, [defThreshold, defMonitor])
   const [uploading, setUploading] = useState(false)     // the file is on its way to the server
   const [batch, setBatch] = useState(null)              // the batch on screen, as the server last reported it
   const [stopping, setStopping] = useState(false)       // Cancel was pressed; the row in progress still finishes
@@ -349,8 +356,8 @@ export default function BatchScreening() {
     const escalate = b.counts?.ESCALATE_TO_COMPLIANCE || 0
     const title = b.status === 'done' ? 'Batch screened' : b.status === 'cancelled' ? 'Batch cancelled' : 'Batch interrupted'
     const message = `${b.filename}. ${fmtNum(b.counts?.screened || 0)} of ${fmtNum(b.total)} rows screened, ${escalate} to escalate.`
-    if (b.status === 'done' && escalate === 0) toast.success(title, { message, to: 'history' })
-    else toast.warn(title, { message, to: 'history' })
+    if (b.status === 'done' && escalate === 0) toast.success(title, { category: 'screening', message, to: 'history' })
+    else toast.warn(title, { category: 'screening', message, to: 'history' })
   }
 
   function refuse(message, hint) {
@@ -489,7 +496,7 @@ export default function BatchScreening() {
               max="100"
               step="1"
               value={threshold}
-              onChange={(e) => setThreshold(Number(e.target.value))}
+              onChange={(e) => { edited.current = true; setThreshold(Number(e.target.value)) }}
               style={{ '--fill': `${((Number(threshold) - 50) / 50) * 100}%` }}
               aria-describedby="batch-threshold-hint"
               disabled={running}
@@ -502,7 +509,7 @@ export default function BatchScreening() {
           </div>
 
           <label className="check-row" htmlFor="batch-monitor">
-            <input id="batch-monitor" type="checkbox" checked={monitor} disabled={running} onChange={(e) => setMonitor(e.target.checked)} />
+            <input id="batch-monitor" type="checkbox" checked={monitor} disabled={running} onChange={(e) => { edited.current = true; setMonitor(e.target.checked) }} />
             <span>
               <span className="field-label">Keep monitoring everyone in this file</span>
               <span className="field-hint">

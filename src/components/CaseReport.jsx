@@ -231,7 +231,7 @@ function SourceCard({ result, applicantHasDob }) {
   const articles = result.articles || [];
   const total = result.match_count ?? matches.length;
   const notScreened =
-    result.status === "ERROR" || result.status === "NOT_CONFIGURED";
+    result.status === "ERROR" || result.status === "NOT_CONFIGURED" || result.status === "SKIPPED";
   const detail = notScreened
     ? ""
     : [
@@ -406,6 +406,16 @@ const CaseReport = forwardRef(function CaseReport(
           {sum.partial === 1 ? "One source was" : `${sum.partial} sources were`}{" "}
           incomplete: some of its lists were not fully screened. Check the cards
           below to see which, then screen again.
+        </p>
+      )}
+      {sum.skipped > 0 && (
+        <p className="notice notice-warn" role="note">
+          Switched off in Settings and not checked in this case:{" "}
+          {(caseData.results || [])
+            .filter((r) => r.status === "SKIPPED")
+            .map((r) => (SOURCES[r.source] || { name: r.source }).name)
+            .join(", ")}
+          . A result from this case does not cover {sum.skipped === 1 ? "that list" : "those lists"}.
         </p>
       )}
       {sum.notScreened > 0 && (

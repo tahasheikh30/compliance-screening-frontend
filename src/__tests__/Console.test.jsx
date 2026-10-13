@@ -14,7 +14,6 @@ vi.mock('../pages/console/MonitoringTab', () => ({ default: () => <h1>Monitoring
 vi.mock('../pages/console/ListsTab', () => ({ default: () => <h1>Lists screen</h1> }))
 vi.mock('../pages/console/UsersTab', () => ({ default: () => <h1>People screen</h1> }))
 vi.mock('../pages/console/UserHistoryPage', () => ({ default: () => null }))
-vi.mock('../pages/console/AccountPage', () => ({ default: () => null }))
 vi.mock('../pages/console/NotificationsPage', () => ({ default: () => null }))
 
 import { ToastProvider } from '../components/Toaster'
