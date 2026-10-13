@@ -1,8 +1,25 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// Fonts are found by the browser only after it has downloaded and read the stylesheet, which puts them a full
+// round trip behind everything else and makes text jump when Inter arrives. The latin file covers every page,
+// so tell the browser about it up front. The file name has a hash, so it is looked up in the finished build.
+function preloadInterLatin() {
+  return {
+    name: 'preload-inter-latin',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        const file = Object.keys(ctx.bundle || {}).find((f) => /inter-latin-wght-normal-.*\.woff2$/.test(f))
+        if (!file) return undefined
+        return [{ tag: 'link', attrs: { rel: 'preload', as: 'font', type: 'font/woff2', crossorigin: '', href: `/${file}` }, injectTo: 'head-prepend' }]
+      },
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), preloadInterLatin()],
   // fonts must be real files: the Content Security Policy (vercel.json) allows font-src 'self' but not data: URLs
   build: {
     assetsInlineLimit: 0,

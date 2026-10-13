@@ -9,7 +9,7 @@ vi.mock('../auth/AuthContext', () => ({
 
 import { ToastProvider, useToast, useNotifications } from '../components/Toaster'
 import ProfileMenu from '../components/ProfileMenu'
-import AccountPage from '../pages/console/AccountPage'
+import AccountSection from '../components/settings/AccountSection'
 import NotificationsPage from '../pages/console/NotificationsPage'
 
 afterEach(() => { cleanup(); vi.clearAllMocks() })
@@ -64,7 +64,7 @@ describe('toasts', () => {
 
 describe('ProfileMenu', () => {
   const setup = (over = {}) => {
-    const props = { email: 'ana@example.com', isAdmin: false, unread: 0, onAccount: vi.fn(), onNotifications: vi.fn(), onSignOut: vi.fn(), ...over }
+    const props = { email: 'ana@example.com', isAdmin: false, unread: 0, onSettings: vi.fn(), onNotifications: vi.fn(), onSignOut: vi.fn(), ...over }
     render(<ProfileMenu {...props} />)
     return props
   }
@@ -96,8 +96,8 @@ describe('ProfileMenu', () => {
     fireEvent.click(btn)
     expect(btn.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByText('Administrator')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
-    expect(p.onAccount).toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    expect(p.onSettings).toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: /^Notifications/ }))
     expect(p.onNotifications).toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
@@ -105,21 +105,22 @@ describe('ProfileMenu', () => {
   })
 })
 
-describe('AccountPage', () => {
-  const fill = (a, b) => {
+describe('AccountSection', () => {
+  const fill = (a, b, current = 'the-current-password') => {
+    fireEvent.change(document.getElementById('current-password'), { target: { value: current } })
     fireEvent.change(document.getElementById('new-password'), { target: { value: a } })
     fireEvent.change(document.getElementById('confirm-password'), { target: { value: b } })
     fireEvent.click(screen.getByRole('button', { name: 'Change password' }))
   }
 
   it('shows who the person is', () => {
-    render(<ToastProvider><AccountPage /></ToastProvider>)
+    render(<ToastProvider><AccountSection /></ToastProvider>)
     expect(screen.getAllByText('ana@example.com').length).toBeGreaterThan(0)
     expect(screen.getAllByText('User').length).toBeGreaterThan(0)
   })
 
   it('rejects a short password and a mismatch without calling the server', () => {
-    render(<ToastProvider><AccountPage /></ToastProvider>)
+    render(<ToastProvider><AccountSection /></ToastProvider>)
     fill('short', 'short')
     expect(screen.getByText(/at least 12 characters for the password/)).toBeTruthy()
     fill('a-long-enough-password', 'a-different-password')
@@ -129,18 +130,37 @@ describe('AccountPage', () => {
 
   it('changes the password, clears the form, and raises a toast', async () => {
     changePassword.mockResolvedValue(undefined)
-    render(<ToastProvider><AccountPage /></ToastProvider>)
+    render(<ToastProvider><AccountSection /></ToastProvider>)
     fill('a-long-enough-password', 'a-long-enough-password')
     await waitFor(() => expect(screen.getAllByText('Password changed').length).toBeGreaterThan(0))
-    expect(changePassword).toHaveBeenCalledWith('a-long-enough-password')
+    expect(changePassword).toHaveBeenCalledWith('the-current-password', 'a-long-enough-password', null)
+    expect(document.getElementById('current-password').value).toBe('')
     expect(document.getElementById('new-password').value).toBe('')
     expect(screen.getByText('Your password was changed.')).toBeTruthy()
+  })
+
+  it('asks for the current password and refuses a new one that is the same', () => {
+    render(<ToastProvider><AccountSection /></ToastProvider>)
+    fill('a-long-enough-password', 'a-long-enough-password', '')
+    expect(screen.getByText('Enter your current password.')).toBeTruthy()
+    fill('a-long-enough-password', 'a-long-enough-password', 'a-long-enough-password')
+    expect(screen.getByText('The new password must be different from your current one.')).toBeTruthy()
+    expect(changePassword).not.toHaveBeenCalled()
+  })
+
+  it('shows the reason when the current password is wrong', async () => {
+    const { ApiError } = await import('../lib/apiError')
+    changePassword.mockRejectedValue(new ApiError({ code: 'SIGN_IN_FAILED', message: 'Your current password is not correct.' }))
+    render(<ToastProvider><AccountSection /></ToastProvider>)
+    fill('a-long-enough-password', 'a-long-enough-password', 'not-my-password-1')
+    await waitFor(() => expect(screen.getByText('Your current password is not correct.')).toBeTruthy())
+    expect(screen.queryByText('Your password was changed.')).toBeNull()
   })
 
   it('shows the reason when the change is refused', async () => {
     const { ApiError } = await import('../lib/apiError')
     changePassword.mockRejectedValue(new ApiError({ code: 'SIGN_IN_FAILED', message: 'The new password must be different from your current one.' }))
-    render(<ToastProvider><AccountPage /></ToastProvider>)
+    render(<ToastProvider><AccountSection /></ToastProvider>)
     fill('a-long-enough-password', 'a-long-enough-password')
     await waitFor(() => expect(screen.getByText('The new password must be different from your current one.')).toBeTruthy())
   })

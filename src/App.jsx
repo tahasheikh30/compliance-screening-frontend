@@ -7,6 +7,7 @@ import SetupProblem from './pages/SetupProblem'
 import Splash from './pages/Splash'
 import GlobalLoader from './components/GlobalLoader'
 import { ToastProvider } from './components/Toaster'
+import { PreferencesProvider } from './lib/preferences'
 
 // Each screen is fetched only when it is shown. Someone who is already signed in never downloads the landing
 // page, the information pages or their styles, and a visitor never downloads the console.
@@ -16,8 +17,10 @@ const loadLogin = () => import('./pages/LoginScreen')
 const Console = lazy(loadConsole)
 const LandingPage = lazy(loadLanding)
 const LoginScreen = lazy(loadLogin)
-const LegalPage = lazy(() => import('./pages/LegalPage'))
-const InfoPage = lazy(() => import('./pages/InfoPage'))
+const loadLegal = () => import('./pages/LegalPage')
+const loadInfo = () => import('./pages/InfoPage')
+const LegalPage = lazy(loadLegal)
+const InfoPage = lazy(loadInfo)
 const WaitingScreen = lazy(() => import('./pages/WaitingScreen'))
 const Analytics = lazy(() => import('@vercel/analytics/react').then((m) => ({ default: m.Analytics })))
 
@@ -27,6 +30,8 @@ if (typeof window !== 'undefined') {
   const path = window.location.pathname.replace(/\/+$/, '').toLowerCase() || '/'
   if (path === ROUTES.landing) loadLanding().catch(() => {})
   else if (path === ROUTES.signIn || path === ROUTES.requestAccess) loadLogin().catch(() => {})
+  else if (isInfoPath(path)) loadInfo().catch(() => {})
+  else if (isLegalPath(path)) loadLegal().catch(() => {})
 }
 
 // Analytics is not needed to use the app, so it loads after the first screen and never delays it.
@@ -75,9 +80,11 @@ function Router() {
     if (signedOut && path === ROUTES.landing) loadLogin().catch(() => {})
   }, [onSignInScreen, phase, signedOut, path])
 
-  if (phase === 'loading') return <Splash>Loading...</Splash>
+  // The legal and information pages do not depend on who is signed in, so they show at once. They used to wait
+  // behind the "Loading..." screen for the sign in check, which only delayed pages anyone is allowed to read.
   if (isLegalPath(path)) return <LegalPage path={path} />
   if (isInfoPath(path)) return <InfoPage path={path} />
+  if (phase === 'loading') return <Splash>Loading...</Splash>
   if (signedOut) {
     const asSignup = path === ROUTES.requestAccess
     if (asSignup || path === ROUTES.signIn || redirectToSignIn) {
@@ -105,11 +112,13 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <GlobalLoader />
-        <Suspense fallback={<Splash>Loading...</Splash>}>
-          <Router />
-        </Suspense>
-        <DeferredAnalytics />
+        <PreferencesProvider>
+          <GlobalLoader />
+          <Suspense fallback={<Splash>Loading...</Splash>}>
+            <Router />
+          </Suspense>
+          <DeferredAnalytics />
+        </PreferencesProvider>
       </ToastProvider>
     </AuthProvider>
   )

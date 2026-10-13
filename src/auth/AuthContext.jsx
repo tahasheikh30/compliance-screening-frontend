@@ -2,7 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { getMe, SESSION_ENDED_EVENT, ACCOUNT_CHANGED_EVENT } from '../api'
 import { getSupabase } from '../lib/supabase'
 import { friendlyAuthError } from '../lib/authErrors'
-import { clearActivity, idleExpired, touch, watchActivity } from '../lib/idle'
+import { ApiError } from '../lib/apiError'
+import { clearActivity, idleExpired, idleMinutes, touch, watchActivity } from '../lib/idle'
 import { forget } from '../lib/readCache'
 
 const AuthContext = createContext(null)
@@ -67,7 +68,7 @@ export function AuthProvider({ children }) {
     let active = true
     ;(async () => {
       if (idleExpired()) {
-        await endSession('You were signed out after 30 minutes of inactivity.')
+        await endSession(`You were signed out after ${idleMinutes()} minutes of inactivity.`)
         return
       }
       const { data } = await auth.getSession()
@@ -116,7 +117,7 @@ export function AuthProvider({ children }) {
   const signedIn = phase === 'checking' || phase === 'ready'
   useEffect(() => {
     if (!signedIn) return undefined
-    return watchActivity(() => endSession('You were signed out after 30 minutes of inactivity.'))
+    return watchActivity(() => endSession(`You were signed out after ${idleMinutes()} minutes of inactivity.`))
   }, [signedIn, endSession])
 
   // a person waiting for approval: look again every so often, and when they come back to the tab
@@ -157,20 +158,39 @@ export function AuthProvider({ children }) {
     return { confirmEmail: !data.session }
   }, [])
 
-  /** Sets a new password for the signed in person. Supabase may ask them to have signed in recently. */
-  const changePassword = useCallback(async (password) => {
-    const { error } = await getSupabase().auth.updateUser({ password })
+  /**
+   * Sets a new password for the signed in person, after checking the current one. The check is a fresh
+   * password sign in for the same address (it needs a Turnstile token when CAPTCHA protection is on), so
+   * someone at an unlocked computer cannot change the password without knowing the old one.
+   */
+  const changePassword = useCallback(async (currentPassword, newPassword, captchaToken) => {
+    const email = meRef.current?.email
+    if (!email) throw friendlyAuthError(null)
+    const { error: verifyError } = await getSupabase().auth.signInWithPassword({
+      email,
+      password: currentPassword,
+      ...(captchaToken ? { options: { captchaToken } } : {}),
+    })
+    if (verifyError) {
+      if (verifyError.code === 'invalid_credentials' || String(verifyError.message || '').toLowerCase().includes('invalid login credentials')) {
+        throw new ApiError({ code: 'SIGN_IN_FAILED', message: 'Your current password is not correct.', hint: 'Check it and try again.' })
+      }
+      throw friendlyAuthError(verifyError)
+    }
+    const { error } = await getSupabase().auth.updateUser({ password: newPassword })
     if (error) throw friendlyAuthError(error)
     touch()
   }, [])
 
   const signOut = useCallback(() => endSession(null), [endSession])
+  // used after the person's own account was disabled or deleted: back to the sign in screen with the reason
+  const leaveWithNotice = useCallback((message) => endSession(message), [endSession])
   const clearNotice = useCallback(() => setNotice(null), [])
 
   const value = useMemo(() => ({
-    phase, me, meError, notice, signIn, signUp, signOut, changePassword, refresh: loadMe, clearNotice,
+    phase, me, meError, notice, signIn, signUp, signOut, leaveWithNotice, changePassword, refresh: loadMe, clearNotice,
     isAdmin: me?.role === 'admin' && me?.status === 'approved',
-  }), [phase, me, meError, notice, signIn, signUp, signOut, changePassword, loadMe, clearNotice])
+  }), [phase, me, meError, notice, signIn, signUp, signOut, leaveWithNotice, changePassword, loadMe, clearNotice])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

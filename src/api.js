@@ -265,6 +265,32 @@ export async function listUserApplicants(userId) {
   return apiJson(`/admin/users/${encodeURIComponent(userId)}/applicants?limit=200`)
 }
 
+/**
+ * Delete the signed in person's own screening history. Screenings under continuous monitoring are kept (the answer
+ * says how many). Returns { deleted, kept_monitored }.
+ */
+export async function clearMyHistory() {
+  const out = await apiJson('/account/history', { method: 'DELETE' })
+  forget('history:')      // the cached lists are the history that was just deleted
+  return out
+}
+
+/** Record a decision (cleared, confirmed or escalated; null to undo) and a note on a screening. */
+export async function reviewApplicant(id, decision, note) {
+  const out = await apiJson(`/applicants/${id}/review`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ decision, note: note || null }),
+  })
+  forget('history:')      // the cached lists show the old decision
+  return out
+}
+
+/** Names you expect to be on the lists, checked against them (administrators). Nothing is saved. */
+export async function checkCoverage(names) {
+  return apiJson('/admin/coverage', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ names }),
+  })
+}
+
 export async function getApplicant(id) {
   return apiJson(`/applicants/${id}`)
 }
@@ -280,6 +306,40 @@ async function saveResponse(res, filename) {
   a.click()
   a.remove()
   window.URL.revokeObjectURL(url)
+}
+
+// ---------------------------------------------------------------------------
+// Settings, and switching off or deleting your own account
+// ---------------------------------------------------------------------------
+
+/** { preferences, switchable_sources }: the person's settings (defaults filled in) and which lists they may switch off. */
+export async function getPreferences() {
+  return apiJson('/account/preferences', { track: false })
+}
+
+/** Saves the whole settings document. A write is never retried, so a failed save is reported, not repeated. */
+export async function savePreferences(preferences) {
+  return apiJson('/account/preferences', {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(preferences), track: false,
+  })
+}
+
+/** Switches the signed in person's own account off. Only an administrator can switch it back on. */
+export async function disableMyAccount() {
+  return apiJson('/account/disable', { method: 'POST' })
+}
+
+/** Deletes the signed in person's own account. They must type their own email address to confirm. */
+export async function deleteMyAccount(confirmEmail) {
+  return apiJson('/account', {
+    method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirm_email: confirmEmail }),
+  })
+}
+
+/** Save your screening history as a CSV file. */
+export async function exportHistory() {
+  const res = await request('/export/history.csv', { timeoutMs: 60000 })
+  await saveResponse(res, 'screening-history.csv')
 }
 
 export async function downloadEvidence(resultId, filename) {
@@ -379,6 +439,33 @@ export async function uploadNacta(file) {
 }
 
 // ---------------------------------------------------------------------------
+// Politically exposed persons (national and provincial)
+// ---------------------------------------------------------------------------
+
+export async function getPepStatus() {
+  return apiJson('/admin/pep')
+}
+
+// An administrator's own PEP list (CSV, JSON or XML), sent as the raw request body.
+export async function uploadPep(file) {
+  return apiJson(`/admin/pep?filename=${encodeURIComponent(file.name)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+    body: file,
+    timeoutMs: 120000,
+  })
+}
+
+// Start fetching the Wikidata copy now. It runs in the background; poll getPepStatus for progress.
+export async function refreshPep() {
+  return apiJson('/admin/pep/refresh', { method: 'POST' })
+}
+
+export async function deletePepUpload() {
+  return apiJson('/admin/pep', { method: 'DELETE' })
+}
+
+// ---------------------------------------------------------------------------
 // Continuous monitoring
 //
 // A screened person can be kept under watch: when a sanctions list changes, they are screened again and any
@@ -389,6 +476,11 @@ export async function uploadNacta(file) {
 /** { enabled, interval_seconds, monitored_applicants, open_alerts, sources: [{ source, last_checked_at, ... }] } */
 export async function getMonitoringStatus({ background = false } = {}) {
   return apiJson('/monitoring/status', { track: !background })
+}
+
+/** The people you are monitoring: [{ applicant_id, full_name, father_name, dob, monitored_since, last_monitored_at, open_alerts }]. */
+export async function listMonitoredPeople() {
+  return apiJson('/monitoring/people')
 }
 
 /** status: 'open' | 'confirmed' | 'dismissed'. Newest first. */

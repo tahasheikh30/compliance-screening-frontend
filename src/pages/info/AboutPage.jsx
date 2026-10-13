@@ -9,19 +9,19 @@ const LEADERSHIP = [
     name: "Faisal Khan",
     role: "CEO, IGI General Insurance",
     blurb: "Property, motor, marine and other non-life cover for individuals and businesses.",
-    img: "/assets/faisal-khan.jpg",
+    img: "/assets/faisal-khan.webp",
   },
   {
     name: "Ali Nadeem",
     role: "CEO, IGI Life",
     blurb: "Life and health protection, savings and retirement plans.",
-    img: "/assets/ali-nadeem.jpg",
+    img: "/assets/ali-nadeem.webp",
   },
   {
     name: "Raza Hussain Rizvi",
     role: "CEO, IGI Securities",
     blurb: "Brokerage and equity market access for retail and institutional clients.",
-    img: "/assets/raza-hussain-rizvi.jpg",
+    img: "/assets/raza-hussain-rizvi.webp",
   },
 ];
 
@@ -29,7 +29,7 @@ const LEADERSHIP = [
 const HYDER_ALI = {
   name: "Syed Hyder Ali",
   role: "Managing Director & CEO, Packages Limited. CEO, IGI Holdings",
-  img: "/assets/syed-hyder-ali.jpg",
+  img: "/assets/syed-hyder-ali.webp",
   summary:
     "Syed Hyder Ali joined Packages Limited in July 1987 and today leads both Packages Limited and IGI Holdings as chief executive. A chemical engineer by training, he spent his early career in paper production and packaging, including work on the pulp and paper mill that uses wheat straw as its raw material.",
   facts: [
@@ -146,7 +146,7 @@ function initials(name) {
 }
 
 // Shows the photo; if the file is missing or fails to load, shows initials instead of a broken image icon.
-function Portrait({ name, img, className }) {
+function Portrait({ name, img, className, width, height }) {
   const [failed, setFailed] = useState(false);
   if (img && !failed) {
     return (
@@ -154,6 +154,8 @@ function Portrait({ name, img, className }) {
         src={img}
         alt={name}
         className={className}
+        width={width}
+        height={height}
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}
@@ -168,11 +170,20 @@ function Portrait({ name, img, className }) {
 }
 
 // Hides an illustration that is not there yet rather than showing a broken image.
-function OptionalImage({ src, alt, className }) {
+function OptionalImage({ src, alt, className, width, height }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
   return (
-    <img src={src} alt={alt} className={className} loading="lazy" decoding="async" onError={() => setFailed(true)} />
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      width={width}
+      height={height}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(true)}
+    />
   );
 }
 
@@ -195,6 +206,8 @@ export default function AboutPage() {
             name="Syed Babar Ali"
             img="/assets/syed-babar-ali.webp"
             className="info-profile-photo"
+            width={176}
+            height={216}
           />
           <div>
             <p className="lp-label lp-label-gold">In tribute to</p>
@@ -227,6 +240,8 @@ export default function AboutPage() {
             name={HYDER_ALI.name}
             img={HYDER_ALI.img}
             className="info-profile-photo"
+            width={176}
+            height={216}
           />
           <div>
             <p className="lp-label lp-label-gold">Leading the group today</p>
@@ -260,6 +275,8 @@ export default function AboutPage() {
                 name={p.name}
                 img={p.img}
                 className="info-person-photo"
+                width={64}
+                height={64}
               />
               <h3>{p.name}</h3>
               <p className="info-role">{p.role}</p>
@@ -280,8 +297,10 @@ export default function AboutPage() {
         </p>
         <figure className="info-banner">
           <OptionalImage
-            src="/assets/packages-about.jpg"
+            src="/assets/packages-about.webp"
             alt="Packages Group companies"
+            width={1500}
+            height={659}
           />
         </figure>
         <ul className="info-grid info-grid-3">
@@ -311,6 +330,8 @@ export default function AboutPage() {
             src="/assets/core-values.webp"
             alt="Packages Group core values: Care, Respect, Lead, Honesty, Courage"
             className="info-values-image"
+            width={377}
+            height={354}
           />
           <ul className="info-value-list">
             {CORE_VALUES.map((v) => (

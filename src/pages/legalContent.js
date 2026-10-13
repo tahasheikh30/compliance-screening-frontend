@@ -31,7 +31,7 @@ export const LEGAL_PAGES = {
       {
         h: 'Why we use it',
         p: [
-          'Applicant details are compared against the UN Security Council list, the OFAC SDN and Consolidated lists, the UK Sanctions List, the FIA Red Books and the NACTA Proscribed Persons list, and used for an adverse media search. This is done solely for account-opening AML/KYC screening and to meet our legal and regulatory duties.',
+          'Applicant details are compared against the UN Security Council list, the OFAC SDN and Consolidated lists, the UK Sanctions List, the FIA Red Books, the NACTA Proscribed Persons list and a list of politically exposed persons (national and provincial office holders), and used for an adverse media search. This is done solely for account-opening AML/KYC screening and to meet our legal and regulatory duties.',
           'Staff details are used to sign you in, to approve accounts, to show each person their own screening history and to keep the service secure.',
         ],
       },

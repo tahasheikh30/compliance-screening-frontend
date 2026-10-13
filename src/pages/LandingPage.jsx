@@ -28,6 +28,7 @@ function CheckIcon() {
 const SAMPLE_ROWS = [
   "UN, OFAC, UK lists",
   "FIA Red Book, NACTA",
+  "Politically exposed persons (national and provincial)",
   "Open news search",
 ];
 
@@ -35,7 +36,7 @@ const POINTS = [
   {
     key: "01 / COVERAGE",
     title: "Every list in one search",
-    copy: "One name is checked against the UN, OFAC, UK, FIA Red Book and NACTA lists, plus an open news search.",
+    copy: "One name is checked against the UN, OFAC, UK, FIA Red Book and NACTA lists and for politically exposed persons (national and provincial), plus an open news search.",
   },
   {
     key: "02 / CLARITY",
@@ -94,7 +95,8 @@ export default function LandingPage() {
             <h1 id="lp-hero-title">Know who you’re dealing with.</h1>
             <p className="lp-lead">
               Screen an applicant against the UN, OFAC, UK, FIA Red Book and
-              NACTA lists and an open news search. Get a clear verdict, with the
+              NACTA lists, for politically exposed persons (national and
+              provincial) and with an open news search. Get a clear verdict, with the
               evidence attached.
             </p>
             <div className="lp-cta">

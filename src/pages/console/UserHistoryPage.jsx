@@ -11,7 +11,7 @@ export default function UserHistoryPage({ user, onBack }) {
       cacheKey={`history:user:${user.id}`}
       heading={`Screenings by ${user.email}`}
       emptyText={`${user.email} has not screened anyone yet.`}
-      lead={(
+      above={(
         <button type="button" className="btn btn-quiet btn-small back-btn" onClick={onBack}>
           Back to People
         </button>

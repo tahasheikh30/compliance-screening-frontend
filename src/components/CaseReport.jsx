@@ -78,6 +78,13 @@ export function MatchItem({ match, applicantHasDob }) {
         <Fact label="List">{match.list}</Fact>
         <Fact label="Type">{match.type}</Fact>
         <Fact label="Programme">{match.programs}</Fact>
+        {match.pep_level && (
+          <Fact label="PEP level">
+            <Pill tone="warn">{match.pep_level}</Pill>
+            {match.province ? ` ${match.province}` : ""}
+          </Fact>
+        )}
+        <Fact label="Office held">{match.position}</Fact>
         <Fact label="Date of birth">
           {match.dob || "Not listed"}
           {applicantHasDob && match.dob_year_match === "Yes" && (
@@ -224,7 +231,7 @@ function SourceCard({ result, applicantHasDob }) {
   const articles = result.articles || [];
   const total = result.match_count ?? matches.length;
   const notScreened =
-    result.status === "ERROR" || result.status === "NOT_CONFIGURED";
+    result.status === "ERROR" || result.status === "NOT_CONFIGURED" || result.status === "SKIPPED";
   const detail = notScreened
     ? ""
     : [
@@ -363,6 +370,12 @@ const CaseReport = forwardRef(function CaseReport(
             {fmtNum(sum.sanctions)}
           </dd>
         </div>
+        {sum.pep > 0 && (
+          <div>
+            <dt>PEP matches</dt>
+            <dd className="tally-warn">{fmtNum(sum.pep)}</dd>
+          </div>
+        )}
         <div>
           <dt>News leads</dt>
           <dd className={sum.news ? "tally-warn" : ""}>{fmtNum(sum.news)}</dd>
@@ -393,6 +406,16 @@ const CaseReport = forwardRef(function CaseReport(
           {sum.partial === 1 ? "One source was" : `${sum.partial} sources were`}{" "}
           incomplete: some of its lists were not fully screened. Check the cards
           below to see which, then screen again.
+        </p>
+      )}
+      {sum.skipped > 0 && (
+        <p className="notice notice-warn" role="note">
+          Switched off in Settings and not checked in this case:{" "}
+          {(caseData.results || [])
+            .filter((r) => r.status === "SKIPPED")
+            .map((r) => (SOURCES[r.source] || { name: r.source }).name)
+            .join(", ")}
+          . A result from this case does not cover {sum.skipped === 1 ? "that list" : "those lists"}.
         </p>
       )}
       {sum.notScreened > 0 && (

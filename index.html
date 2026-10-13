@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sentinel by Packages | Applicant screening</title>
     <meta name="description" content="Sentinel is the internal applicant screening tool for IGI General Takaful. Authorized personnel only." />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#11181d" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- The page is dark: paint that colour before any file arrives, so there is no white flash while loading. -->
+    <style>html{background:#11181d;color-scheme:dark}</style>
     <!-- No third-party embeds by design: this app handles applicant PII,
          so nothing here should be making requests to (or leaking data
          to) an external service. Fonts are system fonts, not loaded

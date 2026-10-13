@@ -6,8 +6,12 @@ vi.mock('../api', () => ({
   reloadLists: vi.fn(),
   getNactaStatus: vi.fn(),
   uploadNacta: vi.fn(),
+  getPepStatus: vi.fn(),
+  uploadPep: vi.fn(),
+  deletePepUpload: vi.fn(),
+  refreshPep: vi.fn(),
 }))
-import { getListsStatus, getNactaStatus, reloadLists } from '../api'
+import { getListsStatus, getNactaStatus, reloadLists, getPepStatus, uploadPep, deletePepUpload, refreshPep } from '../api'
 import ListsTab from '../pages/console/ListsTab'
 
 afterEach(() => { cleanup(); vi.clearAllMocks() })
@@ -26,13 +30,19 @@ const status = (over = {}) => ({
     ],
   },
   NACTA: { cached: true, age_seconds: 5, records: 5294, error: null, lists: [ok('NACTA Proscribed Persons (Fourth Schedule)', 5294)] },
+  PEP: { cached: true, age_seconds: 5, records: 900, error: null, lists: [ok('PEP list from Wikidata (national and provincial office holders)', 900)] },
   ...over,
+})
+const pepStatus = (over = {}) => ({
+  wikidata: { loaded: true, records: 900, uploaded_at: '2026-10-08T00:00:00+00:00', age_days: 2 },
+  upload: { loaded: false }, wikidata_enabled: true, fetch: { running: false, error: null }, refresh_days: 7, lookback_years: 5, required: false, ...over,
 })
 const nacta = (over = {}) => ({ loaded: true, source: 'upload', filename: 'nacta.json', records: 5294, uploaded_at: '2026-10-01T00:00:00+00:00', age_days: 2, max_age_days: 30, stale: false, ...over })
 
-function setup(s = status(), n = nacta()) {
+function setup(s = status(), n = nacta(), p = pepStatus()) {
   getListsStatus.mockResolvedValue(s)
   getNactaStatus.mockResolvedValue(n)
+  getPepStatus.mockResolvedValue(p)
   return render(<ListsTab />)
 }
 
@@ -91,12 +101,52 @@ describe('ListsTab', () => {
     expect(within(un).getByText(/ConnectionError: timed out/)).toBeTruthy()
   })
 
+  it('does not show Ready for a list that is not cached, is empty, or whose source reported an error', async () => {
+    setup(status({
+      // reported OK but the source is not in the server's memory: not loaded
+      UKSL: { cached: false, age_seconds: null, records: 10, error: null, lists: [ok('UK Sanctions List (FCDO)', 10)] },
+      // reported OK but holds no records: not loaded
+      NACTA: { cached: true, age_seconds: 5, records: 0, error: null, lists: [ok('NACTA Proscribed Persons (Fourth Schedule)', 0)] },
+      // the source failed and the list row carries no status of its own: still a problem
+      UNSC: { cached: true, age_seconds: 5, records: 0, error: 'The list could not be downloaded or read (timed out).',
+        lists: [{ list: 'UNSC', records: 0, source: null }] },
+      // the source failed and returned no lists at all
+      PEP: { cached: false, age_seconds: null, records: 0, error: 'The PEP list could not be read.', lists: [] },
+    }))
+    await waitFor(() => screen.getByText('UK Sanctions List (FCDO)'))
+    const row = (name) => screen.getByText(name).closest('tr')
+    expect(within(row('UK Sanctions List (FCDO)')).getByText('Not loaded yet')).toBeTruthy()
+    expect(within(row('UK Sanctions List (FCDO)')).queryByText('Ready')).toBeNull()
+    expect(within(row('NACTA Proscribed Persons (Fourth Schedule)')).getByText('Not loaded yet')).toBeTruthy()
+    expect(within(row('NACTA Proscribed Persons (Fourth Schedule)')).queryByText('Ready')).toBeNull()
+    const un = row('UN Security Council Consolidated List')
+    expect(within(un).getByText('Problem')).toBeTruthy()
+    expect(within(un).getByText(/could not be downloaded or read \(timed out\)/)).toBeTruthy()
+    expect(within(un).queryByText('Ready')).toBeNull()
+    const pep = row('Politically exposed persons (national and provincial, Pakistan)')   // no lists came back, so the source's own name
+    expect(within(pep).getByText('Problem')).toBeTruthy()
+    expect(within(pep).getByText('The PEP list could not be read.')).toBeTruthy()
+    // the lists that are fine still say Ready
+    expect(within(row('OFAC SDN List')).getByText('Ready')).toBeTruthy()
+  })
+
   it('shows the fallback note when the live NACTA download failed', async () => {
     const s = status()
     s.NACTA.lists[0].note = 'The live download from NACTA failed (timed out). Using the last good copy, 2 days old.'
     setup(s, nacta({ source: 'url', url: 'https://nfs.example.pk/export.json', live_copy: true }))
     await waitFor(() => screen.getByText(/Using the last good copy, 2 days old/))
     expect(screen.getByText(/Downloaded automatically from/)).toBeTruthy()
+  })
+
+  it('keeps a long error behind a "Show the full error" toggle', async () => {
+    const s = status()
+    const full = "HTTPSConnectionPool(host='www.pap.gov.pk', port=443): Max retries exceeded with url: /members (Caused by)"
+    s.NACTA.lists[0].note = 'Could not be read this time: the site did not answer the server.'
+    s.NACTA.lists[0].detail = full
+    setup(s)
+    await waitFor(() => screen.getByText(/the site did not answer the server/))
+    expect(screen.getByText('Show the full error')).toBeTruthy()
+    expect(screen.getByText(full).closest('details').open).toBe(false)     // collapsed until opened
   })
 
   it('summarises a reload by naming the lists that have a problem', async () => {
@@ -117,5 +167,46 @@ describe('ListsTab', () => {
     await waitFor(() => screen.getByText('FIA Red Book 2025'))
     fireEvent.click(screen.getByRole('button', { name: 'Reload all lists now' }))
     await waitFor(() => expect(screen.getAllByRole('status').map((e) => e.textContent).join(' ')).toMatch(/Every list loaded/))
+  })
+
+  it('lists the PEP source and explains that a PEP is not a sanctions hit', async () => {
+    setup()
+    await waitFor(() => expect(screen.getByText('PEP list from Wikidata (national and provincial office holders)')).toBeTruthy())
+    expect(await screen.findByText(/not a\s+sanctions hit/)).toBeTruthy()
+    expect(await screen.findByText(/Wikidata copy: 900 people/)).toBeTruthy()
+  })
+
+  it('uploads an administrator PEP list and reports national and provincial counts', async () => {
+    uploadPep.mockResolvedValue({ records: 4, national: 1, provincial: 3, rows_skipped: 0, warnings: ['No usable CNIC numbers were found, so matching will rely on names alone.'] })
+    setup()
+    const input = await screen.findByLabelText(/Your own PEP list/)
+    const file = new File(['Name,Position\nX,Senator'], 'pep.csv', { type: 'text/csv' })
+    fireEvent.change(input, { target: { files: [file] } })
+    fireEvent.click(screen.getByRole('button', { name: 'Upload PEP list' }))
+    await waitFor(() => expect(uploadPep).toHaveBeenCalledWith(file))
+    expect(await screen.findByText(/1 national, 3 provincial/)).toBeTruthy()
+    expect(screen.getByText(/No usable CNIC numbers/)).toBeTruthy()
+  })
+
+  it('lets an administrator remove their own list, and warns when no PEP data is loaded at all', async () => {
+    deletePepUpload.mockResolvedValue(pepStatus())
+    setup(status(), nacta(), pepStatus({ upload: { loaded: true, filename: 'pep.csv', records: 4, uploaded_at: '2026-10-09T00:00:00+00:00', age_days: 1 } }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove my list' }))
+    await waitFor(() => expect(deletePepUpload).toHaveBeenCalled())
+    cleanup()
+    setup(status(), nacta(), pepStatus({ wikidata: { loaded: false }, required: true }))
+    expect(await screen.findByText(/No PEP data is loaded/)).toBeTruthy()
+    expect(screen.getByText(/manual review until some is loaded/)).toBeTruthy()
+  })
+
+  it('lets an administrator start a Wikidata fetch, shows it running, and shows why a fetch failed', async () => {
+    refreshPep.mockResolvedValue(pepStatus({ fetch: { running: true, error: null } }))
+    setup(status(), nacta(), pepStatus({ wikidata: { loaded: false } }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Fetch from Wikidata now' }))
+    await waitFor(() => expect(refreshPep).toHaveBeenCalled())
+    expect(await screen.findByText(/Fetching the PEP list from Wikidata now/)).toBeTruthy()
+    cleanup()
+    setup(status(), nacta(), pepStatus({ wikidata: { loaded: false }, fetch: { running: false, error: 'HTTP 504 from query.wikidata.org' } }))
+    expect(await screen.findByText(/last fetch from Wikidata failed: HTTP 504 from query.wikidata.org/)).toBeTruthy()
   })
 })

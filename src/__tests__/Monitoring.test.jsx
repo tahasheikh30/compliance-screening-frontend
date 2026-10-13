@@ -18,7 +18,7 @@ async function load() {
 
 const health = { 'GET /api/health': { status: 'ok' } }
 const SOURCES = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA', 'ADVERSE_MEDIA'].map((source) => ({ source, last_checked_at: '2026-10-08T08:00:00+00:00' }))
-const status = (over = {}) => ({ enabled: true, interval_seconds: 900, monitored_applicants: 2, open_alerts: 0, sources: SOURCES, ...over })
+const status = (over = {}) => ({ enabled: true, interval_seconds: 86400, monitored_applicants: 2, open_alerts: 0, sources: SOURCES, ...over })
 const alert = (over = {}) => ({
   id: 11, applicant_id: 4, applicant_name: 'Hamza Example', source: 'UNSC', list: 'UN 1267', ref: 'QDi.1',
   matched_name: 'Hamza Exemplar', score: 93, status: 'open', created_at: '2026-10-08T09:00:00+00:00',
@@ -29,12 +29,72 @@ const calls = () => fetchMock.mock.calls.map(([u, i]) => `${(i?.method || 'GET')
 
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()   // the console remembers its open tab here, so one test must not start on another's tab
   window.history.replaceState(null, '', '/sign-in')
   h.supabase = makeSupabase({ session: sessionFor() })
   fetchMock = vi.fn()
   vi.stubGlobal('fetch', fetchMock)
 })
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.unstubAllEnvs() })
+
+describe('people being monitored', () => {
+  const person = (over = {}) => ({
+    applicant_id: 4, full_name: 'Hamza Example', father_name: 'Bilal Example', dob: '1990-05-01',
+    overall_status: 'clear', monitored_since: '2026-10-01T08:00:00+00:00', last_monitored_at: '2026-10-08T08:00:00+00:00',
+    open_alerts: 0, ...over,
+  })
+
+  async function openTab(routes) {
+    await load()
+    mockApi(fetchMock, { ...health, 'GET /api/me': ME, 'GET /api/monitoring/status': status(), 'GET /api/monitoring/alerts': [], ...routes })
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: /Monitoring/ }))
+  }
+
+  it('lists who is monitored, with the open alerts of each', async () => {
+    await openTab({ 'GET /api/monitoring/people': [person(), person({ applicant_id: 5, full_name: 'Second Person', open_alerts: 2 })] })
+    expect(await screen.findByText('People being monitored (2)')).toBeTruthy()
+    const row = screen.getByText('Second Person').closest('li')
+    expect(within(row).getByText('2 alerts to review')).toBeTruthy()
+    expect(within(screen.getByText('Hamza Example').closest('li')).getByText(/Father: Bilal Example/)).toBeTruthy()
+  })
+
+  it('stops monitoring one person after confirmation, and nobody else', async () => {
+    let people = [person(), person({ applicant_id: 5, full_name: 'Second Person' })]
+    await openTab({
+      'GET /api/monitoring/people': () => people,
+      'POST /api/applicants/4/monitoring': () => {
+        people = people.filter((p) => p.applicant_id !== 4)
+        return { applicant_id: 4, monitored: false, new_alerts: 0 }
+      },
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop monitoring Hamza Example' }))
+    expect(calls().filter((c) => c.startsWith('POST /api/applicants/'))).toEqual([])     // asks first
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Stop monitoring Hamza Example?')).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Stop monitoring' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Stop monitoring Hamza Example' })).toBeNull())     // the toast still names them
+    expect(calls().filter((c) => c.startsWith('POST /api/applicants/'))).toEqual(['POST /api/applicants/4/monitoring'])
+    const sent = fetchMock.mock.calls.find(([u, i]) => i?.method === 'POST' && String(u).includes('/applicants/4/monitoring'))
+    expect(JSON.parse(sent[1].body)).toEqual({ enabled: false })
+    expect(screen.getByRole('button', { name: 'Stop monitoring Second Person' })).toBeTruthy()
+  })
+
+  it('does not stop anyone when the confirmation is cancelled', async () => {
+    await openTab({ 'GET /api/monitoring/people': [person()] })
+    fireEvent.click(await screen.findByRole('button', { name: 'Stop monitoring Hamza Example' }))
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(calls().some((c) => c.startsWith('POST /api/applicants/'))).toBe(false)
+  })
+
+  it('shows no list, and no error, when the server does not have the list yet', async () => {
+    await openTab({})          // /monitoring/people answers 404
+    await waitFor(() => expect(calls()).toContain('GET /api/monitoring/people'))
+    expect(screen.queryByText(/People being monitored/)).toBeNull()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+})
 
 describe('notification of a new match', () => {
   it('tells the person in the app, puts the count on the Monitoring tab, and opens the alerts', async () => {
@@ -85,7 +145,7 @@ describe('the Monitoring tab', () => {
     await openTab({ 'GET /api/monitoring/status': status({ monitored_applicants: 0 }), 'GET /api/monitoring/alerts': [] })
     expect(await screen.findByText(/Nobody is being monitored yet/)).toBeTruthy()
     expect(screen.getByRole('status').textContent).toMatch(/Watching 0 people/)
-    expect(screen.getByRole('status').textContent).toMatch(/15 minutes/)
+    expect(screen.getByRole('status').textContent).toMatch(/once a day/)
   })
 
   it('warns when automatic checking is switched off on the server', async () => {

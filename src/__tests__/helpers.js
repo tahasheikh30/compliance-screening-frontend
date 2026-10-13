@@ -16,7 +16,7 @@ export const sessionFor = (email = 'ana@example.com', token = 'tok-1', id = 'u1'
  */
 export function makeSupabase({ session = null } = {}) {
   const listeners = new Set()
-  const state = { session, refreshed: undefined, signInError: null, signUpSession: null, signUpError: null }
+  const state = { session, refreshed: undefined, signInError: null, signUpSession: null, signUpError: null, updateError: null }
   const emit = (event) => listeners.forEach((cb) => cb(event, state.session))
   const auth = {
     getSession: vi.fn(async () => ({ data: { session: state.session } })),
@@ -33,6 +33,9 @@ export function makeSupabase({ session = null } = {}) {
       if (state.signUpError) return { data: { session: null }, error: state.signUpError }
       return { data: { session: state.signUpSession, user: {} }, error: null }
     }),
+    updateUser: vi.fn(async () => (
+      state.updateError ? { data: { user: null }, error: state.updateError } : { data: { user: state.session?.user }, error: null }
+    )),
     signOut: vi.fn(async () => { state.session = null; emit('SIGNED_OUT'); return { error: null } }),
     onAuthStateChange: vi.fn((cb) => {
       listeners.add(cb)

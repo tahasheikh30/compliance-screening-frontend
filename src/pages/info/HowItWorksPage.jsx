@@ -23,6 +23,10 @@ const SOURCES = [
     copy: "Proscribed Persons under the Fourth Schedule, loaded from NACTA's published export.",
   },
   {
+    name: "Politically exposed persons",
+    copy: "National and provincial office holders, such as members of the assemblies and the Senate, ministers, chief ministers and governors. A PEP is flagged for enhanced review, not treated as a sanctions match.",
+  },
+  {
     name: "Open news search",
     copy: "Recent news that names the applicant alongside adverse words such as fraud or arrest.",
   },

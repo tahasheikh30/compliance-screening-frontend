@@ -88,7 +88,7 @@ describe('SiteFooter', () => {
     expect(screen.getByRole('link', { name: /Packages Group on Facebook/ })).toBeTruthy()
     expect(screen.getByRole('link', { name: /Packages Group on Instagram/ })).toBeTruthy()
     expect(screen.getByRole('link', { name: /Packages Group on X/ })).toBeTruthy()
-    expect(screen.getByAltText('Packages Group').getAttribute('src')).toBe('/packages_logo_footer.png')
+    expect(screen.getByAltText('Packages Group').getAttribute('src')).toBe('/packages_logo_footer.webp')
   })
 
   it('opens the data handling notice from the footer', async () => {

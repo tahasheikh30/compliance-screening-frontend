@@ -3,6 +3,7 @@ import { getApplicant } from '../api'
 import ErrorBanner from './ErrorBanner'
 import CaseReport from './CaseReport'
 import MonitorToggle from './MonitorToggle'
+import ReviewPanel, { decisionLabel } from './ReviewPanel'
 import { Pill } from './ui'
 import { fmtDateTime } from '../lib/format'
 import { overallInfo } from '../lib/status'
@@ -29,6 +30,7 @@ const HistoryRow = memo(function HistoryRow({ row, on, onOpen }) {
         </button>
         <span className="row-sub">{fmtDateTime(row.submitted_at)}</span>
         <span className="row-sub mono">#{String(row.id).padStart(5, '0')}</span>
+        {row.review_decision && <span className="row-sub">Decision: {decisionLabel(row.review_decision)}</span>}
         {row.monitored && <span className="row-sub">Under continuous monitoring</span>}
       </td>
       <td><Pill tone={info.tone}>{info.stamp}</Pill></td>
@@ -45,9 +47,10 @@ const HistoryRow = memo(function HistoryRow({ row, on, onOpen }) {
  *   heading     the page title
  *   emptyText   what to say when there are no screenings at all
  *   canMonitor  show the monitoring switch on an opened case (only for the person's own screenings)
- *   lead        optional content above the tools (a back button, a description)
+ *   lead        optional content above the tools (a description)
+ *   above       optional content above the whole card, left aligned with it (a back button)
  */
-export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyText, canMonitor = false, lead = null }) {
+export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyText, canMonitor = false, lead = null, above = null }) {
   const [rows, setRows] = useState(() => peek(cacheKey))   // the last answer, shown at once while it refreshes
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
@@ -113,7 +116,14 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
     setRows((all) => (all ? remember(cacheKey, all.map((r) => (r.id === id ? { ...r, monitored } : r))) : all))
   }, [cacheKey])
 
+  // keep the row's decision in step when it is saved from the open case
+  const onDecision = useCallback((id, review_decision) => {
+    setRows((all) => (all ? remember(cacheKey, all.map((r) => (r.id === id ? { ...r, review_decision } : r))) : all))
+  }, [cacheKey])
+
   return (
+    <>
+    {above && <div className="page-back">{above}</div>}
     <div className="workspace workspace-history">
       <section className="sheet history" aria-labelledby="history-heading">
         <div className="folder-tab">History</div>
@@ -174,6 +184,9 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
         {caseData && (
           <>
             <CaseReport key={caseData.applicant_id} ref={headingRef} caseData={caseData} applicant={selected} />
+            <ReviewPanel key={`review-${caseData.applicant_id}`} applicantId={caseData.applicant_id}
+              decision={caseData.review_decision} note={caseData.review_note} reviewedAt={caseData.reviewed_at}
+              onChange={(d) => onDecision(caseData.applicant_id, d)} />
             {canMonitor && (
               <MonitorToggle key={caseData.applicant_id} applicantId={caseData.applicant_id}
                 monitored={!!caseData.monitored} onChange={(m) => onMonitoring(caseData.applicant_id, m)} />
@@ -185,5 +198,6 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
         )}
       </div>
     </div>
+    </>
   )
 }

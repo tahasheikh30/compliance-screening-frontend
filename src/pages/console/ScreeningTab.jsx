@@ -6,10 +6,10 @@ import MonitorToggle from '../../components/MonitorToggle'
 import { MagnifyingGlassIcon, ScanningAnimation } from '../../components/ui'
 import { SOURCES, SOURCE_ORDER, overallInfo } from '../../lib/status'
 import { PROVINCES } from '../../lib/provinces'
+import { DEFAULT_THRESHOLD, usePreferences } from '../../lib/preferences'
 import { useToast } from '../../components/Toaster'
 import BatchScreening from './BatchScreening'
 
-const DEFAULT_THRESHOLD = 85
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -44,8 +44,15 @@ function IndividualScreening() {
   const [cnicTouched, setCnicTouched] = useState(false)
   const [fatherName, setFatherName] = useState('')
   const [province, setProvince] = useState('')
-  const [threshold, setThreshold] = useState(DEFAULT_THRESHOLD)
-  const [monitor, setMonitor] = useState(false)       // keep watching this person after the screening
+  const { prefs } = usePreferences()
+  const defThreshold = prefs.screening.threshold ?? DEFAULT_THRESHOLD
+  const defMonitor = !!prefs.screening.monitor_by_default
+  const edited = useRef(false)                        // once the person changes these, their saved defaults stop applying
+  const [threshold, setThreshold] = useState(defThreshold)
+  const [monitor, setMonitor] = useState(defMonitor)
+  useEffect(() => {
+    if (!edited.current) { setThreshold(defThreshold); setMonitor(defMonitor) }
+  }, [defThreshold, defMonitor])       // keep watching this person after the screening
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [caseData, setCaseData] = useState(null)
@@ -85,7 +92,7 @@ function IndividualScreening() {
       })
     } catch (err) {
       setError(err)
-      toast.error('Screening did not finish', { message: err?.message || 'Please try again.', to: 'history' })
+      toast.error('Screening did not finish', { category: 'screening', message: err?.message || 'Please try again.', to: 'history' })
     } finally {
       setLoading(false)
     }
@@ -106,8 +113,9 @@ function IndividualScreening() {
     setCnicTouched(false)
     setFatherName('')
     setProvince('')
-    setThreshold(DEFAULT_THRESHOLD)
-    setMonitor(false)
+    edited.current = false
+    setThreshold(defThreshold)
+    setMonitor(defMonitor)
     setError(null)
     setCaseData(null)
   }
@@ -200,7 +208,7 @@ function IndividualScreening() {
             </label>
           </div>
           <p id="cnic-hint" className="field-hint field-hint-block">
-            All of these except the name are optional. A CNIC that equals a CNIC on the NACTA or FIA Red Book lists
+            All of these except the name are optional. A CNIC that equals a CNIC on the NACTA, FIA Red Book or PEP lists
             is reported as a match whatever the name looks like, so enter it whenever you have it. The others,
             including the province, are shown next to each match as supporting evidence and never remove one.
           </p>
@@ -216,7 +224,7 @@ function IndividualScreening() {
               max="100"
               step="1"
               value={threshold}
-              onChange={(e) => setThreshold(Number(e.target.value))}
+              onChange={(e) => { edited.current = true; setThreshold(Number(e.target.value)) }}
               style={{ '--fill': `${((Number(threshold) - 50) / 50) * 100}%` }}
               aria-describedby="threshold-hint"
             />
@@ -228,7 +236,7 @@ function IndividualScreening() {
           </div>
 
           <label className="check-row" htmlFor="monitor-input">
-            <input id="monitor-input" type="checkbox" checked={monitor} onChange={(e) => setMonitor(e.target.checked)} />
+            <input id="monitor-input" type="checkbox" checked={monitor} onChange={(e) => { edited.current = true; setMonitor(e.target.checked) }} />
             <span>
               <span className="field-label">Keep monitoring this person</span>
               <span className="field-hint">

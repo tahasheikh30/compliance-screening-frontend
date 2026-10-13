@@ -166,6 +166,7 @@
 .landing .info-banner img {
   display: block;
   width: 100%;
+  height: auto;           /* the width and height attributes only reserve space (aspect ratio) before it loads */
   max-height: 280px;
   object-fit: cover;
   border: 1px solid var(--lp-line);

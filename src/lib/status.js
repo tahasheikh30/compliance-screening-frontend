@@ -7,10 +7,11 @@ export const SOURCES = {
   UKSL: { name: 'UK Sanctions List', short: 'UK', long: 'UK Sanctions List (FCDO)' },
   FIA_REDBOOK: { name: 'FIA Red Books', short: 'FIA', long: 'FIA Red Books (Pakistan, most wanted)' },
   NACTA: { name: 'NACTA', short: 'NACTA', long: 'NACTA Proscribed Persons (Fourth Schedule, Pakistan)' },
+  PEP: { name: 'Politically exposed persons', short: 'PEP', long: 'Politically exposed persons (national and provincial, Pakistan)' },
   ADVERSE_MEDIA: { name: 'Adverse media', short: 'News', long: 'Open news search (Google News)' },
 }
 
-export const SOURCE_ORDER = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA', 'ADVERSE_MEDIA']
+export const SOURCE_ORDER = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA', 'PEP', 'ADVERSE_MEDIA']
 
 // tone drives colour: 'bad' red, 'warn' amber, 'good' green
 const RESULT_STATUS = {
@@ -20,6 +21,7 @@ const RESULT_STATUS = {
   CLEAR: { label: 'Clear', tone: 'good' },
   ERROR: { label: 'Not screened', tone: 'bad' },
   NOT_CONFIGURED: { label: 'Not screened', tone: 'bad' },
+  SKIPPED: { label: 'Switched off', tone: 'warn' },       // the analyst turned this list off in Settings
 }
 
 const OVERALL = {
@@ -31,7 +33,7 @@ const OVERALL = {
   MANUAL_REVIEW: {
     stamp: 'Review', tone: 'warn',
     headline: 'Needs manual review',
-    next: 'Something needs a person to look at it: an adverse news lead, or a list that could not be screened. This is not a clearance.',
+    next: 'Something needs a person to look at it: a possible politically exposed person, an adverse news lead, or a list that could not be screened. This is not a clearance.',
   },
   AUTO_CLEAR: {
     stamp: 'Clear', tone: 'good',
@@ -51,8 +53,14 @@ export function overallInfo(status) {
 // What a person should do next. For a manual review the generic text is replaced
 // by what actually triggered it, so they know where to look first.
 export function nextStep(overall, sum) {
+  if (overall === 'AUTO_CLEAR' && sum.skipped > 0) {
+    return `Every list that was switched on was screened and nothing was found at this threshold. ${sum.skipped === 1 ? 'One list was' : `${sum.skipped} lists were`} switched off in Settings and not checked, so this does not cover ${sum.skipped === 1 ? 'it' : 'them'}. Automated name matching only, so it does not replace your normal checks.`
+  }
   if (overall !== 'MANUAL_REVIEW') return overallInfo(overall).next
   const parts = []
+  if (sum.pep > 0) {
+    parts.push('A possible politically exposed person (PEP). This is not a sanctions match: apply enhanced due diligence (source of funds and wealth, senior approval) once you have confirmed it is the same person.')
+  }
   if (sum.news > 0) {
     parts.push('A news article mentions this name next to a risk keyword. It may be about someone else with the same name, so read it before deciding.')
   }
@@ -61,6 +69,9 @@ export function nextStep(overall, sum) {
   }
   if (sum.partial > 0) {
     parts.push('Part of a source was not fully screened (a list could not be read, or is out of date). See which below. This is not a clearance.')
+  }
+  if (sum.skipped > 0 && parts.length === 0) {
+    parts.push('Lists were switched off in Settings, so little or nothing was checked. This is not a clearance. Switch the lists back on under Settings, Lists, and screen again.')
   }
   return parts.length ? parts.join(' ') : overallInfo(overall).next
 }
@@ -71,16 +82,20 @@ export function summarize(caseData) {
   const rows = caseData?.results || []
   let sanctions = 0
   let news = 0
+  let pep = 0
   let notScreened = 0
   let partial = 0
+  let skipped = 0
   for (const r of rows) {
     if (r.source === 'ADVERSE_MEDIA') news += (r.articles || []).length
+    else if (r.source === 'PEP') pep += r.match_count ?? (r.matches || []).length   // not a sanction
     else sanctions += r.match_count ?? (r.matches || []).length
     if (r.status === 'ERROR' || r.status === 'NOT_CONFIGURED') notScreened += 1
     if (r.status === 'PARTIAL') partial += 1
+    if (r.status === 'SKIPPED') skipped += 1
   }
   const withEvidence = rows.find((r) => r.evidence_file)
-  return { sanctions, news, notScreened, partial, evidenceResult: withEvidence || null }
+  return { sanctions, news, pep, notScreened, partial, skipped, evidenceResult: withEvidence || null }
 }
 
 export function orderedResults(results) {

@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getListsStatus, reloadLists, getNactaStatus, uploadNacta } from '../../api'
+import { getListsStatus, reloadLists, getNactaStatus, uploadNacta, getPepStatus, uploadPep, deletePepUpload, refreshPep, checkCoverage } from '../../api'
 import ErrorBanner from '../../components/ErrorBanner'
 import { Pill } from '../../components/ui'
 import { fmtAge, fmtNum, fmtDateTime, plural, safeUrl } from '../../lib/format'
 import { SOURCES } from '../../lib/status'
+import { usePreferences } from '../../lib/preferences'
 import { useToast } from '../../components/Toaster'
 import { peek, remember } from '../../lib/readCache'
 
-const LIST_KEYS = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA']
+const LIST_KEYS = ['UNSC', 'OFAC', 'UKSL', 'FIA_REDBOOK', 'NACTA', 'PEP']
 
 
 /** One row per list. A source made of several lists (the FIA Red Books, the two OFAC lists) gets a row for each. */
@@ -15,27 +16,43 @@ function listRows(key, s) {
   const source = SOURCES[key]
   const lists = s?.lists || []
   if (lists.length === 0) {
+    // nothing came back for this source: an error from the server is a problem, otherwise it simply has not loaded yet
+    if (s?.error) {
+      return [{
+        id: key,
+        name: source.long,
+        ok: false,
+        pill: { tone: 'bad', label: 'Problem' },
+        reason: s.error,
+        records: 0,
+        loaded: 'Not loaded',
+      }]
+    }
     return [{
       id: key,
       name: source.long,
       ok: false,
       pill: { tone: 'warn', label: 'Not loaded yet' },
       records: null,
-      loaded: key === 'NACTA' ? 'Loads from the uploaded file' : 'Downloads on the next screening',
+      loaded: key === 'NACTA' ? 'Loads from the uploaded file' : key === 'PEP' ? 'Loads from Wikidata and your list' : 'Downloads on the next screening',
     }]
   }
   return lists.map((l) => {
-    const ok = !l.status || l.status === 'OK'
+    // A list is only Ready when it reported no error, the source is loaded, and it holds at least one record.
+    const reason = l.status && l.status !== 'OK' ? l.status : s.error || null
+    const notLoaded = !reason && (!s.cached || !(l.records > 0))
+    const ok = !reason && !notLoaded
     return {
       id: `${key}-${l.list}`,
       name: l.list === key ? source.long : l.list,
       ok,
-      pill: ok ? { tone: 'good', label: 'Ready' } : { tone: 'bad', label: 'Problem' },
-      reason: ok ? null : l.status,
+      pill: reason ? { tone: 'bad', label: 'Problem' } : notLoaded ? { tone: 'warn', label: 'Not loaded yet' } : { tone: 'good', label: 'Ready' },
+      reason,
       note: l.note || null,
+      detail: l.detail || null,
       source: safeUrl(l.source),
       sample: l.sample || null,
-      records: ok ? l.records : 0,
+      records: ok ? l.records : reason ? 0 : null,
       loaded: s.cached ? fmtAge(s.age_seconds) : 'Not loaded',
     }
   })
@@ -86,14 +103,14 @@ function NactaPanel({ onChanged, isAdmin }) {
     setResult(null)
     try {
       setResult(await uploadNacta(file))
-      toast.success('NACTA list uploaded', { to: 'lists' })
+      toast.success('NACTA list uploaded', { category: 'lists', to: 'lists' })
       setFile(null)
       if (inputRef.current) inputRef.current.value = ''
       await load()
       onChanged?.()
     } catch (err) {
       setUploadError(err)
-      toast.error('NACTA upload failed', { message: err?.message })
+      toast.error('NACTA upload failed', { category: 'lists', message: err?.message })
     } finally {
       setBusy(false)
     }
@@ -183,8 +200,248 @@ function NactaPanel({ onChanged, isAdmin }) {
   )
 }
 
+/**
+ * Politically exposed persons. There is no official Pakistani PEP list, so the server keeps a copy of national and
+ * provincial office holders from Wikidata (refreshed in the background) and an administrator can add their own list.
+ */
+function PepPanel({ onChanged, isAdmin }) {
+  const toast = useToast()
+  const [status, setStatus] = useState(() => peek('lists:pep'))
+  const [error, setError] = useState(null)
+  const [file, setFile] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+  const [uploadError, setUploadError] = useState(null)
+  const inputRef = useRef(null)
+
+  const load = useCallback(async () => {
+    setError(null)
+    try {
+      setStatus(remember('lists:pep', await getPepStatus()))
+    } catch (err) {
+      setError(err)
+    }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  // while the server is fetching from Wikidata, look again every few seconds; when it ends, refresh the list table too
+  const fetching = !!status?.fetch?.running
+  useEffect(() => {
+    if (!fetching) return undefined
+    const t = setInterval(load, 5000)
+    return () => clearInterval(t)
+  }, [fetching, load])
+  const wasFetching = useRef(false)
+  useEffect(() => {
+    if (wasFetching.current && !fetching) onChanged?.()
+    wasFetching.current = fetching
+  }, [fetching, onChanged])
+
+  async function fetchNow() {
+    setUploadError(null)
+    try {
+      setStatus(remember('lists:pep', await refreshPep()))
+      toast.info('Fetching from Wikidata', { category: 'lists', message: 'This runs in the background and can take a minute or two.', log: false })
+    } catch (err) {
+      setUploadError(err)
+    }
+  }
+
+  async function upload(e) {
+    e.preventDefault()
+    if (!file) return
+    setBusy(true)
+    setUploadError(null)
+    setResult(null)
+    try {
+      setResult(await uploadPep(file))
+      toast.success('PEP list uploaded', { category: 'lists', to: 'lists' })
+      setFile(null)
+      if (inputRef.current) inputRef.current.value = ''
+      await load()
+      onChanged?.()
+    } catch (err) {
+      setUploadError(err)
+      toast.error('PEP upload failed', { category: 'lists', message: err?.message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function remove() {
+    setBusy(true)
+    setUploadError(null)
+    try {
+      await deletePepUpload()
+      setResult(null)
+      toast.success('PEP list removed', { category: 'lists', to: 'lists' })
+      await load()
+      onChanged?.()
+    } catch (err) {
+      setUploadError(err)
+      toast.error('Could not remove the PEP list', { category: 'lists', message: err?.message })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const age = (d) => (d == null ? '' : d < 1 ? 'today' : `${Math.floor(d)} ${Math.floor(d) === 1 ? 'day' : 'days'} ago`)
+  const wd = status?.wikidata
+  const own = status?.upload
+
+  return (
+    <div className="nacta-panel pep-panel">
+      <h2>Politically exposed persons (PEPs)</h2>
+      <p className="lead">
+        Pakistan publishes no official PEP list. Screening uses national and provincial office holders from Wikidata
+        (the Senate and National Assembly, ministers, chief ministers, governors, provincial assemblies and similar),
+        refreshed in the background, together with any list your administrator uploads. A PEP match is not a
+        sanctions hit: it sends the applicant to manual review for enhanced due diligence.
+      </p>
+      <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
+      {status && (
+        <>
+          {fetching && <p className="notice" role="status">Fetching the PEP list from Wikidata now. This can take a minute or two.</p>}
+          {!fetching && status.fetch?.error && (
+            <p className="notice notice-warn">The last fetch from Wikidata failed: {status.fetch.error}.{wd?.loaded ? ' The last good copy is still used.' : ''}</p>
+          )}
+          {status.wikidata_enabled ? (
+            wd?.loaded
+              ? <p>Wikidata copy: {plural(wd.records, 'person', 'people')}, fetched {fmtDateTime(wd.uploaded_at)} ({age(wd.age_days)}). People who left office more than {status.lookback_years} {status.lookback_years === 1 ? 'year' : 'years'} ago are not included.</p>
+              : <p className="notice notice-warn">The Wikidata copy has not been fetched yet. It is fetched in the background; check again in a minute or two.</p>
+          ) : (
+            <p>The Wikidata fetch is switched off on the server. Only the uploaded list is used.</p>
+          )}
+          {own?.loaded
+            ? <p><strong>{own.filename}</strong>: {plural(own.records, 'person', 'people')}, uploaded {fmtDateTime(own.uploaded_at)} ({age(own.age_days)}).</p>
+            : <p className="muted">No list of your own has been uploaded.</p>}
+          {!wd?.loaded && !own?.loaded && (
+            <p className="notice notice-warn">
+              No PEP data is loaded, so PEPs are not being checked.{status.required ? ' Every screening goes to manual review until some is loaded.' : ''}
+            </p>
+          )}
+        </>
+      )}
+      {isAdmin ? (
+        <>
+          <form onSubmit={upload} className="nacta-upload">
+            <label className="field" htmlFor="pep-file">
+              <span className="field-label">Your own PEP list (CSV, JSON or XML)</span>
+              <input
+                id="pep-file"
+                ref={inputRef}
+                type="file"
+                accept=".csv,.json,.xml,.txt,text/csv,application/json,text/xml,text/plain"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+              <span className="field-hint">
+                Columns: Name (required), Position, Level (National, Provincial or Local), Province, CNIC, Father Name, Date of Birth, Aliases, Party.
+                A new upload replaces your previous one; the Wikidata copy is not affected.
+              </span>
+            </label>
+            <button type="submit" className="btn btn-primary" disabled={!file || busy}>
+              {busy ? 'Working...' : 'Upload PEP list'}
+            </button>
+            {own?.loaded && (
+              <button type="button" className="btn btn-quiet" onClick={remove} disabled={busy}>Remove my list</button>
+            )}
+            {status?.wikidata_enabled && (
+              <button type="button" className="btn btn-quiet" onClick={fetchNow} disabled={busy || fetching}>
+                {fetching ? 'Fetching...' : 'Fetch from Wikidata now'}
+              </button>
+            )}
+          </form>
+          <ErrorBanner error={uploadError} onDismiss={() => setUploadError(null)} />
+        </>
+      ) : (
+        <p className="field-hint">An administrator manages the PEP list.</p>
+      )}
+      {result && (
+        <div className="reload-result" role="status">
+          <p>
+            <strong>{plural(result.records, 'person', 'people')} loaded</strong>: {fmtNum(result.national)} national, {fmtNum(result.provincial)} provincial.
+            {result.rows_skipped > 0 && ` ${fmtNum(result.rows_skipped)} rows without a name were skipped.`}
+          </p>
+          {(result.warnings || []).map((w) => <p key={w} className="notice notice-warn">{w}</p>)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Administrators: paste names that should be on the lists (sanctioned persons, politicians) and see which are found
+ * and in which list. The way to check, after a deploy, that the lists cover the people you expect.
+ */
+function CoveragePanel() {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [result, setResult] = useState(null)
+
+  async function run(e) {
+    e.preventDefault()
+    const names = [...new Set(text.split(/\r?\n/).map((n) => n.trim()).filter(Boolean))].slice(0, 200)
+    if (!names.length || busy) return
+    setBusy(true)
+    setError(null)
+    try {
+      setResult(await checkCoverage(names))
+    } catch (err) {
+      setError(err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="nacta-panel coverage-panel">
+      <h2 id="coverage-heading">Check that names are on the lists</h2>
+      <p className="lead">
+        One name per line, in Latin letters (up to 200). Each is checked against every loaded list at the default
+        threshold. Nothing is saved to anyone's history.
+      </p>
+      <form onSubmit={run} className="form" noValidate>
+        <label className="field" htmlFor="coverage-names">
+          <span className="field-label">Names</span>
+          <textarea id="coverage-names" className="coverage-input" value={text} onChange={(e) => setText(e.target.value)} />
+        </label>
+        <div className="form-actions">
+          <button type="submit" className="btn btn-primary" disabled={busy || !text.trim()}>{busy ? 'Checking...' : 'Check names'}</button>
+        </div>
+      </form>
+      <ErrorBanner error={error} onDismiss={() => setError(null)} />
+      {result && (
+        <div className="coverage-result">
+          <p>{result.found} of {result.checked} found on the lists.</p>
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th scope="col">Name</th><th scope="col">Result</th></tr></thead>
+              <tbody>
+                {result.rows.map((r, i) => (
+                  <tr key={`${r.name}-${i}`}>
+                    <td>{r.name}</td>
+                    <td>
+                      {r.error ? <span className="muted">{r.error}</span>
+                        : r.found ? <span className="found">Found in {r.source}: {r.matched_name} ({r.score}%)</span>
+                          : <span className="muted">Not found</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ListsTab({ isAdmin = true }) {
   const toast = useToast()
+  const { prefs } = usePreferences()
+  const off = prefs.lists.off
   const [status, setStatus] = useState(() => peek('lists:status'))   // the last answer, shown at once while it refreshes
   const [error, setError] = useState(null)
   const [busy, setBusy] = useState(false)
@@ -208,11 +465,11 @@ export default function ListsTab({ isAdmin = true }) {
     setReloaded(null)
     try {
       setReloaded(await reloadLists())
-      toast.success('Lists reloaded', { to: 'lists' })
+      toast.success('Lists reloaded', { category: 'lists', to: 'lists' })
       await load()
     } catch (err) {
       setReloadError(err)
-      toast.error('Could not reload the lists', { message: err?.message })
+      toast.error('Could not reload the lists', { category: 'lists', message: err?.message })
     } finally {
       setBusy(false)
     }
@@ -232,6 +489,12 @@ export default function ListsTab({ isAdmin = true }) {
           this page.{isAdmin ? ' Reload only if you want to be certain the next screening uses lists fetched right now.' : ''}
         </p>
 
+        {off.length > 0 && (
+          <p className="notice" role="note">
+            Switched off by you in Settings: {off.join(', ')}. {off.length === 1 ? 'It is' : 'They are'} skipped in your screenings and
+            shown as "Switched off" in the case. Turn {off.length === 1 ? 'it' : 'them'} back on under Settings, Lists.
+          </p>
+        )}
         <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
         {!status && !error && <p className="muted">Loading...</p>}
 
@@ -252,6 +515,13 @@ export default function ListsTab({ isAdmin = true }) {
                         <span className="list-link">
                           <a href={r.source} target="_blank" rel="noopener noreferrer">Open the source file</a>
                         </span>
+                      )}
+                      {r.detail && (
+                        <details className="list-sample list-detail">
+                          <summary>Show the full error</summary>
+                          <pre>{r.detail}</pre>
+                          <CopyButton text={r.detail} />
+                        </details>
                       )}
                       {r.sample && (
                         <details className="list-sample">
@@ -287,6 +557,8 @@ export default function ListsTab({ isAdmin = true }) {
         <ErrorBanner error={reloadError} onDismiss={() => setReloadError(null)} />
 
         <NactaPanel onChanged={load} isAdmin={isAdmin} />
+        <PepPanel onChanged={load} isAdmin={isAdmin} />
+        {isAdmin && <CoveragePanel />}
 
         {reloaded && (
           <p className="reload-summary" role="status">

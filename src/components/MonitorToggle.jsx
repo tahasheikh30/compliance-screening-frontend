@@ -25,12 +25,12 @@ export default function MonitorToggle({ applicantId, monitored: initial, onChang
       forget('monitoring:')
       onChange?.(out.monitored)
       if (!next) {
-        toast.info('Monitoring stopped', { message: 'Existing alerts are kept.', log: false })
+        toast.info('Monitoring stopped', { category: 'monitoring', message: 'Existing alerts are kept.', log: false })
       } else if (out.new_alerts > 0) {
         toast.warn(out.new_alerts === 1 ? 'Possible match found' : `${out.new_alerts} possible matches found`,
-          { message: 'Found when checking against the current lists. Review it on the Monitoring tab.', to: 'monitoring' })
+          { category: 'monitoring', message: 'Found when checking against the current lists. Review it on the Monitoring tab.', to: 'monitoring' })
       } else {
-        toast.success('Monitoring started', { message: 'You will be told if a list change brings up a new match.', to: 'monitoring' })
+        toast.success('Monitoring started', { category: 'monitoring', message: 'You will be told if a list change brings up a new match.', to: 'monitoring' })
       }
     } catch (err) {
       setError(err)

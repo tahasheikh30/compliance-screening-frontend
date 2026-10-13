@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { decideAlert, getMonitoringStatus, listAlerts } from '../../api'
+import { decideAlert, getMonitoringStatus, listAlerts, listMonitoredPeople, setMonitoring } from '../../api'
+import ConfirmDialog from '../../components/ConfirmDialog'
 import ErrorBanner from '../../components/ErrorBanner'
 import { MatchItem } from '../../components/CaseReport'
 import { Pill } from '../../components/ui'
 import { fmtDateTime, plural } from '../../lib/format'
 import { SOURCES } from '../../lib/status'
-import { peek, remember } from '../../lib/readCache'
+import { forget, peek, remember } from '../../lib/readCache'
 import { useToast } from '../../components/Toaster'
 
 const FILTERS = [
@@ -17,6 +18,12 @@ const FILTERS = [
 const DECIDED = {
   confirmed: { tone: 'bad', label: 'Confirmed match' },
   dismissed: { tone: 'good', label: 'Dismissed' },
+}
+
+function every(seconds) {
+  const s = Number(seconds)
+  if (s >= 86400) return s < 172800 ? 'once a day' : `every ${plural(Math.round(s / 86400), 'day', 'days')}`
+  return `about every ${minutes(s)}`
 }
 
 function minutes(seconds) {
@@ -89,6 +96,29 @@ function AlertCard({ alert, busy, onDecide }) {
   )
 }
 
+/** One person under watch, with the button that takes them out. */
+function WatchedRow({ person, busy, onStop }) {
+  const facts = [
+    person.father_name && `Father: ${person.father_name}`,
+    person.dob && `Born ${person.dob}`,
+    person.monitored_since && `Watching since ${fmtDateTime(person.monitored_since)}`,
+    person.last_monitored_at ? `Last checked ${fmtDateTime(person.last_monitored_at)}` : 'Not checked again yet',
+  ].filter(Boolean)
+  return (
+    <li className="watch-row">
+      <div className="watch-main">
+        <span className="watch-name">{person.full_name}</span>
+        {person.open_alerts > 0 && <Pill tone="warn">{plural(person.open_alerts, 'alert', 'alerts')} to review</Pill>}
+        <span className="row-sub">{facts.join(' · ')}</span>
+      </div>
+      <button type="button" className="btn btn-quiet btn-small" disabled={busy}
+        aria-label={`Stop monitoring ${person.full_name}`} onClick={() => onStop(person)}>
+        Stop monitoring
+      </button>
+    </li>
+  )
+}
+
 /**
  * Continuous monitoring results. People who were screened and then put under watch are screened again whenever a
  * sanctions list changes; a new potential match lands here. Only the alerts on the signed in person's own
@@ -101,6 +131,8 @@ export default function MonitoringTab({ onOpenCount }) {
   const [alerts, setAlerts] = useState(() => peek('monitoring:alerts:open'))
   const [error, setError] = useState(null)
   const [busyId, setBusyId] = useState(null)
+  const [people, setPeople] = useState(() => peek('monitoring:people'))
+  const [stopping, setStopping] = useState(null)       // the person whose "stop monitoring" is being confirmed
   const latest = useRef(0)
 
   const loadStatus = useCallback(async () => {
@@ -125,7 +157,16 @@ export default function MonitoringTab({ onOpenCount }) {
     }
   }, [filter])
 
+  const loadPeople = useCallback(async () => {
+    try {
+      setPeople(remember('monitoring:people', await listMonitoredPeople()))
+    } catch (err) {
+      if (err?.status !== 404) setError(err)      // a server without the list yet simply shows no list
+    }
+  }, [])
+
   useEffect(() => { loadStatus() }, [loadStatus])
+  useEffect(() => { loadPeople() }, [loadPeople])
   useEffect(() => {
     setAlerts(peek(`monitoring:alerts:${filter}`))
     loadAlerts()
@@ -138,13 +179,31 @@ export default function MonitoringTab({ onOpenCount }) {
     try {
       await decideAlert(alert.id, next, note?.trim())
       toast.success(next === 'confirmed' ? 'Marked as a confirmed match' : next === 'dismissed' ? 'Alert dismissed' : 'Alert reopened',
-        { message: alert.applicant_name, log: false })
+        { category: 'monitoring', message: alert.applicant_name, log: false })
       await Promise.all([loadAlerts(), loadStatus()])
       // the other lists are out of date now
       ;['open', 'confirmed', 'dismissed'].filter((f) => f !== filter).forEach((f) => remember(`monitoring:alerts:${f}`, null))
     } catch (err) {
       setError(err)
-      toast.error('Could not save the decision', { message: err?.message })
+      toast.error('Could not save the decision', { category: 'monitoring', message: err?.message })
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function stop(person) {
+    setStopping(null)
+    setBusyId(`p${person.applicant_id}`)
+    setError(null)
+    try {
+      await setMonitoring(person.applicant_id, false)
+      toast.success('Monitoring stopped', { category: 'monitoring', message: person.full_name, log: false })
+      forget('monitoring:')
+      forget('history:')                      // the history rows show whether someone is monitored
+      await Promise.all([loadPeople(), loadStatus(), loadAlerts()])
+    } catch (err) {
+      setError(err)
+      toast.error('Could not stop monitoring', { category: 'monitoring', message: err?.message })
     } finally {
       setBusyId(null)
     }
@@ -167,7 +226,7 @@ export default function MonitoringTab({ onOpenCount }) {
           <>
             <p className="monitor-summary" role="status">
               Watching <strong>{plural(status.monitored_applicants, 'person', 'people')}</strong>.{' '}
-              <strong>{plural(status.open_alerts, 'alert', 'alerts')}</strong> to review. Lists are checked for changes about every {minutes(status.interval_seconds)}.
+              <strong>{plural(status.open_alerts, 'alert', 'alerts')}</strong> to review. Lists are checked for changes {every(status.interval_seconds)}.
             </p>
             <details className="monitor-sources">
               <summary>When each list was last checked</summary>
@@ -184,6 +243,18 @@ export default function MonitoringTab({ onOpenCount }) {
           </>
         )}
 
+        {people && people.length > 0 && (
+          <div className="watch-section">
+            <h2 className="watch-heading">People being monitored ({people.length})</h2>
+            <ul className="watch-list">
+              {people.map((p) => (
+                <WatchedRow key={p.applicant_id} person={p} busy={busyId === `p${p.applicant_id}`} onStop={setStopping} />
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <h2 className="watch-heading">Alerts</h2>
         <div className="filter-group" role="group" aria-label="Show alerts">
           {FILTERS.map((f) => (
             <button key={f.id} type="button" className={`filter-btn ${filter === f.id ? 'filter-btn-on' : ''}`}
@@ -210,6 +281,17 @@ export default function MonitoringTab({ onOpenCount }) {
           </ul>
         )}
       </section>
+
+      {stopping && (
+        <ConfirmDialog
+          title={`Stop monitoring ${stopping.full_name}?`}
+          body="They will no longer be screened again when a list changes. Alerts already found stay in the list below. You can start monitoring them again from their case in History."
+          confirmLabel="Stop monitoring"
+          danger
+          onCancel={() => setStopping(null)}
+          onConfirm={() => stop(stopping)}
+        />
+      )}
     </div>
   )
 }
