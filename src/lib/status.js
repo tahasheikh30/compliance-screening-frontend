@@ -70,6 +70,9 @@ export function nextStep(overall, sum) {
   if (sum.partial > 0) {
     parts.push('Part of a source was not fully screened (a list could not be read, or is out of date). See which below. This is not a clearance.')
   }
+  if (sum.skipped > 0 && parts.length === 0) {
+    parts.push('Lists were switched off in Settings, so little or nothing was checked. This is not a clearance. Switch the lists back on under Settings, Lists, and screen again.')
+  }
   return parts.length ? parts.join(' ') : overallInfo(overall).next
 }
 

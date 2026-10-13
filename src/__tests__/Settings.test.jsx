@@ -73,10 +73,10 @@ describe('Settings modal', () => {
     expect(await screen.findByRole('heading', { name: 'Lists', level: 2 })).toBeTruthy()
   })
 
-  it('saves a list switched off, and only offers switches for switchable lists', async () => {
+  it('saves a list switched off, and offers a switch for every list', async () => {
     open()
     fireEvent.click(await screen.findByRole('button', { name: /^Lists/ }))
-    expect(screen.queryByRole('switch', { name: /United Nations/i })).toBeNull()
+    expect(screen.getAllByRole('switch').length).toBe(7)
     const sw = await screen.findByRole('switch', { name: /Check UK Sanctions List in my screenings/i })
     await waitFor(() => expect(sw.disabled).toBe(false))
     fireEvent.click(sw)
