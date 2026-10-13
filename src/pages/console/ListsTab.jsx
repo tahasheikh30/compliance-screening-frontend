@@ -491,7 +491,7 @@ export default function ListsTab({ isAdmin = true }) {
 
         {off.length > 0 && (
           <p className="notice" role="note">
-            Switched off for you in Settings: {off.join(', ')}. {off.length === 1 ? 'It is' : 'They are'} skipped in your screenings and
+            Switched off by you in Settings: {off.join(', ')}. {off.length === 1 ? 'It is' : 'They are'} skipped in your screenings and
             shown as "Switched off" in the case. Turn {off.length === 1 ? 'it' : 'them'} back on under Settings, Lists.
           </p>
         )}
