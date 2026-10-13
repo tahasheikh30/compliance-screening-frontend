@@ -155,7 +155,7 @@ html:has(.landing) { scroll-behavior: smooth; }
   transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
 }
 .lp-btn-primary { background: var(--manila); color: var(--ink); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28); }
-.lp-btn-primary::after { content: "→"; font-size: 1.1rem; transition: transform 160ms ease; }
+.lp-btn-primary::after { content: "→"; font-size: 1.25rem; transition: transform 160ms ease; }
 .lp-btn-primary:hover { background: #E6CF96; transform: translateY(-2px); }
 .lp-btn-primary:hover::after { transform: translateX(3px); }
 .lp-btn-quiet { color: var(--on-desk); border-color: rgba(232, 236, 238, 0.32); }
