@@ -61,12 +61,13 @@ export function useNotifications() {
  * Whether a message is shown, kept, both or neither, given the person's notification settings:
  *   { enabled, popups, categories: { screening, monitoring, lists, account, admin } }
  * An error is never dropped (a failed save or a failed screening must be seen), but with pop-ups off it is only
- * kept in the list. A message with no category (or an unknown one) follows the master switch only.
+ * kept in the list. A message that only looks like an error because the news is bad, such as a screening that
+ * found a possible match, passes essential: false and follows the switches like any other (the result is on screen). A message with no category (or an unknown one) follows the master switch only.
  */
-export function deliveryFor(settings, tone, category) {
+export function deliveryFor(settings, tone, category, essential = tone === "error") {
   if (!settings) return { popup: true, keep: true };
   const off = !settings.enabled || (category && settings.categories?.[category] === false);
-  if (off && tone !== "error") return { popup: false, keep: false };
+  if (off && !essential) return { popup: false, keep: false };
   return { popup: settings.popups !== false, keep: true };
 }
 
@@ -85,9 +86,9 @@ export function ToastProvider({ children }) {
   );
 
   const push = useCallback((tone, title, opts = {}) => {
-    const { message = "", to = null, log = true, duration, category = null } = opts;
+    const { message = "", to = null, log = true, duration, category = null, essential } = opts;
     const id = nextId.current++;
-    const delivery = deliveryFor(settings.current, tone, category);
+    const delivery = deliveryFor(settings.current, tone, category, essential);
     if (!delivery.keep) return id; // switched off in Settings: neither shown nor listed
     if (delivery.popup) setToasts((all) => {
       // the same message twice in a row (a poll that keeps finding the same thing) is shown once
