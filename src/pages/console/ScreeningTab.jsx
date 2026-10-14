@@ -89,6 +89,7 @@ function IndividualScreening() {
       const info = overallInfo(data.overall_status)
       const kind = { bad: 'error', warn: 'warn', good: 'success' }[info.tone] || 'info'
       toast[kind](`Screening complete: ${info.stamp}`, {
+        category: 'screening',
         message: `${data.full_name}. ${info.headline}.${data.monitored ? ' Now under continuous monitoring.' : ''}`, to: 'history',
       })
     } catch (err) {
