@@ -7,14 +7,11 @@ import ReviewPanel from '../../components/ReviewPanel'
 import { MagnifyingGlassIcon, ScanningAnimation } from '../../components/ui'
 import { SOURCES, SOURCE_ORDER, overallInfo } from '../../lib/status'
 import { PROVINCES } from '../../lib/provinces'
+import { maskDob, parseDob, dobProblem } from '../../lib/dob'
 import { DEFAULT_THRESHOLD, usePreferences } from '../../lib/preferences'
 import { useToast } from '../../components/Toaster'
 import BatchScreening from './BatchScreening'
 
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10)
-}
 
 function EmptyState() {
   return (
@@ -39,7 +36,8 @@ function EmptyState() {
 function IndividualScreening() {
   const toast = useToast()
   const [fullName, setFullName] = useState('')
-  const [dob, setDob] = useState('')
+  const [dobText, setDobText] = useState('')           // as typed, dd/mm/yyyy
+  const [dobTouched, setDobTouched] = useState(false)
   const [nationality, setNationality] = useState('')
   const [cnic, setCnic] = useState('')
   const [cnicTouched, setCnicTouched] = useState(false)
@@ -72,6 +70,10 @@ function IndividualScreening() {
   const cnicDigits = cnic.replace(/\D/g, '')
   const cnicInvalid = !!cnic.trim() && cnicDigits.length !== 13
   // only complain once they have left the field (or typed too many digits), not mid-typing
+  const dob = parseDob(dobText) || ''                   // what the server takes: yyyy-mm-dd
+  const dobInvalid = !!dobText && !dob
+  // like the CNIC: only complain once the date is fully typed or the field has been left, not mid-typing
+  const dobLocalProblem = dobInvalid && (dobTouched || dobText.length === 10) ? dobProblem(dobText) : null
   const cnicProblem = cnicInvalid && (cnicTouched || cnicDigits.length > 13) ? 'A CNIC has 13 digits (dashes are optional).' : null
 
   async function doSubmit() {
@@ -104,12 +106,14 @@ function IndividualScreening() {
     e.preventDefault()
     if (!fullName.trim() || loading) return
     if (cnicInvalid) { setCnicTouched(true); return }
+    if (dobInvalid) { setDobTouched(true); return }
     doSubmit()
   }
 
   function clearForm() {
     setFullName('')
-    setDob('')
+    setDobText('')
+    setDobTouched(false)
     setNationality('')
     setCnic('')
     setCnicTouched(false)
@@ -123,7 +127,7 @@ function IndividualScreening() {
   }
 
   const nameError = fieldError(error, 'full_name')
-  const dobError = fieldError(error, 'dob')
+  const dobError = dobLocalProblem || fieldError(error, 'dob')
   const thresholdLow = Number(threshold) < 75
 
   return (
@@ -166,10 +170,14 @@ function IndividualScreening() {
               <span className="field-label">Date of birth</span>
               <input
                 id="dob-input"
-                type="date"
-                value={dob}
-                max={todayIso()}
-                onChange={(e) => setDob(e.target.value)}
+                type="text"
+                inputMode="numeric"
+                placeholder="dd/mm/yyyy"
+                maxLength={10}
+                autoComplete="off"
+                value={dobText}
+                onChange={(e) => setDobText(maskDob(e.target.value))}
+                onBlur={() => setDobTouched(true)}
                 aria-invalid={!!dobError}
               />
               {dobError && <span className="field-error">{dobError}</span>}
@@ -249,7 +257,7 @@ function IndividualScreening() {
           </label>
 
           <div className="form-actions">
-            <button type="submit" className="btn btn-primary" disabled={loading || !fullName.trim() || cnicInvalid}>
+            <button type="submit" className="btn btn-primary" disabled={loading || !fullName.trim() || cnicInvalid || dobInvalid}>
               {loading ? 'Screening...' : 'Run screening'}
             </button>
             <button type="button" className="btn btn-quiet" onClick={clearForm} disabled={loading}>Clear</button>
