@@ -3,6 +3,7 @@ import { cancelBatch, downloadBatchEvidence, downloadBatchResults, getApplicant,
 import CaseReport from '../../components/CaseReport'
 import ErrorBanner from '../../components/ErrorBanner'
 import MonitorToggle from '../../components/MonitorToggle'
+import ReviewPanel from '../../components/ReviewPanel'
 import { DEFAULT_THRESHOLD, usePreferences } from '../../lib/preferences'
 import { useToast } from '../../components/Toaster'
 import { Pill } from '../../components/ui'
@@ -237,7 +238,7 @@ function Results({ batch, onNew, onOpen }) {
               )
             })}
             {shown.length === 0 && (
-              <tr><td colSpan={6} className="batch-none">No rows match this filter.</td></tr>
+              <tr><td colSpan={7} className="batch-none">No rows match this filter.</td></tr>
             )}
           </tbody>
         </table>
@@ -278,6 +279,8 @@ function CaseView({ row, onBack }) {
       {caseData && (
         <>
           <CaseReport key={caseData.applicant_id} ref={headingRef} caseData={caseData} applicant={row} />
+          <ReviewPanel key={`review-${caseData.applicant_id}`} applicantId={caseData.applicant_id}
+            decision={caseData.review_decision} note={caseData.review_note} reviewedAt={caseData.reviewed_at} />
           <MonitorToggle key={`monitor-${caseData.applicant_id}`} applicantId={caseData.applicant_id} monitored={!!caseData.monitored} />
         </>
       )}

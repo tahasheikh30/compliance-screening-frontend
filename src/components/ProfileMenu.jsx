@@ -34,6 +34,7 @@ export default function ProfileMenu({
   unread = 0,
   onSettings,
   onNotifications,
+  onHelp,
   onSignOut,
 }) {
   const [open, setOpen] = useState(false);
@@ -148,6 +149,18 @@ export default function ProfileMenu({
                   {unread > 9 ? "9+" : unread}
                 </span>
               )}
+            </button>
+            <button
+              type="button"
+              className="profile-item"
+              onClick={() => choose(onHelp)}
+            >
+              <Icon>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1.9-1.1 1.8" />
+                <path d="M12 17h.01" />
+              </Icon>
+              <span>Help</span>
             </button>
             <div className="profile-sep" role="separator" />
             <button

@@ -3,6 +3,7 @@ import { screenApplicant } from '../../api'
 import ErrorBanner, { fieldError } from '../../components/ErrorBanner'
 import CaseReport from '../../components/CaseReport'
 import MonitorToggle from '../../components/MonitorToggle'
+import ReviewPanel from '../../components/ReviewPanel'
 import { MagnifyingGlassIcon, ScanningAnimation } from '../../components/ui'
 import { SOURCES, SOURCE_ORDER, overallInfo } from '../../lib/status'
 import { PROVINCES } from '../../lib/provinces'
@@ -266,6 +267,8 @@ function IndividualScreening() {
         {!loading && caseData && (
           <>
             <CaseReport key={reportKey.current} ref={headingRef} caseData={caseData} applicant={submitted} />
+            <ReviewPanel key={`review-${reportKey.current}`} applicantId={caseData.applicant_id}
+              decision={caseData.review_decision} note={caseData.review_note} reviewedAt={caseData.reviewed_at} />
             <MonitorToggle key={`monitor-${reportKey.current}`} applicantId={caseData.applicant_id} monitored={!!caseData.monitored} />
           </>
         )}

@@ -64,7 +64,7 @@ describe('toasts', () => {
 
 describe('ProfileMenu', () => {
   const setup = (over = {}) => {
-    const props = { email: 'ana@example.com', isAdmin: false, unread: 0, onSettings: vi.fn(), onNotifications: vi.fn(), onSignOut: vi.fn(), ...over }
+    const props = { email: 'ana@example.com', isAdmin: false, unread: 0, onSettings: vi.fn(), onNotifications: vi.fn(), onHelp: vi.fn(), onSignOut: vi.fn(), ...over }
     render(<ProfileMenu {...props} />)
     return props
   }
@@ -100,8 +100,18 @@ describe('ProfileMenu', () => {
     expect(p.onSettings).toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: /^Notifications/ }))
     expect(p.onNotifications).toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Help' }))
+    expect(p.onHelp).toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
     expect(p.onSignOut).toHaveBeenCalled()
+  })
+})
+
+describe('ProfileMenu order', () => {
+  it('puts Help directly below Notifications and above Sign out', () => {
+    render(<ProfileMenu email="a@b.co" isAdmin={false} onSettings={() => {}} onNotifications={() => {}} onHelp={() => {}} onSignOut={() => {}} />)
+    const names = [...document.querySelectorAll('.profile-item')].map((b) => b.textContent.trim())
+    expect(names).toEqual(['Settings', 'Notifications', 'Help', 'Sign out'])
   })
 })
 

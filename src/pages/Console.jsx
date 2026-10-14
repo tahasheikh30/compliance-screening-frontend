@@ -12,6 +12,8 @@ import SettingsModal from '../components/settings/SettingsModal'
 import { usePreferences } from '../lib/preferences'
 import NotificationsPage from './console/NotificationsPage'
 
+const HelpPage = lazy(() => import('./console/HelpPage'))
+
 // The first tab is needed immediately; the rest are fetched the first time they are opened.
 const loadHistory = () => import('./console/HistoryTab')
 const loadLists = () => import('./console/ListsTab')
@@ -75,7 +77,7 @@ function saveTab(userId, id) {
 export default function Console() {
   const { me, isAdmin, signOut } = useAuth()
   const [tab, setTab] = useState(() => readTab(me.id, isAdmin))
-  const [page, setPage] = useState(null)            // 'notifications' | null (a tab is showing)
+  const [page, setPage] = useState(null)            // 'notifications' | 'help' | null (a tab is showing)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const { prefs, loaded: prefsLoaded } = usePreferences()
   const touchedTab = useRef(false)                    // the person has already picked a tab: their default no longer applies
@@ -192,6 +194,7 @@ export default function Console() {
           unread={unread}
           onSettings={() => setSettingsOpen(true)}
           onNotifications={() => setPage('notifications')}
+          onHelp={() => setPage('help')}
           onSignOut={signOut}
         />
       </header>
@@ -200,6 +203,7 @@ export default function Console() {
         <ErrorBoundary key={page || tab}>
           <Suspense fallback={<TabLoading />}>
             {page === 'notifications' && <NotificationsPage onOpen={goTab} />}
+            {page === 'help' && <HelpPage isAdmin={isAdmin} onOpen={goTab} />}
             {!page && tab === 'screen' && <ScreeningTab />}
             {!page && tab === 'history' && <HistoryTab />}
             {!page && tab === 'monitoring' && <MonitoringTab onOpenCount={onAlertCount} />}

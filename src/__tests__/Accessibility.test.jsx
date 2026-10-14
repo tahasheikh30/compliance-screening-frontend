@@ -29,6 +29,7 @@ import MonitoringTab from '../pages/console/MonitoringTab'
 import ListsTab from '../pages/console/ListsTab'
 import UsersTab from '../pages/console/UsersTab'
 import AccountSection from '../components/settings/AccountSection'
+import HelpPage from '../pages/console/HelpPage'
 
 afterEach(cleanup)
 
@@ -46,6 +47,8 @@ const screens = [
   ['Lists', () => <ListsTab isAdmin />, /Watch lists/],
   ['People', () => <UsersTab selfId="u1" onPendingCount={() => {}} onOpenHistory={() => {}} />, /bob@example.com/],
   ['Account', () => <AccountSection />, /Change password/],
+  ['Help (administrator)', () => <HelpPage isAdmin onOpen={() => {}} />, /User manual/],
+  ['Help (user)', () => <HelpPage onOpen={() => {}} />, /User manual/],
 ]
 
 describe('accessibility (structural rules)', () => {
