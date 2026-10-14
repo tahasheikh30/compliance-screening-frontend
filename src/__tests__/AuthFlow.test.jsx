@@ -20,6 +20,7 @@ const health = { 'GET /api/health': { status: 'ok' } }
 
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()    // the last open tab is remembered per tab, and must not leak from one test into the next
   // these tests are about the sign in screen, which has its own address (the landing page is at /)
   window.history.replaceState(null, '', '/sign-in')
   h.supabase = makeSupabase()
