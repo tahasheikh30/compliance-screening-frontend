@@ -145,7 +145,8 @@ export default function LoginScreen({ mode = 'signin', onSwitchMode = () => {} }
           </form>
         )}
 
-        {busy && <p className="muted" role="status">{signup ? 'Sending your request...' : 'Signing you in...'}</p>}
+        {/* the button already says "Signing in..." / "Sending...", so this is only for screen readers */}
+        {busy && <p className="visually-hidden" role="status">{signup ? 'Sending your request...' : 'Signing you in...'}</p>}
         <ErrorBanner error={error} onDismiss={() => setError(null)} />
 
         <p className="gate-foot">
