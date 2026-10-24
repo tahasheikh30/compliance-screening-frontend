@@ -38,7 +38,7 @@ export const LEGAL_PAGES = {
       {
         h: 'Who we share it with',
         p: [
-          'We do not sell personal information. The adverse media check sends the applicant’s name, with a set of risk keywords, as a search to Google News. Apart from that search, applicant details are not sent to any other third party.',
+          'We do not sell personal information. The adverse media check sends the applicant’s name, with a set of risk keywords, as a search to Google News. Apart from that search, applicant details are not sent to any other third party, unless an administrator has switched on the optional AI search. Then the name, birth year, nationality, province and father’s or husband’s name (never the CNIC or the full date of birth) are sent to an AI service through OpenRouter, with the provider asked not to keep or train on them.',
           'We rely on infrastructure providers to run the service: Supabase (sign in and database), Render (the screening service), Vercel (hosting and anonymous page view counts) and Cloudflare (bot protection on the sign in form). They process data on our behalf and only for that purpose.',
           'We may disclose information where the law or a regulator, such as the State Bank of Pakistan or the SECP, requires it.',
         ],

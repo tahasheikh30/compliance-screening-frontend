@@ -361,10 +361,11 @@ const MAYBE_STARTED_HINT = 'The batch may have started on the server. Open the H
   + 'uploading the file again, so the applicants are not screened twice.'
 
 /** Upload a file and start screening it. Resolves with the batch (status 'running'); poll getBatch for the rest. */
-export async function startBatch(file, { threshold, monitor } = {}) {
+export async function startBatch(file, { threshold, monitor, ai } = {}) {
   const qs = new URLSearchParams({ filename: file.name })
   if (threshold != null) qs.set('threshold', String(Number(threshold)))
   if (monitor) qs.set('monitor', 'true')
+  if (ai) qs.set('ai', 'true')          // AI search on this batch (only when an administrator has it on)
   // As for a single screening: never send the file to a server that is asleep, because if the request then
   // timed out we could not tell whether the batch had started. If this fails, nothing was sent.
   await wakeBackend()
@@ -500,4 +501,66 @@ export async function setMonitoring(applicantId, enabled) {
   return apiJson(`/applicants/${encodeURIComponent(applicantId)}/monitoring`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }),
   })
+}
+
+// ---------------------------------------------------------------------------
+// AI search: optional. Everything works without it; these only report and use it when an administrator turns it on.
+// ---------------------------------------------------------------------------
+
+const JSON_HEADERS = { 'Content-Type': 'application/json' }
+
+/** { state: 'on' | 'off' | 'unconfigured' | 'paused', available, features: {name: bool}, message }: for everyone. */
+export async function getAiStatus() {
+  return apiJson('/ai/status', { track: false })
+}
+
+/** Administrators: the switch, the features, the model, today's usage and the limits. */
+export async function getAiAdmin() {
+  return apiJson('/admin/ai')
+}
+
+export async function setAiAdmin({ enabled, features }) {
+  const body = { enabled }
+  if (features) body.features = features
+  return apiJson('/admin/ai', { method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify(body) })
+}
+
+/** Administrators: does OpenRouter accept the server's key? { ok, error } */
+export async function testAi() {
+  return apiJson('/admin/ai/test', { method: 'POST' })
+}
+
+/** The case's memo: { memo: null | {...}, ai_available }. */
+export async function getMemo(applicantId) {
+  return apiJson(`/applicants/${applicantId}/memo`, { track: false })
+}
+
+export async function draftMemo(applicantId, { replace = false } = {}) {
+  return apiJson(`/applicants/${applicantId}/memo${replace ? '?replace=true' : ''}`, { method: 'POST', track: false, timeoutMs: 90000 })
+}
+
+export async function saveMemo(applicantId, { headline, sections, recommendation, open_questions }) {
+  return apiJson(`/applicants/${applicantId}/memo`, {
+    method: 'PUT', headers: JSON_HEADERS, track: false,
+    body: JSON.stringify({ headline, sections, recommendation, open_questions }),
+  })
+}
+
+export async function approveMemo(applicantId) {
+  return apiJson(`/applicants/${applicantId}/memo/approve`, { method: 'POST', track: false })
+}
+
+export async function downloadMemo(applicantId, filename = 'case-memo.pdf') {
+  const res = await request(`/applicants/${applicantId}/memo.pdf`)
+  await saveResponse(res, filename)
+}
+
+/** Ask about your own screenings: { question } (needs AI search) or { filters } (always works). */
+export async function askCopilot(body) {
+  return apiJson('/copilot/query', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify(body), track: false, timeoutMs: 60000 })
+}
+
+/** Monitoring alerts of the last `days` days: exact counts, and a short narrative when AI search is on. */
+export async function getDigest(days = 7) {
+  return apiJson(`/monitoring/digest?days=${encodeURIComponent(days)}`, { track: false, timeoutMs: 60000 })
 }

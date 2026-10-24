@@ -19,6 +19,8 @@ import {
 } from "../lib/status";
 import ErrorBanner from "./ErrorBanner";
 import { Stamp, Pill } from "./ui";
+import AiInsights from "./AiInsights";
+import MemoPanel from "./MemoPanel";
 
 function ScoreMeter({ score }) {
   const pct = Math.max(0, Math.min(100, Number(score) || 0));
@@ -452,6 +454,11 @@ const CaseReport = forwardRef(function CaseReport(
           <SourceCard key={r.id} result={r} applicantHasDob={applicantHasDob} />
         ))}
       </div>
+
+      <AiInsights insights={caseData.insights} reasons={caseData.overall_reasons || []} />
+      {caseData.applicant_id != null && (
+        <MemoPanel applicantId={caseData.applicant_id} overallStatus={caseData.overall_status} />
+      )}
 
       <p className="disclaimer">
         Automated fuzzy-name matching only. Date of birth and nationality are

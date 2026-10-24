@@ -4,7 +4,7 @@ import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/re
 vi.mock('../auth/AuthContext', () => ({
   useAuth: () => ({ me: { id: 'u1', email: 'ana@example.com', role: 'user', status: 'approved' }, isAdmin: false }),
 }))
-vi.mock('../api', () => ({
+vi.mock('../api', async () => ({ ...(await import('./aiMocks')).aiApi,
   screenApplicant: vi.fn(), getPreferences: vi.fn(), savePreferences: vi.fn(),
   startBatch: vi.fn(), getBatch: vi.fn(), cancelBatch: vi.fn(), downloadBatchEvidence: vi.fn(), downloadBatchResults: vi.fn(),
 }))

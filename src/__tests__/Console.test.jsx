@@ -3,7 +3,7 @@ import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 
 const auth = vi.hoisted(() => ({ me: { id: 'u1', email: 'ana@example.com', role: 'admin', status: 'approved' }, isAdmin: true }))
 vi.mock('../auth/AuthContext', () => ({ useAuth: () => ({ ...auth, signOut: vi.fn() }) }))
-vi.mock('../api', () => ({
+vi.mock('../api', async () => ({ ...(await import('./aiMocks')).aiApi,
   getMonitoringStatus: vi.fn().mockResolvedValue({ open_alerts: 0 }),
   listUsers: vi.fn().mockResolvedValue([]),
 }))

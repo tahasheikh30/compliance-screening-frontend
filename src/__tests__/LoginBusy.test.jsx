@@ -6,7 +6,7 @@ vi.mock('../auth/AuthContext', () => ({
   MIN_PASSWORD_LENGTH: 12,
   useAuth: () => ({ signIn, signUp: vi.fn(), notice: null, clearNotice: vi.fn() }),
 }))
-vi.mock('../api', () => ({ wakeBackend: vi.fn(() => Promise.resolve()) }))
+vi.mock('../api', async () => ({ ...(await import('./aiMocks')).aiApi, wakeBackend: vi.fn(() => Promise.resolve()) }))
 
 import LoginScreen from '../pages/LoginScreen'
 

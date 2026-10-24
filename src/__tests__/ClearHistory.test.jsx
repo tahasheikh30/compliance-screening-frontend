@@ -5,7 +5,7 @@ vi.mock('../auth/AuthContext', () => ({
   MIN_PASSWORD_LENGTH: 12,
   useAuth: () => ({ me: { id: 'u1', email: 'ana@example.com', role: 'user', status: 'approved' }, isAdmin: false, changePassword: vi.fn(), leaveWithNotice: vi.fn() }),
 }))
-vi.mock('../api', () => ({
+vi.mock('../api', async () => ({ ...(await import('./aiMocks')).aiApi,
   clearMyHistory: vi.fn(),
   listUserApplicants: vi.fn().mockResolvedValue([]),
   listApplicants: vi.fn().mockResolvedValue([]),

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { decideAlert, getMonitoringStatus, listAlerts, listMonitoredPeople, setMonitoring } from '../../api'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import ErrorBanner from '../../components/ErrorBanner'
+import DigestPanel from '../../components/DigestPanel'
 import { MatchItem } from '../../components/CaseReport'
 import { Pill } from '../../components/ui'
 import { fmtDateTime, plural } from '../../lib/format'
@@ -218,6 +219,8 @@ export default function MonitoringTab({ onOpenCount }) {
           People you chose to keep watching are screened again whenever a sanctions list changes. A new potential match
           appears here and as a notification. Only your own screenings are monitored and shown.
         </p>
+
+        <DigestPanel />
 
         {status && !status.enabled && (
           <p className="notice notice-warn">Automatic checking is switched off on the server, so no new matches will be found until it is turned back on.</p>

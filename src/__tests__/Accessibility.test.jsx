@@ -6,7 +6,7 @@ vi.mock('../auth/AuthContext', () => ({
   MIN_PASSWORD_LENGTH: 12,
   useAuth: () => ({ me: { id: 'u1', email: 'ana@example.com', role: 'admin', status: 'approved' }, isAdmin: true, changePassword: vi.fn(), leaveWithNotice: vi.fn() }),
 }))
-vi.mock('../api', () => ({
+vi.mock('../api', async () => ({ ...(await import('./aiMocks')).aiApi,
   screenApplicant: vi.fn(), clearMyHistory: vi.fn(), exportHistory: vi.fn(), reviewApplicant: vi.fn(),
   listApplicants: vi.fn().mockResolvedValue([{ id: 1, full_name: 'Some Person', submitted_at: '2026-10-01T00:00:00Z', overall_status: 'AUTO_CLEAR' }]),
   getApplicant: vi.fn(),

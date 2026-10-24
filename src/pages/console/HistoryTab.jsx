@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { listApplicants, exportHistory } from '../../api'
 import ErrorBanner from '../../components/ErrorBanner'
 import HistoryView from '../../components/HistoryView'
+import CopilotPanel from '../../components/CopilotPanel'
 
 /**
  * The signed in person's own screenings. An administrator sees only their own here too: they read another
@@ -36,6 +37,7 @@ export default function HistoryTab() {
             {busy ? 'Preparing...' : 'Download as CSV'}
           </button>
           <ErrorBanner error={error} onDismiss={() => setError(null)} />
+          <CopilotPanel />
         </div>
       )}
     />

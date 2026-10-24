@@ -77,8 +77,21 @@ export default function DataNoticeDialog({ onClose }) {
           For the adverse media check, the backend sends the applicant's name,
           with a set of risk keywords, as a search to Google News. The list
           downloads do not include any applicant data. Apart from that search,
-          no applicant details are sent to a third party, and this site makes no
-          third-party requests from your browser.
+          no applicant details are sent to a third party, except when an
+          administrator has switched on the optional AI search (see below).
+          This site makes no third-party requests from your browser.
+        </p>
+
+        <h3>AI search (optional)</h3>
+        <p>
+          When switched on, the backend sends the applicant's name, birth
+          year, nationality, province and father's or husband's name, with
+          news headlines and list entries to be compared, to an AI service
+          (OpenRouter and the model provider it routes to). The CNIC and the
+          full date of birth are never sent, and providers are asked not to
+          keep or train on the data. AI only adds labelled leads and can only
+          make a result more cautious. Nothing it says replaces a compliance
+          officer's decision. When it is off, nothing is sent.
         </p>
 
         <h3>Consent</h3>

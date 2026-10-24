@@ -4,7 +4,7 @@ import { makeSupabase, sessionFor, ME } from './helpers'
 
 const h = vi.hoisted(() => ({ supabase: null }))
 vi.mock('../lib/supabase', () => ({ getSupabase: () => h.supabase }))
-vi.mock('../api', () => ({
+vi.mock('../api', async () => ({ ...(await import('./aiMocks')).aiApi,
   getMe: vi.fn(async () => ME),
   SESSION_ENDED_EVENT: 'screening:session-ended',
   ACCOUNT_CHANGED_EVENT: 'screening:account-changed',
