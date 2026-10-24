@@ -52,11 +52,12 @@ export default function AiTab() {
         <section className="ai-usage" aria-labelledby="ai-usage-heading">
           <header className="ai-panel-head">
             <h2 id="ai-usage-heading">Usage and cost</h2>
-            <label className="field-hint" htmlFor="ai-usage-days">Last{' '}
-              <select id="ai-usage-days" value={days} onChange={(e) => setDays(Number(e.target.value))}>
-                {RANGES.map((r) => <option key={r} value={r}>{r} days</option>)}
-              </select>
-            </label>
+            <div className="filter-group" role="group" aria-label="Period">
+              {RANGES.map((r) => (
+                <button key={r} type="button" className={`filter-btn ${days === r ? 'filter-btn-on' : ''}`}
+                  aria-pressed={days === r} onClick={() => setDays(r)}>{r} days</button>
+              ))}
+            </div>
           </header>
           <ErrorBanner error={error} onDismiss={() => setError(null)} />
 
