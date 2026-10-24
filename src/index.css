@@ -1911,3 +1911,5 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 .copilot-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; margin-top: 10px; }
 .copilot-rows { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 .ai-features { border: 0; padding: 0; margin: 12px 0; }
+.ai-usage { margin-top: 18px; }
+.ai-usage h3 { margin: 18px 0 8px; }

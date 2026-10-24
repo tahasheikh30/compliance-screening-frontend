@@ -28,6 +28,7 @@ export const TAB_GUIDE = [
   { id: 'history', label: 'History', text: 'Every screening you have run, searchable, with its full result and evidence.' },
   { id: 'monitoring', label: 'Monitoring', text: 'People you keep watching, and the alerts when a list change brings up a new match.' },
   { id: 'lists', label: 'Lists', text: 'Which watch lists are loaded, how many records they hold and whether they can be read.' },
+  { id: 'ai', label: 'AI', text: 'Switch AI search on or off, and see how many tokens it has used and what it costs.', admin: true },
   { id: 'people', label: 'People', text: 'Approve new accounts and manage who can use Sentinel.', admin: true },
 ]
 

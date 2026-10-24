@@ -525,6 +525,11 @@ export async function setAiAdmin({ enabled, features }) {
   return apiJson('/admin/ai', { method: 'PUT', headers: JSON_HEADERS, body: JSON.stringify(body) })
 }
 
+/** Administrators: OpenRouter's own spend figures for the key, plus this server's own per day and per feature counts. */
+export async function getAiUsage(days = 30) {
+  return apiJson(`/admin/ai/usage?days=${encodeURIComponent(days)}`, { track: false, timeoutMs: 30000 })
+}
+
 /** Administrators: does OpenRouter accept the server's key? { ok, error } */
 export async function testAi() {
   return apiJson('/admin/ai/test', { method: 'POST' })
