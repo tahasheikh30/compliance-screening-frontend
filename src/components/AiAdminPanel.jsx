@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { getAiAdmin, setAiAdmin, testAi } from '../api'
 import ErrorBanner from './ErrorBanner'
 import { Pill } from './ui'
+import { SettingRow, Switch } from './settings/controls'
 import { setAiStatus } from '../lib/ai'
 import { useToast } from './Toaster'
 
@@ -55,25 +56,21 @@ export default function AiAdminPanel() {
       {loadFailed && <p className="field-hint">AI settings could not be loaded just now.</p>}
       {cfg && (
         <>
-          <label className="check-row" htmlFor="ai-enabled">
-            <input id="ai-enabled" type="checkbox" checked={cfg.enabled} disabled={busy || (!cfg.configured && !cfg.enabled)}
-              onChange={(e) => apply(e.target.checked)} />
-            <span>
-              <span className="field-label">AI search switch</span>
-              <span className="field-hint">
-                {cfg.configured ? cfg.message : 'Add OPENROUTER_API_KEY to the server environment, restart it, then switch this on.'}
-              </span>
-            </span>
-          </label>
+          <SettingRow
+            title="AI search switch"
+            description={cfg.configured ? cfg.message : 'Add OPENROUTER_API_KEY to the server environment, restart it, then switch this on.'}
+          >
+            <Switch label="AI search switch" checked={cfg.enabled} disabled={busy || (!cfg.configured && !cfg.enabled)}
+              onChange={(on) => apply(on)} />
+          </SettingRow>
           {cfg.configured && (
             <>
               <fieldset className="ai-features" disabled={busy}>
                 <legend className="field-label">Features</legend>
                 {cfg.feature_list.map((f) => (
-                  <label key={f.key} className="check-row">
-                    <input type="checkbox" checked={f.enabled} onChange={(e) => apply(cfg.enabled, { [f.key]: e.target.checked })} />
-                    <span className="field-hint">{f.label}</span>
-                  </label>
+                  <SettingRow key={f.key} title={f.label}>
+                    <Switch label={f.label} checked={f.enabled} onChange={(on) => apply(cfg.enabled, { [f.key]: on })} />
+                  </SettingRow>
                 ))}
               </fieldset>
               <dl className="facts ai-facts">

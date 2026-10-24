@@ -33,7 +33,7 @@ describe('AI tab', () => {
     render(<ToastProvider><AiTab /></ToastProvider>)
     expect(await screen.findByText(/OpenRouter could not be reached/)).toBeTruthy()
     expect(screen.getAllByText('12').length).toBeGreaterThan(0)
-    fireEvent.change(screen.getByLabelText(/Last/), { target: { value: '90' } })
+    fireEvent.click(screen.getByRole('button', { name: '90 days' }))
     await waitFor(() => expect(getAiUsage).toHaveBeenLastCalledWith(90))
   })
 })

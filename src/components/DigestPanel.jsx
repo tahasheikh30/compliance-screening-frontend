@@ -21,11 +21,12 @@ export default function DigestPanel() {
     <section className="digest" aria-labelledby="digest-heading">
       <header className="ai-panel-head">
         <h2 id="digest-heading">Digest</h2>
-        <label className="field-hint" htmlFor="digest-days">Last{' '}
-          <select id="digest-days" value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={7}>7 days</option><option value={30}>30 days</option><option value={90}>90 days</option>
-          </select>
-        </label>
+        <div className="filter-group" role="group" aria-label="Period">
+          {[7, 30, 90].map((r) => (
+            <button key={r} type="button" className={`filter-btn ${days === r ? 'filter-btn-on' : ''}`}
+              aria-pressed={days === r} onClick={() => setDays(r)}>{r} days</button>
+          ))}
+        </div>
       </header>
       {error && <p className="field-hint"> The digest could not be loaded just now.</p>}
       {s && (
