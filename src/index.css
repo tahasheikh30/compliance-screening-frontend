@@ -1913,3 +1913,4 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 .ai-features { border: 0; padding: 0; margin: 12px 0; }
 .ai-usage { margin-top: 18px; }
 .ai-usage h3 { margin: 18px 0 8px; }
+.ai-panel-head .filter-group { margin-left: auto; }
