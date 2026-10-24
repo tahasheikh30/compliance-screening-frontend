@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react'
 
-vi.mock('../api', () => ({ downloadEvidence: vi.fn(() => Promise.resolve()) }))
+vi.mock('../api', async () => ({ ...(await import('./aiMocks')).aiApi, downloadEvidence: vi.fn(() => Promise.resolve()) }))
 import { downloadEvidence } from '../api'
 import CaseReport from '../components/CaseReport'
 

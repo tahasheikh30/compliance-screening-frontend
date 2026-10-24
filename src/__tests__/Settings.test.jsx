@@ -7,7 +7,7 @@ vi.mock('../auth/AuthContext', () => ({
   useAuth: () => ({ me: { id: 'u1', email: 'ana@example.com', role: 'user', status: 'approved' }, isAdmin: false,
     changePassword: vi.fn(), leaveWithNotice, signOutOthers: vi.fn() }),
 }))
-vi.mock('../api', () => ({
+vi.mock('../api', async () => ({ ...(await import('./aiMocks')).aiApi,
   getPreferences: vi.fn(), savePreferences: vi.fn(), disableMyAccount: vi.fn(), deleteMyAccount: vi.fn(),
   clearMyHistory: vi.fn(), exportHistory: vi.fn(),
 }))

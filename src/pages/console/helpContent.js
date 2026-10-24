@@ -286,6 +286,31 @@ export const SECTIONS = [
     ],
   },
   {
+    id: 'ai',
+    title: 'AI search and case memos',
+    summary: 'The optional AI layer: what it adds, what it never does, and how to use the memo and the search box.',
+    blocks: [
+      { t: 'p', text: 'An administrator can switch **AI search** on or off. When it is off, a note on the Screening tab says **AI search is off** and everything works as normal. When it is on, AI adds labelled findings under the result. They are leads to check, not list results.' },
+      {
+        t: 'list',
+        items: [
+          '**Urdu names.** Type the name in Urdu script. Every Latin spelling is screened, and the spellings are shown. A guessed spelling can send a case to review, never clear it.',
+          '**Close names and news.** Names just under the threshold, the matches themselves and news articles are read and marked as the same person, possibly, or someone else.',
+          '**Web findings.** Public office, relatives and close associates are shown with their sources. Open the source before relying on any of it.',
+          '**Likely false alarms.** In a batch, tick **Use AI search** to see which cases look like false alarms. It only suggests. Nothing is cleared for you.',
+        ],
+      },
+      { t: 'note', tone: 'warn', title: 'What AI never does', text: 'It never clears a case on its own, never changes a stored result, and never sees a CNIC or a full date of birth. A case can only become more cautious because of it.' },
+      { t: 'h', text: 'Case memo' },
+      { t: 'steps', items: [
+        { title: 'Draft it.', text: 'Open a case and press **Draft memo**. Without AI it is written from a template. Every statement cites numbered evidence such as [E1].' },
+        { title: 'Edit it.', text: 'Change the headline, sections and recommendation. The recommendation cannot be lower than the screening outcome.' },
+        { title: 'Approve it.', text: 'Approving means you take responsibility for it. Any later edit makes it a draft again. **Download memo PDF** saves it.' },
+      ] },
+      { t: 'p', text: '**Search your screenings** on the History tab filters your own cases. With AI search on you can also ask in words, and the filters used are shown so you can see exactly what was searched. The **Digest** on the Monitoring tab summarises recent alerts.' },
+    ],
+  },
+  {
     id: 'history',
     title: 'History',
     summary: 'Find, reopen and export every screening you have run.',

@@ -10,7 +10,7 @@ const api = vi.hoisted(() => ({
   startBatch: vi.fn(), getBatch: vi.fn(), cancelBatch: vi.fn(), getApplicant: vi.fn(),
   downloadBatchResults: vi.fn(), downloadBatchEvidence: vi.fn(), setMonitoring: vi.fn(),
 }))
-vi.mock('../api', async (importOriginal) => ({ ...(await importOriginal()), ...api }))
+vi.mock('../api', async (importOriginal) => ({ ...(await importOriginal()), ...(await import('./aiMocks')).aiApi, ...api }))
 
 beforeEach(() => { Object.values(api).forEach((f) => f.mockReset()); forget() })
 afterEach(() => { cleanup(); vi.useRealTimers() })
@@ -107,7 +107,7 @@ describe('a real batch', () => {
     fireEvent.click(document.getElementById('batch-monitor'))
     fireEvent.change(document.getElementById('batch-threshold'), { target: { value: '90' } })
     await run()
-    expect(api.startBatch).toHaveBeenCalledWith(f, { threshold: 90, monitor: true })
+    expect(api.startBatch).toHaveBeenCalledWith(f, { threshold: 90, monitor: true, ai: false })
     expect(screen.getByRole('progressbar', { name: 'Batch progress' })).toBeTruthy()
     await flush(1600)
     expect(api.getBatch).toHaveBeenCalledWith(7)

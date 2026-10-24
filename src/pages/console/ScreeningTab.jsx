@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { screenApplicant } from '../../api'
 import ErrorBanner, { fieldError } from '../../components/ErrorBanner'
 import CaseReport from '../../components/CaseReport'
+import AiChip from '../../components/AiChip'
 import MonitorToggle from '../../components/MonitorToggle'
 import ReviewPanel from '../../components/ReviewPanel'
 import { MagnifyingGlassIcon, ScanningAnimation } from '../../components/ui'
@@ -136,6 +137,7 @@ function IndividualScreening() {
       <section className="sheet intake" aria-labelledby="intake-heading">
         <div className="folder-tab">New screening</div>
         <h1 id="intake-heading"><MagnifyingGlassIcon size={22} /> Screen an applicant</h1>
+        <AiChip />
 
         <form onSubmit={handleSubmit} className="form" noValidate>
           <label className="field" htmlFor="full-name-input">
@@ -143,6 +145,7 @@ function IndividualScreening() {
             <input
               id="full-name-input"
               value={fullName}
+              dir="auto"
               onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Muhammad Ahmed Khan"
               autoComplete="off"
@@ -151,7 +154,7 @@ function IndividualScreening() {
               aria-invalid={!!nameError}
               aria-describedby="name-hint"
             />
-            <span id="name-hint" className="field-hint">As written on the ID. Word order and titles such as Dr or Haji do not matter.</span>
+            <span id="name-hint" className="field-hint">As written on the ID, in English or Urdu script. Word order and titles such as Dr or Haji do not matter.</span>
             {nameError && <span className="field-error">{nameError}</span>}
           </label>
 

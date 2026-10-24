@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { aiHas, useAiStatus } from '../../lib/ai'
 import { cancelBatch, downloadBatchEvidence, downloadBatchResults, getApplicant, getBatch, startBatch } from '../../api'
 import CaseReport from '../../components/CaseReport'
 import ErrorBanner from '../../components/ErrorBanner'
@@ -33,11 +34,14 @@ const FILTERS = [
   { id: 'MANUAL_REVIEW', label: 'Needs review' },
   { id: 'AUTO_CLEAR', label: 'Clear' },
   { id: 'NOT_SCREENED', label: 'Not screened' },
+  { id: 'AI_CLEAR', label: 'AI: likely false alarms' },
 ]
 
 /** A row that was not screened is never "clear": it is invalid, failed, or was not reached. */
 const isScreened = (r) => r.state === 'screened'
 const outcomeOf = (r) => (isScreened(r) ? r.overall_status : 'NOT_SCREENED')
+// a row the AI read and thinks is a false alarm: only a suggestion, the row still needs a person's decision
+const isAiClear = (r) => isScreened(r) && r.ai_suggest_clear && r.overall_status !== 'AUTO_CLEAR'
 
 function extOf(name) {
   const m = /\.([a-z0-9]+)$/i.exec(name || '')
@@ -135,8 +139,8 @@ function Results({ batch, onNew, onOpen }) {
   const [busy, setBusy] = useState(null)               // 'results' | 'evidence' while a download runs
   const [downloadError, setDownloadError] = useState(null)
   const rows = batch.rows
-  const count = (id) => rows.filter((r) => outcomeOf(r) === id).length
-  const shown = useMemo(() => rows.filter((r) => filter === 'all' || outcomeOf(r) === filter), [rows, filter])
+  const count = (id) => (id === 'AI_CLEAR' ? rows.filter(isAiClear).length : rows.filter((r) => outcomeOf(r) === id).length)
+  const shown = useMemo(() => rows.filter((r) => filter === 'all' || (filter === 'AI_CLEAR' ? isAiClear(r) : outcomeOf(r) === filter)), [rows, filter])
   const notScreened = count('NOT_SCREENED')
   const hasEvidence = count('ESCALATE_TO_COMPLIANCE') + count('MANUAL_REVIEW') > 0
 
@@ -176,6 +180,15 @@ function Results({ batch, onNew, onOpen }) {
         {notScreened > 0 && <div><dt>Not screened</dt><dd className="tally-warn">{notScreened}</dd></div>}
       </dl>
 
+      {batch.ai && batch.ai_report && (
+        <p className="notice notice-good" role="note">
+          AI read this batch: {batch.ai_report.suggested_false_alarms} of {batch.ai_report.reviews} cases to review look like
+          false alarms, leaving {batch.ai_report.remaining_reviews}.
+          {batch.ai_report.cases_with_ai_leads > 0 && ` ${batch.ai_report.cases_with_ai_leads} were raised to review by AI leads.`}{' '}
+          This is a suggestion only. Every case still needs your decision, and nothing was cleared automatically.
+        </p>
+      )}
+
       {notScreened > 0 && (
         <p className="batch-note" role="note">
           {notScreened === 1 ? '1 row was' : `${notScreened} rows were`} not screened. Fix {notScreened === 1 ? 'it' : 'them'} in the
@@ -185,7 +198,7 @@ function Results({ batch, onNew, onOpen }) {
 
       <div className="batch-toolbar">
         <div className="filter-group" role="group" aria-label="Filter by outcome">
-          {FILTERS.filter((f) => f.id !== 'NOT_SCREENED' || notScreened > 0).map((f) => (
+          {FILTERS.filter((f) => (f.id !== 'NOT_SCREENED' || notScreened > 0) && (f.id !== 'AI_CLEAR' || batch.ai)).map((f) => (
             <button key={f.id} type="button" className={`filter-btn ${filter === f.id ? 'filter-btn-on' : ''}`}
               aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
               {f.label}{f.id !== 'all' && <span className="filter-count"> {count(f.id)}</span>}
@@ -227,7 +240,7 @@ function Results({ batch, onNew, onOpen }) {
                     <span className="batch-name">{r.full_name || 'No name'}</span>
                     {!screened && <span className="batch-why">{r.error || 'Not reached before the batch stopped.'}</span>}
                   </td>
-                  <td>{screened ? <Pill tone={info.tone}>{info.stamp}</Pill> : <Pill tone="warn">Not screened</Pill>}</td>
+                  <td>{screened ? <Pill tone={info.tone}>{info.stamp}</Pill> : <Pill tone="warn">Not screened</Pill>}{isAiClear(r) && <> <Pill tone="good">AI: likely false alarm</Pill></>}{screened && r.ai_leads > 0 && <> <Pill tone="warn">AI lead</Pill></>}</td>
                   <td className="num">{screened ? r.sanctions : ''}</td>
                   <td className="num">{screened ? r.pep ?? 0 : ''}</td>
                   <td className="num">{screened ? r.news : ''}</td>
@@ -300,6 +313,9 @@ export default function BatchScreening() {
   const edited = useRef(false)                        // once the person changes these, their saved defaults stop applying
   const [threshold, setThreshold] = useState(defThreshold)
   const [monitor, setMonitor] = useState(defMonitor)
+  const aiStatus = useAiStatus()
+  const [useAi, setUseAi] = useState(true)
+  const aiOn = aiHas(aiStatus, 'triage') || aiHas(aiStatus, 'media') || aiHas(aiStatus, 'variants')
   useEffect(() => {
     if (!edited.current) { setThreshold(defThreshold); setMonitor(defMonitor) }
   }, [defThreshold, defMonitor])
@@ -408,7 +424,7 @@ export default function BatchScreening() {
     setPollError(null)
     setStopping(false)
     try {
-      const started = await startBatch(file, { threshold, monitor })
+      const started = await startBatch(file, { threshold, monitor, ai: aiOn && useAi })
       remember(ACTIVE_KEY, started.id)
       setBatch(started)
       if (started.status !== 'running') finished(started)     // a very small file can be done before the reply
@@ -521,6 +537,20 @@ export default function BatchScreening() {
               </span>
             </span>
           </label>
+
+          {aiStatus && (
+            <label className="check-row" htmlFor="batch-ai">
+              <input id="batch-ai" type="checkbox" checked={aiOn && useAi} disabled={running || !aiOn} onChange={(e) => setUseAi(e.target.checked)} />
+              <span>
+                <span className="field-label">Use AI search</span>
+                <span className="field-hint">
+                  {aiOn
+                    ? 'Reads close names and news, and reports which cases look like false alarms. It only suggests: nothing is cleared for you. Slower and uses the AI quota.'
+                    : 'AI search is off. The batch is screened as usual.'}
+                </span>
+              </span>
+            </label>
+          )}
 
           <div className="form-actions">
             <button type="button" className="btn btn-primary" disabled={!file || running} onClick={run}>

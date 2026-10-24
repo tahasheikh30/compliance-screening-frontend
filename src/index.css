@@ -1884,3 +1884,30 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
   .settings-side, .settings-main, .settings-body { min-width: 0; }
   .settings-body { padding: 14px 14px 24px; }
 }
+
+/* ---- AI search (optional layer): always labelled, kept apart from the list results ---- */
+.ai-chip { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 4px 12px; border-radius: 999px; font-size: 13px; border: 1px solid var(--line-strong); color: var(--text-soft); }
+.ai-chip-on { border-color: var(--gold-line); color: var(--gold-hi); background: var(--gold-soft); }
+.ai-chip-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.ai-panel, .memo-panel, .ai-admin, .copilot, .digest {
+  margin-top: 18px; padding: 16px 18px; background: var(--inset-2);
+  border: 1px solid var(--line); border-left: 4px solid var(--gold-line); border-radius: var(--radius);
+}
+.ai-panel-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 8px; }
+.ai-panel-head h2, .ai-panel-head h3 { margin: 0; }
+.ai-block { margin-top: 14px; }
+.ai-block h4 { margin: 0 0 6px; }
+.ai-list { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.ai-reason { color: var(--text-soft); font-size: 14px; margin-top: 2px; }
+.ai-chips { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.ai-chip-item { padding: 3px 10px; border: 1px solid var(--line-strong); border-radius: 999px; font-size: 14px; }
+.ai-origin { color: var(--text-soft); font-size: 12px; }
+.ai-urdu { font-size: 22px; margin: 6px 0; }
+.notice-good { color: var(--green-dark); background: rgba(143, 209, 174, 0.1); }
+.memo-section { margin-top: 12px; }
+.memo-section h5 { margin: 0 0 4px; }
+.memo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.memo-edit textarea, .memo-edit input, .memo-edit select, .copilot input, .copilot select { width: 100%; }
+.copilot-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; margin-top: 10px; }
+.copilot-rows { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.ai-features { border: 0; padding: 0; margin: 12px 0; }
