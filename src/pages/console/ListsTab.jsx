@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getListsStatus, reloadLists, getNactaStatus, uploadNacta, getPepStatus, uploadPep, deletePepUpload, refreshPep, checkCoverage } from '../../api'
 import ErrorBanner from '../../components/ErrorBanner'
-import AiAdminPanel from '../../components/AiAdminPanel'
 import { Pill } from '../../components/ui'
 import { fmtAge, fmtNum, fmtDateTime, plural, safeUrl } from '../../lib/format'
 import { SOURCES } from '../../lib/status'
@@ -560,7 +559,6 @@ export default function ListsTab({ isAdmin = true }) {
         <NactaPanel onChanged={load} isAdmin={isAdmin} />
         <PepPanel onChanged={load} isAdmin={isAdmin} />
         {isAdmin && <CoveragePanel />}
-        {isAdmin && <AiAdminPanel />}
 
         {reloaded && (
           <p className="reload-summary" role="status">

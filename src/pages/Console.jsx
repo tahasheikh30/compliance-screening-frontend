@@ -19,12 +19,14 @@ const loadHistory = () => import('./console/HistoryTab')
 const loadLists = () => import('./console/ListsTab')
 const loadUsers = () => import('./console/UsersTab')
 const loadMonitoring = () => import('./console/MonitoringTab')
+const loadAiTab = () => import('./console/AiTab')
 const loadUserHistory = () => import('./console/UserHistoryPage')
 const HistoryTab = lazy(loadHistory)
 const ListsTab = lazy(loadLists)
 const UsersTab = lazy(loadUsers)
 const MonitoringTab = lazy(loadMonitoring)
 const UserHistoryPage = lazy(loadUserHistory)
+const AiTab = lazy(loadAiTab)
 
 // Once the first screen is up and the browser has nothing better to do, fetch the other tabs' code so
 // opening them is instant instead of a visible load.
@@ -44,6 +46,7 @@ const BASE_TABS = [
   { id: 'lists', label: 'Lists' },
 ]
 const PEOPLE_TAB = { id: 'people', label: 'People' }
+const AI_TAB = { id: 'ai', label: 'AI' }          // administrators: the AI switch and what it costs
 
 // Small line icons for the tabs. Decorative: the label carries the meaning.
 function TabIcon({ id }) {
@@ -52,6 +55,7 @@ function TabIcon({ id }) {
   if (id === 'history') return <svg {...common}><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" /></svg>
   if (id === 'monitoring') return <svg {...common}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
   if (id === 'lists') return <svg {...common}><line x1="8" y1="6" x2="20" y2="6" /><line x1="8" y1="12" x2="20" y2="12" /><line x1="8" y1="18" x2="20" y2="18" /><circle cx="4" cy="6" r="1" /><circle cx="4" cy="12" r="1" /><circle cx="4" cy="18" r="1" /></svg>
+  if (id === 'ai') return <svg {...common}><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" /><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z" /></svg>
   return <svg {...common}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6" /><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8" /><path d="M18 14.4c2.2.7 3.5 2.6 3.5 5.6" /></svg>
 }
 const PENDING_POLL_MS = 60000
@@ -63,7 +67,7 @@ const tabKey = (userId) => `console-tab:${userId}`
 function savedTab(userId, isAdmin) {
   try {
     const saved = window.sessionStorage.getItem(tabKey(userId))
-    const valid = BASE_TABS.some((t) => t.id === saved) || (isAdmin && saved === PEOPLE_TAB.id)
+    const valid = BASE_TABS.some((t) => t.id === saved) || (isAdmin && (saved === PEOPLE_TAB.id || saved === AI_TAB.id))
     return valid ? saved : null
   } catch {
     return null
@@ -94,7 +98,7 @@ export default function Console() {
       loadHistory().catch(() => {})
       loadMonitoring().catch(() => {})
       loadLists().catch(() => {})
-      if (isAdmin) { loadUsers().catch(() => {}); loadUserHistory().catch(() => {}) }
+      if (isAdmin) { loadUsers().catch(() => {}); loadUserHistory().catch(() => {}); loadAiTab().catch(() => {}) }
     })
     return () => cancelIdle(id)
   }, [isAdmin])
@@ -158,7 +162,7 @@ export default function Console() {
     if (prefsLoaded && !savedTab(me.id, isAdmin) && !touchedTab.current) setTab(prefs.display.default_tab)
   }, [prefsLoaded, prefs.display.default_tab, me.id, isAdmin])
 
-  const tabs = useMemo(() => (isAdmin ? [...BASE_TABS, PEOPLE_TAB] : BASE_TABS), [isAdmin])
+  const tabs = useMemo(() => (isAdmin ? [...BASE_TABS, AI_TAB, PEOPLE_TAB] : BASE_TABS), [isAdmin])
   const onPendingCount = useCallback((n) => { setPending(n); lastPending.current = n }, [])
   const goTab = useCallback((id) => { touchedTab.current = true; setTab(id); saveTab(me.id, id); setPage(null); setViewUser(null) }, [me.id])
 
@@ -208,6 +212,7 @@ export default function Console() {
             {!page && tab === 'history' && <HistoryTab />}
             {!page && tab === 'monitoring' && <MonitoringTab onOpenCount={onAlertCount} />}
             {!page && tab === 'lists' && <ListsTab isAdmin={isAdmin} />}
+            {!page && tab === 'ai' && isAdmin && <AiTab />}
             {!page && tab === 'people' && isAdmin && (
               <>
                 {/* kept mounted while a person's history is open, so the filter and list are as they were on return */}
