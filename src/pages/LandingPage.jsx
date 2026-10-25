@@ -50,6 +50,49 @@ const POINTS = [
   },
 ];
 
+const STEPS = [
+  { key: "STEP 1", title: "Enter the applicant", copy: "A name is enough. A CNIC, father or husband, birth date and province make the evidence sharper." },
+  { key: "STEP 2", title: "Every source is checked", copy: "The lists, the PEP data and the news search run at once. One that fails never stops the rest." },
+  { key: "STEP 3", title: "One verdict", copy: "Escalate, Review or Clear, with a card per source and the reasons for the result." },
+  { key: "STEP 4", title: "You decide and record it", copy: "Mark the case cleared, confirmed or escalated with a note. The result itself is never changed." },
+];
+
+const VERDICTS = [
+  { key: "ESCALATE", title: "A watch list match", copy: "A name or CNIC matches a sanctions or watch list. Pass it to compliance and verify identity against the source record." },
+  { key: "REVIEW", title: "Needs a person's eye", copy: "Adverse news, a possible politically exposed person, or a source that could not be fully read." },
+  { key: "CLEAR", title: "Screened, nothing found", copy: "Every source was read and nothing was found. Anything not screened is never reported as clear." },
+];
+
+const AI_POINTS = [
+  { key: "URDU", title: "Names in Urdu script", copy: "Type a name in Urdu. Every likely English spelling is screened against the lists, and each spelling is labelled with where it came from." },
+  { key: "CLOSE NAMES", title: "Near matches, explained", copy: "Names just under the threshold are read and marked as the same person, possibly, or probably someone else, with a short reason." },
+  { key: "NEWS", title: "Adverse media, read", copy: "Articles are read for namesakes and the type of risk, so a reviewer starts with what matters." },
+  { key: "WEB", title: "Politically exposed persons", copy: "Public offices, relatives and close associates are looked up on the open web. Every finding shows its sources and its confidence." },
+  { key: "MEMO", title: "A case memo to approve", copy: "A numbered evidence list and a draft memo for the officer to edit and approve, then download as a PDF." },
+  { key: "ASK", title: "Ask your own history", copy: "Ask in plain words, such as which cases needed attention this month. The filters used are shown back, and only your own cases are searched." },
+];
+
+const TEAM_POINTS = [
+  { key: "BATCH", title: "Screen a whole file", copy: "Upload up to 500 applicants from Excel, CSV or Word and get every verdict, with results and evidence to download." },
+  { key: "MONITORING", title: "Keep watching", copy: "People you choose are screened again whenever a list changes, with alerts for any new potential match." },
+  { key: "EVIDENCE", title: "Evidence you can prove", copy: "Each evidence PDF carries a stored SHA-256 fingerprint, so an altered copy can be detected." },
+  { key: "AUDIT", title: "A tamper evident trail", copy: "Who did what is recorded in a chained log that never holds an applicant's name or CNIC." },
+];
+
+function CardList({ items, className = "" }) {
+  return (
+    <ul className={`lp-cards ${className}`}>
+      {items.map((p) => (
+        <li key={p.key} className="lp-card">
+          <span className="lp-label lp-label-gold">{p.key}</span>
+          <h3>{p.title}</h3>
+          <p>{p.copy}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function LandingPage() {
   const mainRef = useRef(null);
 
@@ -183,6 +226,70 @@ export default function LandingPage() {
           </ul>
         </section>
 
+        <section className="lp-section" aria-labelledby="lp-steps-title">
+          <div className="lp-divider" />
+          <div className="lp-intro">
+            <div>
+              <p className="lp-label lp-label-gold">From name to verdict</p>
+              <h2 id="lp-steps-title">Four steps, one record.</h2>
+            </div>
+            <p className="lp-intro-copy">
+              Every screening follows the same path, so every case can be read, checked and defended the same way.
+            </p>
+          </div>
+          <CardList items={STEPS} className="lp-cards-4" />
+        </section>
+
+        <section className="lp-section" aria-labelledby="lp-verdicts-title">
+          <div className="lp-divider" />
+          <div className="lp-intro">
+            <div>
+              <p className="lp-label lp-label-gold">Three verdicts</p>
+              <h2 id="lp-verdicts-title">What the result means.</h2>
+            </div>
+          </div>
+          <CardList items={VERDICTS} />
+        </section>
+
+        <section id="ai" className="lp-section" aria-labelledby="lp-ai-title">
+          <div className="lp-divider" />
+          <div className="lp-intro">
+            <div>
+              <p className="lp-label lp-label-gold">AI search, optional</p>
+              <h2 id="lp-ai-title">Looks where the lists can’t.</h2>
+            </div>
+            <p className="lp-intro-copy">
+              When an administrator switches it on, AI search goes beyond the published lists: it reads Urdu names, close
+              matches and news, searches the open web, and drafts the paperwork. It only suggests. A person decides.
+            </p>
+          </div>
+          <CardList items={AI_POINTS} />
+        </section>
+
+        <section className="lp-band" aria-labelledby="lp-ai-safe-title">
+          <div>
+            <p className="lp-label lp-label-gold">AI safeguards</p>
+            <h2 id="lp-ai-safe-title">It can add caution, never remove it.</h2>
+            <p>
+              AI can move a clear result to manual review, but it can never clear a case or change a stored result. The
+              CNIC and the full date of birth are never sent to it, everything it finds is labelled to be verified, and
+              the application works as before when it is off.
+            </p>
+          </div>
+          <span className="lp-pill lp-pill-solid">Never clears anyone</span>
+        </section>
+
+        <section className="lp-section" aria-labelledby="lp-team-title">
+          <div className="lp-divider" />
+          <div className="lp-intro">
+            <div>
+              <p className="lp-label lp-label-gold">Built for the team</p>
+              <h2 id="lp-team-title">More than a single search.</h2>
+            </div>
+          </div>
+          <CardList items={TEAM_POINTS} className="lp-cards-4" />
+        </section>
+
         <section
           id="security"
           className="lp-band"
@@ -212,6 +319,17 @@ export default function LandingPage() {
               An internal tool of the Compliance department at IGI Holdings, for account-opening AML/KYC screening. It shows what was
               checked, what was found, and what could not be checked.
             </p>
+          </div>
+        </section>
+
+        <section className="lp-band lp-final" aria-labelledby="lp-final-title">
+          <div>
+            <h2 id="lp-final-title">Ready to screen an applicant?</h2>
+            <p>Sign in to start, or request an account. An administrator approves every request.</p>
+          </div>
+          <div className="lp-cta">
+            <Link to={ROUTES.signIn} className="lp-btn lp-btn-primary">Sign in</Link>
+            <Link to={ROUTES.requestAccess} className="lp-btn lp-btn-quiet">Request an account</Link>
           </div>
         </section>
       </main>

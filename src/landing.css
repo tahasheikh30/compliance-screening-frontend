@@ -292,6 +292,12 @@ html:has(.landing) { scroll-behavior: smooth; }
 
 /* sections */
 .lp-section { padding-bottom: 40px; scroll-margin-top: 24px; }
+.lp-intro-copy { color: var(--on-desk-muted); line-height: 1.65; max-width: 62ch; }
+.lp-cards.lp-cards-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.lp-final { align-items: center; }
+.lp-final .lp-cta { margin: 0; }
+@media (max-width: 1000px) { .lp-cards.lp-cards-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .lp-cards.lp-cards-4 { grid-template-columns: minmax(0, 1fr); } }
 .lp-band { scroll-margin-top: 24px; }
 .lp-divider { height: 1px; background: linear-gradient(90deg, rgba(216, 190, 128, 0.5), rgba(232, 236, 238, 0.1), transparent); }
 .lp-intro { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 56px; align-items: start; padding: 64px 0 36px; }
@@ -319,6 +325,7 @@ html:has(.landing) { scroll-behavior: smooth; }
 }
 .lp-band p:not(.lp-label) { max-width: 66ch; margin-top: 12px; color: var(--on-desk-muted); line-height: 1.65; }
 .lp-band:last-child { padding-bottom: 88px; }
+.lp-about-last { }
 
 @media (max-width: 860px) {
   .lp-hero { grid-template-columns: minmax(0, 1fr); gap: 52px; padding-top: 64px; }
@@ -344,3 +351,4 @@ html:has(.landing) { scroll-behavior: smooth; }
   .lp-btn, .lp-btn::after { transition: none; }
   .lp-btn-primary:hover { transform: none; }
 }
+.lp-band + .lp-section { margin-top: 40px; }
