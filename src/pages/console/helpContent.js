@@ -28,7 +28,7 @@ export const TAB_GUIDE = [
   { id: 'history', label: 'History', text: 'Every screening you have run, searchable, with its full result and evidence.' },
   { id: 'monitoring', label: 'Monitoring', text: 'People you keep watching, and the alerts when a list change brings up a new match.' },
   { id: 'lists', label: 'Lists', text: 'Which watch lists are loaded, how many records they hold and whether they can be read.' },
-  { id: 'ai', label: 'AI', text: 'Switch AI search on or off, and see how many tokens it has used and what it costs.', admin: true },
+  { id: 'ai', label: 'AI', text: 'Switch AI search and each of its features on or off, test the key, and see its usage and cost.', admin: true },
   { id: 'people', label: 'People', text: 'Approve new accounts and manage who can use Sentinel.', admin: true },
 ]
 
@@ -40,7 +40,7 @@ export const SECTIONS = [
     blocks: [
       {
         t: 'p',
-        text: 'Sentinel checks an applicant against the UN Security Council, OFAC (US Treasury), UK, FIA Red Book and NACTA lists, against a list of politically exposed persons (PEPs), and against an open news search. You get one clear verdict with the evidence attached, and a record of what was checked.',
+        text: 'Sentinel checks an applicant against the UN Security Council, OFAC (US Treasury), UK, FIA Red Book and NACTA lists, against a list of politically exposed persons (PEPs), and against an open news search. You get one clear verdict with the evidence attached, and a record of what was checked. An optional **AI search**, switched on by an administrator, adds Urdu names, close name checks, web findings and a drafted case memo, and can only make a result more cautious.',
       },
       { t: 'h', text: 'The parts of the screen' },
       { t: 'tabs' },
@@ -113,7 +113,7 @@ export const SECTIONS = [
         t: 'table',
         head: ['Field', 'What to enter', 'Required'],
         rows: [
-          ['Full name', 'As written on the ID. Word order and titles such as Dr or Haji do not matter. Use Latin letters.', 'Yes'],
+          ['Full name', 'As written on the ID. Word order and titles such as Dr or Haji do not matter. English letters or Urdu script. Other scripts are refused.', 'Yes'],
           ['Father or husband', 'The name of the applicant\'s father or husband.', 'No'],
           ['Date of birth', 'Pick the date. It is shown next to each match as evidence.', 'No'],
           ['Nationality', 'For example Pakistan.', 'No'],
@@ -165,7 +165,7 @@ export const SECTIONS = [
         items: [
           { title: 'Prepare the file.', text: 'One applicant per row, with the column names in the first row. Use Excel (.xlsx or .xls), CSV, or a Word (.docx) file where the first table holds the applicants. The limit is 10 MB and 500 rows.' },
           { title: 'Upload it.', text: 'Drop the file on the box or browse for it. **Replace** and **Remove** change your choice before you run.' },
-          { title: 'Set the threshold and monitoring.', text: 'The same threshold applies to every row. Tick **Keep monitoring everyone in this file** if you want them all watched.' },
+          { title: 'Set the threshold and monitoring.', text: 'The same threshold applies to every row. Tick **Keep monitoring everyone in this file** if you want them all watched. When AI search is on, **Use AI search** applies it to every row.' },
           { title: 'Run batch screening.', text: 'A progress bar shows the row being screened. **Cancel** stops after the row in progress.' },
           { title: 'Review the results.', text: 'Filter by outcome, open any row with **View case**, and download the results.' },
         ],
@@ -219,7 +219,7 @@ export const SECTIONS = [
       },
       {
         t: 'p',
-        text: 'Under the verdict you see the number of watch list matches, PEP matches (when there are any), news leads, records screened and the threshold used, then a plain **next step** that names what triggered it.',
+        text: 'Under the verdict you see the number of watch list matches, PEP matches (when there are any), news leads, records screened and the threshold used, then a plain **next step** that names what triggered it. When AI search was used, an **AI search** panel follows with its findings and, if it raised the case to review, the reasons.',
       },
       { t: 'h', text: 'One card for every source' },
       {
@@ -289,26 +289,38 @@ export const SECTIONS = [
   {
     id: 'ai',
     title: 'AI search and case memos',
-    summary: 'The optional AI layer: what it adds, what it never does, and how to use the memo and the search box.',
+    summary: 'The optional AI layer: what it adds, what it never does, the case memo, plain language search and the digest.',
     blocks: [
-      { t: 'p', text: 'An administrator can switch **AI search** on or off. When it is off, a note on the Screening tab says **AI search is off** and everything works as normal. When it is on, AI adds labelled findings under the result. They are leads to check, not list results.' },
+      { t: 'p', text: 'An administrator can switch **AI search** on or off for everyone. When it is off, a note on the Screening tab says **AI search is off** and everything works as normal. When it is on, a chip says so, **Use AI search** is ticked on the form, and AI adds labelled findings under the result: **AI findings: verify before relying on them**. They are leads to check, not list results.' },
+      { t: 'h', text: 'What it adds to a screening' },
       {
-        t: 'list',
+        t: 'defs',
         items: [
-          '**Urdu names.** Type the name in Urdu script. Every Latin spelling is screened, and the spellings are shown. A guessed spelling can send a case to review, never clear it.',
-          '**Close names and news.** Names just under the threshold, the matches themselves and news articles are read and marked as the same person, possibly, or someone else.',
-          '**Web findings.** Public office, relatives and close associates are shown with their sources. Open the source before relying on any of it.',
-          '**Likely false alarms.** In a batch, tick **Use AI search** to see which cases look like false alarms. It only suggests. Nothing is cleared for you.',
+          { term: 'Urdu names', text: 'Type the name in Urdu script. Every likely English spelling is screened against the lists, and the spellings are shown with where each came from (a dictionary, rules or AI). A match on a guessed spelling is a lead and needs checking against the ID.' },
+          { term: 'Close names', text: 'Names just under the threshold are read and marked as the same person, possibly the same person, or probably someone else, with a short reason. A score is never lowered and a match is never removed.' },
+          { term: 'Adverse media', text: 'News articles are read for namesakes and for the type of risk, such as fraud or corruption.' },
+          { term: 'Web findings', text: 'Public offices held by the applicant, and relatives and close associates of politically exposed persons, are looked up on the open web. Each shows its confidence, the details that agree, and its sources. Open the source before relying on any of it.' },
+          { term: 'Moved to manual review', text: 'A clear screening can become **Needs review** when AI finds something worth a person\'s attention. The case lists the reasons in plain words.' },
+          { term: 'Likely false alarms', text: 'In a batch, tick **Use AI search** to see which cases to review look like false alarms. The batch report has an **AI: likely false alarms** filter. It only suggests. Nothing is cleared for you.' },
         ],
       },
-      { t: 'note', tone: 'warn', title: 'What AI never does', text: 'It never clears a case on its own, never changes a stored result, and never sees a CNIC or a full date of birth. A case can only become more cautious because of it.' },
+      { t: 'note', tone: 'warn', title: 'What AI never does', text: 'It never clears a case on its own, never changes a stored result, and never sees a CNIC or a full date of birth. A case can only become more cautious because of it. If AI is off, paused or out of quota, the screening carries on without it and says so.' },
       { t: 'h', text: 'Case memo' },
       { t: 'steps', items: [
-        { title: 'Draft it.', text: 'Open a case and press **Draft memo**. Without AI it is written from a template. Every statement cites numbered evidence such as [E1].' },
-        { title: 'Edit it.', text: 'Change the headline, sections and recommendation. The recommendation cannot be lower than the screening outcome.' },
-        { title: 'Approve it.', text: 'Approving means you take responsibility for it. Any later edit makes it a draft again. **Download memo PDF** saves it.' },
+        { title: 'Draft it.', text: 'Open a case and press **Draft memo**. The evidence is listed as numbered items, E1, E2 and so on, and every statement cites them. Without AI the memo is written from a template.' },
+        { title: 'Edit it.', text: 'Change the headline, the sections and the recommendation. The recommendation can never be lower than the screening outcome, which is stored and printed on the memo.' },
+        { title: 'Approve it.', text: 'Approving means you take responsibility for it, and records who and when. Any later edit makes it a draft again. **Redraft** replaces an approved memo only when you ask for it.' },
+        { title: 'Download it.', text: '**Download memo PDF** saves the memo with the case reference, the system outcome, the evidence list and the approval line.' },
       ] },
-      { t: 'p', text: '**Search your screenings** on the History tab filters your own cases. With AI search on you can also ask in words, and the filters used are shown so you can see exactly what was searched. The **Digest** on the Monitoring tab summarises recent alerts.' },
+      { t: 'h', text: 'Search your screenings and the digest' },
+      { t: 'p', text: 'On the **History** tab, open **Search your screenings**. Filter by outcome, name and dates, or, with AI search on, ask in words such as **Which cases needed attention this month?** The filters actually used are shown back so you can see how the question was understood, and only your own cases are searched. The **Digest** on the **Monitoring** tab gives exact counts of recent alerts for 7, 30 or 90 days, with a short written summary when AI search is on.' },
+      { t: 'h', text: 'For administrators', admin: true },
+      { t: 'list', admin: true, items: [
+        'Open the **AI** tab. The **AI search** switch turns the whole feature on or off. Without the provider key on the server it stays off and says so.',
+        'Each feature has its own switch, so one part can be turned off without the rest.',
+        '**Test the key** makes one small call to confirm the key works. The key itself is never shown or stored.',
+        'The usage report shows today\'s calls against the daily limit, the cost today, this week, this month and all time, the credit left on the key, and calls, tokens and cost by feature, model and day.',
+      ] },
     ],
   },
   {
@@ -522,6 +534,9 @@ export const SECTIONS = [
           { term: 'FIA Red Book', text: 'The Federal Investigation Agency\'s list of most wanted people.' },
           { term: 'OFAC', text: 'The US Treasury\'s Office of Foreign Assets Control, which publishes the SDN and Consolidated sanctions lists.' },
           { term: 'Evidence PDF', text: 'The report made when a screening finds a match or a news lead, for the compliance file.' },
+          { term: 'AI search', text: 'An optional layer that reads Urdu names, close matches and news, searches the open web and drafts memos. It only adds caution and its findings are leads to verify.' },
+          { term: 'Case memo', text: 'A written summary of a case with numbered evidence, a recommendation and an approval line, drafted for the officer to edit and approve.' },
+          { term: 'Digest', text: 'Exact counts of recent monitoring alerts for 7, 30 or 90 days, with an optional written summary.' },
           { term: 'Continuous monitoring', text: 'Screening a person again automatically when a watch list changes, so a later listing is not missed.' },
           { term: 'Alert', text: 'A new potential match found by monitoring, waiting for you to confirm or dismiss it.' },
         ],
@@ -545,6 +560,9 @@ export const SECTIONS = [
           { term: 'It says I made too many requests.', text: 'Screenings are limited to 10 a minute, and batches to 20 an hour. Wait a moment and try again.' },
           { term: 'It says a batch is already running.', text: 'You can run one batch at a time. Wait for it to finish, or cancel it.' },
           { term: 'How do I delete a screening?', text: 'Use Settings, Account, Clear search history. Screenings under monitoring are kept: stop monitoring them first.' },
+          { term: 'It says AI search is off.', text: 'An administrator has not switched it on, or the server has no provider key yet. Screening works exactly as usual without it.' },
+          { term: 'The AI part did not run.', text: 'AI can be paused after repeated provider errors, or have reached its daily limit. The case says so and the screening is still complete. Screen again later if you need the AI findings.' },
+          { term: 'Why did a clear result become Review?', text: 'AI search found something worth a look, such as a close name or a web finding. The reasons are listed in the case. It never works the other way: AI cannot clear a case.' },
           { term: 'Can I rely on a Clear result?', text: 'Treat it as one input. It is automated name matching and does not replace your normal checks.' },
         ],
       },

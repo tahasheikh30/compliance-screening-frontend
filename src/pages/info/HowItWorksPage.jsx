@@ -35,7 +35,7 @@ const SOURCES = [
 const STEPS = [
   {
     title: "Enter the applicant",
-    copy: "A full name is all that is required. A CNIC, father's name, province, date of birth and nationality are optional and add supporting evidence. Names are entered in Latin letters.",
+    copy: "A full name is all that is required. A CNIC, father's name, province, date of birth and nationality are optional and add supporting evidence. Names can be typed in English or in Urdu script.",
   },
   {
     title: "Names are compared",
@@ -49,6 +49,27 @@ const STEPS = [
     title: "One verdict, with a next step",
     copy: "The sources roll up into a single verdict, and the screening is saved to History with an evidence PDF whenever something is found.",
   },
+];
+
+const AI_ADDS = [
+  { name: "Urdu names", copy: "A name in Urdu script is turned into its likely English spellings, and every spelling is screened." },
+  { name: "Close names", copy: "Names just under the threshold are read and marked as the same person, possibly, or probably someone else." },
+  { name: "News, read", copy: "Articles are checked for namesakes and the type of risk, so a reviewer starts with what matters." },
+  { name: "Web findings", copy: "Public offices, relatives and close associates of politically exposed persons, each with its sources." },
+];
+
+const AI_NEVER = [
+  "It never clears a case. It can only move a clear result to Review.",
+  "It never edits a stored result. Its findings sit beside the lists’ own.",
+  "It never sees a CNIC or a full date of birth.",
+  "Everything it finds is labelled to be verified. A person decides.",
+];
+
+const MORE = [
+  { name: "Batch screening", copy: "Upload up to 500 applicants from Excel, CSV or Word. Every row is a full screening with its own case and evidence." },
+  { name: "Case memo", copy: "A numbered evidence list and a draft memo to edit and approve, then download as a PDF." },
+  { name: "Search your history", copy: "Filter your past screenings, or ask in plain words. The filters used are shown back, and only your own cases are searched." },
+  { name: "Monitoring", copy: "People you choose are checked again whenever a list changes, and only a new potential match raises an alert." },
 ];
 
 const VERDICTS = [
@@ -132,13 +153,47 @@ export default function HowItWorksPage() {
         </p>
       </section>
 
-      <section className="info-section" aria-labelledby="info-monitor">
-        <h2 id="info-monitor">Staying current</h2>
+      <section className="info-section" aria-labelledby="info-ai">
+        <p className="lp-label lp-label-gold">Optional</p>
+        <h2 id="info-ai">AI search, when it is switched on</h2>
         <p className="info-intro">
-          A screening reflects one day. When someone is enrolled in
-          monitoring, they are checked again whenever a watch list changes,
-          and only a new potential match raises an alert. Monitoring is
-          opt-in for each person.
+          An administrator can switch on an AI layer that looks where the lists
+          cannot. It adds findings to a screening. It does not decide anything.
+        </p>
+        <div className="info-split">
+          <dl className="info-defs">
+            {AI_ADDS.map((a) => (
+              <div key={a.name}>
+                <dt>{a.name}</dt>
+                <dd>{a.copy}</dd>
+              </div>
+            ))}
+          </dl>
+          <aside className="info-guard" aria-label="What AI never does">
+            <h3>What it never does</h3>
+            <ul>
+              {AI_NEVER.map((t) => (
+                <li key={t}>{t}</li>
+              ))}
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section className="info-section" aria-labelledby="info-more">
+        <h2 id="info-more">Beyond a single screening</h2>
+        <dl className="info-defs info-defs-2">
+          {MORE.map((m) => (
+            <div key={m.name}>
+              <dt>{m.name}</dt>
+              <dd>{m.copy}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="info-note">
+          A screening reflects one day, so monitoring is opt-in for each
+          person. Whatever the feature, the same rule holds: a source that did
+          not run is never treated as clear.
         </p>
       </section>
 
