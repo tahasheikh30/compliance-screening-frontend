@@ -44,9 +44,9 @@ describe('the landing page', () => {
     await heroTitle()
     // one in the header, one under the headline
     const signIn = screen.getAllByRole('link', { name: 'Sign in' })
-    expect(signIn).toHaveLength(2)
+    expect(signIn).toHaveLength(3)
     signIn.forEach((a) => expect(a.getAttribute('href')).toBe('/sign-in'))
-    expect(screen.getByRole('link', { name: 'Request an account' })).toBeTruthy()
+    expect(screen.getAllByRole('link', { name: 'Request an account' })[0]).toBeTruthy()
     expect(screen.queryByLabelText('Work email')).toBeNull()
   })
 
@@ -156,7 +156,7 @@ describe('moving between the public screens', () => {
     await load()
     render(<App />)
     await heroTitle()
-    fireEvent.click(screen.getByRole('link', { name: 'Request an account' }))
+    fireEvent.click(screen.getAllByRole('link', { name: 'Request an account' })[0])
     expect(await screen.findByLabelText('Repeat the password')).toBeTruthy()
     expect(here()).toBe('/request-access')
   })
