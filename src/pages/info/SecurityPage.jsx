@@ -35,10 +35,19 @@ const RECORDS = [
   },
 ];
 
+const AI = [
+  { name: "Off until an administrator turns it on", copy: "AI search is optional. It needs a key held only on the server, and an administrator can switch it, or any single feature, off at any time." },
+  { name: "Only what a check needs leaves", copy: "A name, nationality, province, father’s or husband’s name and birth year may be sent. A CNIC and a full date of birth never are, and free text is scrubbed of them first." },
+  { name: "Treated as untrusted", copy: "Everything the AI returns must fit a strict format, is cleaned, can only point at evidence it was given, and gets links only from the engine’s own citations." },
+  { name: "It can only add caution", copy: "AI can move a clear result to manual review. It cannot clear a case, change a stored result or approve a memo. A person decides." },
+  { name: "Limited and provider restricted", copy: "Calls are capped per day and per person, a provider outage pauses AI without stopping a screening, and providers are asked not to keep or train on the data." },
+];
+
 const SITE = [
   "These public pages load files only from this site, with no third-party scripts, fonts or images.",
   "Links to other websites open in a new tab and send no referrer.",
   "The server only fetches lists over https and refuses internal addresses, and its dependencies and code are scanned on every change.",
+  "Requests are rate limited for each signed in person. When the service runs on more than one server, the limits are shared, and every response names the server that answered so a request can be traced.",
 ];
 
 export default function SecurityPage() {
@@ -76,6 +85,23 @@ export default function SecurityPage() {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="info-section" aria-labelledby="info-ai">
+        <p className="lp-label lp-label-gold">Optional</p>
+        <h2 id="info-ai">AI search and your data</h2>
+        <p className="info-intro">
+          When AI search is switched on, these rules apply to every feature. Only
+          counts of calls, tokens and cost are kept about its use, never the content.
+        </p>
+        <dl className="info-defs">
+          {AI.map((a) => (
+            <div key={a.name}>
+              <dt>{a.name}</dt>
+              <dd>{a.copy}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       <section className="info-section" aria-labelledby="info-site">

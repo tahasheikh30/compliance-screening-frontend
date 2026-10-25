@@ -84,14 +84,22 @@ export default function DataNoticeDialog({ onClose }) {
 
         <h3>AI search (optional)</h3>
         <p>
-          When switched on, the backend sends the applicant's name, birth
-          year, nationality, province and father's or husband's name, with
-          news headlines and list entries to be compared, to an AI service
-          (OpenRouter and the model provider it routes to). The CNIC and the
-          full date of birth are never sent, and providers are asked not to
-          keep or train on the data. AI only adds labelled leads and can only
-          make a result more cautious. Nothing it says replaces a compliance
-          officer's decision. When it is off, nothing is sent.
+          When switched on, the backend sends the applicant's name (including a
+          name in Urdu script), birth year, nationality, province and father's
+          or husband's name, with news headlines and list entries to be
+          compared, to an AI service (OpenRouter and the model provider it
+          routes to). The name and a few details are also used to search public
+          web pages for offices held and for relatives and close associates of
+          politically exposed persons. The CNIC and the full date of birth
+          are never sent, free text is scrubbed of CNIC like numbers and full
+          dates first, and providers are asked not to keep or train on the
+          data. A question typed into the plain language search is sent to be
+          turned into filters, so do not type applicant details into it. AI
+          only adds labelled leads and can only make a result more cautious.
+          Nothing it says replaces a compliance officer's decision, and a case
+          memo is a draft until an officer approves it. The server keeps
+          counts of AI calls, tokens and cost, never the content. When AI
+          search is off, nothing is sent.
         </p>
 
         <h3>Consent</h3>
