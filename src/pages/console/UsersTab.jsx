@@ -114,8 +114,10 @@ export default function UsersTab({ selfId, onPendingCount, onOpenHistory }) {
                       <span className="row-sub">Signed up {fmtDateTime(u.created_at)}</span>
                     </td>
                     <td>
-                      <Pill tone={pill.tone}>{pill.label}</Pill>
-                      {u.role === 'admin' && <span className="row-sub">Administrator</span>}
+                      <div className="status-cell">
+                        <Pill tone={pill.tone}>{pill.label}</Pill>
+                        {u.role === 'admin' && <span className="pill pill-role">Administrator</span>}
+                      </div>
                     </td>
                     <td>
                       <div className="row-actions">
