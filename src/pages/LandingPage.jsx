@@ -50,6 +50,23 @@ const POINTS = [
   },
 ];
 
+const SOURCE_CHIPS = ["UN Security Council", "OFAC", "UK Sanctions", "FIA Red Book", "NACTA", "Politically exposed persons", "Open news"];
+
+const STATS = [
+  { n: "7", label: "sources in every screening" },
+  { n: "3", label: "clear verdicts" },
+  { n: "500", label: "applicants in one file" },
+  { n: "30 min", label: "idle sign out" },
+];
+
+const FAQ = [
+  { q: "Can the AI clear an applicant?", a: "No. AI search can only move a clear result to manual review. It never clears a case, never lowers a match and never edits a stored result." },
+  { q: "What leaves the system when AI search is on?", a: "Only what a check needs: the name, nationality, province, father or husband and birth year. The CNIC and the full date of birth are never sent, and the provider is told not to keep or train on the data." },
+  { q: "What if a list cannot be read?", a: "It is shown as Not screened and the applicant goes to manual review. A source that did not run is never reported as clear." },
+  { q: "Who can see my screenings?", a: "Only you. Someone else's screening looks exactly like one that does not exist, and administrators read other people's work from the People tab only." },
+  { q: "Do I need AI search to use Sentinel?", a: "No. It is optional and off until an administrator switches it on. Without it, screening works exactly as before." },
+];
+
 const STEPS = [
   { key: "STEP 1", title: "Enter the applicant", copy: "A name is enough. A CNIC, father or husband, birth date and province make the evidence sharper." },
   { key: "STEP 2", title: "Every source is checked", copy: "The lists, the PEP data and the news search run at once. One that fails never stops the rest." },
@@ -78,6 +95,49 @@ const TEAM_POINTS = [
   { key: "EVIDENCE", title: "Evidence you can prove", copy: "Each evidence PDF carries a stored SHA-256 fingerprint, so an altered copy can be detected." },
   { key: "AUDIT", title: "A tamper evident trail", copy: "Who did what is recorded in a chained log that never holds an applicant's name or CNIC." },
 ];
+
+/** Fades sections in as they scroll into view. Without IntersectionObserver, or with reduced motion, nothing is hidden. */
+function useReveal(rootRef) {
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root || typeof IntersectionObserver === "undefined") return undefined;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return undefined;
+    const els = root.querySelectorAll(".lp-reveal");
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("is-in"); io.unobserve(e.target); } }),
+      { rootMargin: "0px 0px -8% 0px", threshold: 0.08 },
+    );
+    root.classList.add("lp-js-reveal");
+    els.forEach((el) => io.observe(el));
+    return () => { io.disconnect(); root.classList.remove("lp-js-reveal"); };
+  }, [rootRef]);
+}
+
+function AiDemo() {
+  return (
+    <figure className="lp-demo" aria-label="Sample AI search finding">
+      <div className="lp-demo-top">
+        <span className="lp-pill">Illustration</span>
+        <span className="lp-demo-flag">AI findings: verify before relying on them</span>
+      </div>
+      <p className="lp-demo-name" lang="ur" dir="rtl">محمد علی خان</p>
+      <p className="lp-demo-note">Spellings screened against the lists</p>
+      <ul className="lp-demo-chips">
+        <li>MUHAMMAD ALI KHAN <small>dictionary</small></li>
+        <li>MOHAMMED ALI KHAN <small>rules</small></li>
+        <li>MUHAMMED ALEE KHAN <small>AI</small></li>
+      </ul>
+      <div className="lp-demo-find">
+        <span className="lp-demo-dot" aria-hidden="true" />
+        <div>
+          <strong>Possibly the same person</strong>
+          <span>UN Security Council, 81%, just under the threshold. Birth year agrees.</span>
+        </div>
+      </div>
+      <div className="lp-demo-move">Moved to manual review</div>
+    </figure>
+  );
+}
 
 function Steps({ items }) {
   return (
@@ -176,6 +236,8 @@ function Rows({ items }) {
 
 export default function LandingPage() {
   const mainRef = useRef(null);
+  const pageRef = useRef(null);
+  useReveal(pageRef);
 
   useEffect(() => {
     if (arrivedByNavigation()) {
@@ -195,7 +257,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="landing">
+    <div className="landing" ref={pageRef}>
       <a className="lp-skip" href="#lp-main">
         Skip to content
       </a>
@@ -284,9 +346,27 @@ export default function LandingPage() {
           </figure>
         </section>
 
+        <div className="lp-sources" aria-label="Sources checked in every screening">
+          <span className="lp-label">Checked in every screening</span>
+          <ul>
+            {SOURCE_CHIPS.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+        </div>
+
+        <dl className="lp-stats lp-reveal">
+          {STATS.map((x) => (
+            <div key={x.label}>
+              <dt>{x.label}</dt>
+              <dd>{x.n}</dd>
+            </div>
+          ))}
+        </dl>
+
         <section
           id="how-it-works"
-          className="lp-section"
+          className="lp-section lp-reveal"
           aria-labelledby="lp-how-title"
         >
           <div className="lp-divider" />
@@ -307,7 +387,7 @@ export default function LandingPage() {
           </ul>
         </section>
 
-        <section className="lp-section" aria-labelledby="lp-steps-title">
+        <section className="lp-section lp-reveal" aria-labelledby="lp-steps-title">
           <div className="lp-divider" />
           <div className="lp-intro">
             <div>
@@ -321,7 +401,7 @@ export default function LandingPage() {
           <Steps items={STEPS} />
         </section>
 
-        <section className="lp-section" aria-labelledby="lp-verdicts-title">
+        <section className="lp-section lp-reveal" aria-labelledby="lp-verdicts-title">
           <div className="lp-divider" />
           <div className="lp-intro">
             <div>
@@ -332,22 +412,24 @@ export default function LandingPage() {
           <VerdictTabs items={VERDICTS} />
         </section>
 
-        <section id="ai" className="lp-section" aria-labelledby="lp-ai-title">
+        <section id="ai" className="lp-section lp-reveal" aria-labelledby="lp-ai-title">
           <div className="lp-divider" />
-          <div className="lp-intro">
+          <div className="lp-ai-head">
             <div>
               <p className="lp-label lp-label-gold">AI search, optional</p>
               <h2 id="lp-ai-title">Looks where the lists can’t.</h2>
+              <p className="lp-intro-copy">
+                When an administrator switches it on, AI search goes beyond the published lists: it reads Urdu names,
+                close matches and news, searches the open web, and drafts the paperwork. It only suggests. A person
+                decides.
+              </p>
             </div>
-            <p className="lp-intro-copy">
-              When an administrator switches it on, AI search goes beyond the published lists: it reads Urdu names, close
-              matches and news, searches the open web, and drafts the paperwork. It only suggests. A person decides.
-            </p>
+            <AiDemo />
           </div>
           <Carousel items={AI_POINTS} label="AI search features" />
         </section>
 
-        <section className="lp-band" aria-labelledby="lp-ai-safe-title">
+        <section className="lp-band lp-reveal" aria-labelledby="lp-ai-safe-title">
           <div>
             <p className="lp-label lp-label-gold">AI safeguards</p>
             <h2 id="lp-ai-safe-title">It can add caution, never remove it.</h2>
@@ -360,7 +442,7 @@ export default function LandingPage() {
           <span className="lp-pill lp-pill-solid">Never clears anyone</span>
         </section>
 
-        <section className="lp-section" aria-labelledby="lp-team-title">
+        <section className="lp-section lp-reveal" aria-labelledby="lp-team-title">
           <div className="lp-divider" />
           <div className="lp-intro">
             <div>
@@ -373,7 +455,7 @@ export default function LandingPage() {
 
         <section
           id="security"
-          className="lp-band"
+          className="lp-band lp-reveal"
           aria-labelledby="lp-security-title"
         >
           <div>
@@ -390,7 +472,7 @@ export default function LandingPage() {
 
         <section
           id="about"
-          className="lp-band"
+          className="lp-band lp-reveal"
           aria-labelledby="lp-about-title"
         >
           <div>
@@ -403,12 +485,29 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="lp-band lp-final" aria-labelledby="lp-final-title">
-          <div>
-            <h2 id="lp-final-title">Ready to screen an applicant?</h2>
-            <p>Sign in to start, or request an account. An administrator approves every request.</p>
+        <section className="lp-section lp-reveal" aria-labelledby="lp-faq-title">
+          <div className="lp-divider" />
+          <div className="lp-intro">
+            <div>
+              <p className="lp-label lp-label-gold">Questions</p>
+              <h2 id="lp-faq-title">Good to know.</h2>
+            </div>
           </div>
-          <div className="lp-cta">
+          <div className="lp-faq">
+            {FAQ.map((f) => (
+              <details key={f.q}>
+                <summary>{f.q}</summary>
+                <p>{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+
+        <section className="lp-final lp-reveal" aria-labelledby="lp-final-title">
+          <p className="lp-label lp-label-gold">Get started</p>
+          <h2 id="lp-final-title">Ready to screen an applicant?</h2>
+          <p>Sign in to start, or request an account. An administrator approves every request.</p>
+          <div className="lp-final-cta">
             <Link to={ROUTES.signIn} className="lp-btn lp-btn-primary">Sign in</Link>
             <Link to={ROUTES.requestAccess} className="lp-btn lp-btn-quiet">Request an account</Link>
           </div>
