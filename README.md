@@ -99,6 +99,12 @@ value from `VITE_API_KEY`.
 
 **Connection behaviour**
 - `VITE_API_BASE_URL` may be given as a bare host, with `https://` or with a trailing slash. `/api` is added
+- `VITE_API_BASE_URLS` (optional) takes several backend addresses, comma separated, for example
+  `https://api-1.onrender.com,https://api-2.onrender.com`. Calls are spread over them in turn. A backend that
+  cannot be reached, times out or answers 502, 503 or 504 is skipped for 30 seconds, and a read that hit it is repeated
+  on the next backend straight away. A write is never repeated on another backend, so nothing is recorded twice. With
+  one address nothing changes. Behind a single load balancer (Render with several instances, say) use
+  `VITE_API_BASE_URL` with the balancer's address instead. See the backend README, "Running more than one server".
   if missing.
 - The server is woken while the person types their password. Reads are retried up to three times on
   temporary trouble (asleep, 502/503/504, a dropped connection), honouring the server's `Retry-After`.

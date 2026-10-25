@@ -6,6 +6,7 @@ import { config } from './lib/config'
 import { getSupabase } from './lib/supabase'
 import { beginActivity } from './lib/activity'
 import { forget } from './lib/readCache'
+import { createBalancer, parseList } from './lib/balancer'
 
 export { ApiError }
 
@@ -23,7 +24,11 @@ export function normalizeBase(raw) {
   return base || '/api'
 }
 
-const BASE = normalizeBase(import.meta.env.VITE_API_BASE_URL)
+// One backend (VITE_API_BASE_URL) or several (VITE_API_BASE_URLS, comma separated). With several, calls are spread over
+// them and a failing one is skipped for a while; reads move on to the next backend at once (see fetchApi).
+const BASES = parseList(import.meta.env.VITE_API_BASE_URLS || import.meta.env.VITE_API_BASE_URL, normalizeBase)
+if (!BASES.length) BASES.push(normalizeBase(''))
+export const balancer = createBalancer(BASES)
 
 // ---------------------------------------------------------------------------
 // Who is calling: the app (its key) and the person (their access token)
@@ -115,10 +120,13 @@ export async function wakeBackend({ deep = false, force = false, onRetry } = {})
   if (!force && !deep && Date.now() - lastContact < AWAKE_WINDOW_MS) return
   const end = beginActivity()
   try {
-    await withRetry(
-      () => apiFetch(`${BASE}/health${deep ? '?deep=true' : ''}`, { timeoutMs: 25000 }),
+    // With several backends, wake them all but wait only for the first that answers.
+    const ping = (base) => withRetry(
+      () => apiFetch(`${base}/health${deep ? '?deep=true' : ''}`, { timeoutMs: 25000 }).then((r) => { balancer.ok(base); return r }),
       { onRetry },
     )
+    const pings = balancer.all.map((b) => ping(b).catch((err) => { balancer.fail(b); throw err }))
+    await Promise.any(pings).catch((agg) => { throw agg.errors?.[0] || agg })
   } finally {
     end()
   }
@@ -140,9 +148,32 @@ async function request(path, { track = true, ...options } = {}) {
   }
 }
 
+/**
+ * One call, on the next backend in turn. A read that fails for a temporary reason (unreachable, timed out, 502, 503,
+ * 504) is tried straight away on the next backend, so a server that went down costs the person nothing. A write is
+ * never repeated on another backend: it may have been carried out already, and a second try would record it twice.
+ * It still marks the backend as failing, so the next call goes elsewhere.
+ */
+async function fetchApi(path, method, init) {
+  const tried = []
+  for (;;) {
+    const base = balancer.pick(tried)
+    try {
+      const res = await apiFetch(`${base}${path}`, init)
+      balancer.ok(base)
+      return res
+    } catch (err) {
+      if (!isTransient(err)) throw err
+      balancer.fail(base)
+      tried.push(base)
+      if (method !== 'GET' || tried.length >= balancer.size) throw err
+    }
+  }
+}
+
 async function run(path, options) {
   const method = (options.method || 'GET').toUpperCase()
-  const send = (token) => apiFetch(`${BASE}${path}`, {
+  const send = (token) => fetchApi(path, method, {
     ...options,
     headers: {
       ...(config.apiKey ? { 'X-API-Key': config.apiKey } : {}),

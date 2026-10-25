@@ -1,6 +1,8 @@
 // Build time settings (Vite replaces import.meta.env.VITE_* when the app is built).
 //
 //   VITE_API_BASE_URL              the backend address (see api.js)
+//   VITE_API_BASE_URLS             optional: several backend addresses, comma separated. Calls are spread over them and
+//                                  a failing one is skipped. Takes the place of VITE_API_BASE_URL when set.
 //   VITE_API_KEY                   the app's key: the same value as APP_API_KEY on the backend. It tells the
 //                                  backend "this request comes from the app". It is built into the page, so
 //                                  anyone who opens the app can read it: it is NOT a secret and opens nothing
