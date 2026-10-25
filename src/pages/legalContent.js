@@ -4,7 +4,7 @@
 
 import { ROUTES } from '../lib/nav'
 
-export const UPDATED = '7 October 2026'
+export const UPDATED = '25 October 2026'
 
 export const LEGAL_PAGES = {
   [ROUTES.privacy]: {
@@ -25,6 +25,7 @@ export const LEGAL_PAGES = {
           'Staff accounts: your email address, your password (held by our authentication provider as a salted hash, never in readable form), your approval status and your role.',
           'Applicant details entered for screening: full name and, optionally, date of birth, nationality, CNIC, father’s or husband’s name and province. Nothing else about an applicant is collected.',
           'Screening records: the result of each screening, the evidence PDF, and the time it was run and by whom, so a compliance officer can review the finding later.',
+          'AI search records (only when an administrator has switched AI search on): the findings added to a screening, any case memo drafted for it with its edits and approval, and counts of AI calls, tokens and cost for each person and day. The counts hold no names, CNICs or prompts.',
           'Basic usage measurements: anonymous page view counts, collected without cookies and without identifying you.',
         ],
       },
@@ -32,27 +33,34 @@ export const LEGAL_PAGES = {
         h: 'Why we use it',
         p: [
           'Applicant details are compared against the UN Security Council list, the OFAC SDN and Consolidated lists, the UK Sanctions List, the FIA Red Books, the NACTA Proscribed Persons list and a list of politically exposed persons (national and provincial office holders), and used for an adverse media search. This is done solely for account-opening AML/KYC screening and to meet our legal and regulatory duties.',
+          'The optional AI search is used only to help a person look more closely: it reads names in Urdu script, close names, news articles and public web sources, and drafts a case memo for an officer to edit and approve. It can only make a result more cautious. It never clears a case, never changes a stored result and never makes a decision. A compliance officer reviews every case.',
           'Staff details are used to sign you in, to approve accounts, to show each person their own screening history and to keep the service secure.',
         ],
       },
       {
         h: 'Who we share it with',
         p: [
-          'We do not sell personal information. The adverse media check sends the applicant’s name, with a set of risk keywords, as a search to Google News. Apart from that search, applicant details are not sent to any other third party, unless an administrator has switched on the optional AI search. Then the name, birth year, nationality, province and father’s or husband’s name (never the CNIC or the full date of birth) are sent to an AI service through OpenRouter, with the provider asked not to keep or train on them.',
-          'We rely on infrastructure providers to run the service: Supabase (sign in and database), Render (the screening service), Vercel (hosting and anonymous page view counts) and Cloudflare (bot protection on the sign in form). They process data on our behalf and only for that purpose.',
+          'We do not sell personal information. The adverse media check sends the applicant’s name, with a set of risk keywords, as a search to Google News. Apart from that search, applicant details are not sent to any other third party, unless an administrator has switched on the optional AI search. Then the name (including a name written in Urdu script), birth year, nationality, province and father’s or husband’s name, with news headlines and list entries to be compared, are sent to an AI service through OpenRouter, and the name and a few details are used to search public web pages. The CNIC and the full date of birth are never sent, and free text is scrubbed of CNIC like numbers and full dates first. The provider is asked not to keep or train on the data. A question typed into the plain language search is sent to the AI service to be turned into filters, and contains no applicant data unless you type it.',
+          'We rely on infrastructure providers to run the service: Supabase (sign in and database), Render (the screening service), Vercel (hosting and anonymous page view counts), Cloudflare (bot protection on the sign in form) and, only when AI search is on, OpenRouter and the model providers it routes to. If the service is run on more than one server, a shared store holds request counters per signed in person and nothing else. They process data on our behalf and only for that purpose.',
           'We may disclose information where the law or a regulator, such as the State Bank of Pakistan or the SECP, requires it.',
         ],
       },
       {
         h: 'How long we keep it',
         p: [
-          'Screening records are kept for as long as the Compliance department needs them for review, audit and its regulatory record keeping duties, then deleted. Staff accounts are kept while the person needs access. Retention periods follow Packages Group and IGI policy and applicable law.',
+          'Screening records are kept for as long as the Compliance department needs them for review, audit and its regulatory record keeping duties, then deleted. A case memo is kept with its screening. Staff accounts are kept while the person needs access. Retention periods follow Packages Group and IGI policy and applicable law.',
         ],
       },
       {
         h: 'Security',
         p: [
-          'Access needs an approved account. Sessions end after a period of inactivity, traffic is encrypted in transit, and each person sees only their own screening history unless an administrator role says otherwise. No system is perfectly secure, so please report anything suspicious straight away.',
+          'Access needs an approved account. Sessions end after a period of inactivity, traffic is encrypted in transit, and each person sees only their own screening history unless an administrator role says otherwise. AI features are limited per day and per person, treat everything the AI returns as untrusted, and can be switched off by an administrator at any time. No system is perfectly secure, so please report anything suspicious straight away.',
+        ],
+      },
+      {
+        h: 'Automated suggestions',
+        p: [
+          'AI findings are suggestions for a person to check. No decision about an applicant is made automatically, and nothing an AI says is final. A person can ask the Compliance department how a case was reviewed.',
         ],
       },
       {
@@ -95,6 +103,16 @@ export const LEGAL_PAGES = {
         p: [
           'A result shows what was checked, what was found and what could not be checked. A source that could not be read is shown as Not screened and must never be treated as clear. A match, or a lack of one, is not a final determination. A compliance officer must review every result and make the decision.',
           'The lists we check are published by third parties and can be incomplete, delayed or changed without notice. We do not guarantee that they are accurate or complete.',
+        ],
+      },
+      {
+        h: 'AI search',
+        ul: [
+          'AI search is optional and works only when an administrator has switched it on. Do not try to switch it on or off yourself, or to get around its limits.',
+          'Treat every AI finding as a lead to verify. Open the sources it cites and check identity against the ID before relying on it. An AI finding is never proof.',
+          'A case memo is a draft until you approve it. Approving it means you take responsibility for what it says, so read and correct it first.',
+          'Do not type a CNIC, a full date of birth or anything unrelated to the work into a free text box. Use the fields provided.',
+          'Use of AI is limited per day and per person, and is recorded as counts only. We may switch it off at any time without notice.',
         ],
       },
       {
@@ -153,6 +171,12 @@ export const LEGAL_PAGES = {
         ],
       },
       {
+        h: 'AI search and load balancing',
+        p: [
+          'AI search adds no cookies and no new browser storage. If the service runs on several servers, the page may remember which are failing for a short time in memory only, and nothing is stored in your browser for it.',
+        ],
+      },
+      {
         h: 'Analytics',
         p: [
           'We use Vercel Web Analytics to count page views. It does not use cookies and does not track you across sites or build a profile of you.',
@@ -182,7 +206,8 @@ export const LEGAL_PAGES = {
           'You can use the whole site with a keyboard. A “Skip to content” link is available on the landing page.',
           'Text and controls are designed for strong contrast against their background.',
           'Links that open a new tab say so to screen readers.',
-          'Animation is reduced or turned off if your device asks for less motion.',
+          'Animation is reduced or turned off if your device asks for less motion, including the fade in of sections and the floating sample on the landing page.',
+          'The verdict tabs on the landing page move with the arrow keys, the carousel of AI features scrolls by keyboard as well as by button, and the questions open and close with Enter or Space.',
           'Form fields have labels, and errors are announced in words rather than colour alone.',
         ],
       },
