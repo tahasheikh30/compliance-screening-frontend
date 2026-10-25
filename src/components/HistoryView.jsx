@@ -48,9 +48,10 @@ const HistoryRow = memo(function HistoryRow({ row, on, onOpen }) {
  *   emptyText   what to say when there are no screenings at all
  *   canMonitor  show the monitoring switch on an opened case (only for the person's own screenings)
  *   lead        optional content above the tools (a description)
+ *   tools       optional (open) => node, shown above the case in the wide column; `open` opens a history row
  *   above       optional content above the whole card, left aligned with it (a back button)
  */
-export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyText, canMonitor = false, lead = null, above = null }) {
+export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyText, canMonitor = false, lead = null, tools = null, above = null }) {
   const [rows, setRows] = useState(() => peek(cacheKey))   // the last answer, shown at once while it refreshes
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
@@ -179,6 +180,7 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
       </section>
 
       <div className="outcome" aria-live="polite">
+        {tools && tools(open)}
         <ErrorBanner error={caseError} onRetry={selected ? () => open(selected) : undefined} onDismiss={() => setCaseError(null)} />
         {opening && <p className="muted state-note">Opening case...</p>}
         {caseData && (

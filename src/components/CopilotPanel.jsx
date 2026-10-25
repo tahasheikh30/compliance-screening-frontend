@@ -14,7 +14,7 @@ const OUTCOMES = [
  * Search your own screenings. The filter form always works. With AI search on you can also ask in words: the question is
  * turned into the same filters, shown back to you, and the answer comes from your own records.
  */
-export default function CopilotPanel() {
+export default function CopilotPanel({ onOpen }) {
   const ai = useAiStatus()
   const canAsk = aiHas(ai, 'copilot')
   const [question, setQuestion] = useState('')
@@ -45,8 +45,11 @@ export default function CopilotPanel() {
   }
 
   return (
-    <section className="copilot" aria-labelledby="copilot-heading">
-      <h2 id="copilot-heading">Search your screenings</h2>
+    <details className="copilot">
+      <summary>
+        <span className="copilot-title">Search your screenings</span>
+        <span className="field-hint">{canAsk ? 'Ask a question or filter' : 'Filter by outcome, name and date'}</span>
+      </summary>
       {canAsk ? (
         <form onSubmit={ask} className="copilot-ask">
           <label className="field" htmlFor="copilot-q">
@@ -83,7 +86,9 @@ export default function CopilotPanel() {
                 const info = overallInfo(r.overall_status)
                 return (
                   <li key={r.id}>
-                    <span className="mono">{r.case_ref}</span> {r.full_name} <Pill tone={info.tone}>{info.stamp}</Pill>
+                    <span className="mono">{r.case_ref}</span>{' '}
+                    {onOpen ? <button type="button" className="inline-link-btn" onClick={() => onOpen(r)}>{r.full_name}</button> : r.full_name}{' '}
+                    <Pill tone={info.tone}>{info.stamp}</Pill>
                     <span className="field-hint"> {fmtDate(r.submitted_at)}{r.review_decision ? `, you: ${r.review_decision}` : ''}</span>
                   </li>
                 )
@@ -92,6 +97,6 @@ export default function CopilotPanel() {
           )}
         </div>
       )}
-    </section>
+    </details>
   )
 }

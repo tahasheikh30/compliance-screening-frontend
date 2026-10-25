@@ -37,9 +37,9 @@ export default function HistoryTab() {
             {busy ? 'Preparing...' : 'Download as CSV'}
           </button>
           <ErrorBanner error={error} onDismiss={() => setError(null)} />
-          <CopilotPanel />
         </div>
       )}
+      tools={(open) => <CopilotPanel onOpen={open} />}
     />
   )
 }
