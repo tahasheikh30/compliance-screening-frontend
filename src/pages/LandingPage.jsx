@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, ROUTES, arrivedByNavigation } from "../lib/nav";
 import PublicHeader from "../components/PublicHeader";
 import SiteFooter from "../components/SiteFooter";
@@ -58,9 +58,9 @@ const STEPS = [
 ];
 
 const VERDICTS = [
-  { key: "ESCALATE", title: "A watch list match", copy: "A name or CNIC matches a sanctions or watch list. Pass it to compliance and verify identity against the source record." },
-  { key: "REVIEW", title: "Needs a person's eye", copy: "Adverse news, a possible politically exposed person, or a source that could not be fully read." },
-  { key: "CLEAR", title: "Screened, nothing found", copy: "Every source was read and nothing was found. Anything not screened is never reported as clear." },
+  { key: "ESCALATE", tone: "bad", title: "A watch list match", copy: "A name or CNIC matches a sanctions or watch list. Pass it to compliance and verify identity against the source record." },
+  { key: "REVIEW", tone: "warn", title: "Needs a person's eye", copy: "Adverse news, a possible politically exposed person, or a source that could not be fully read." },
+  { key: "CLEAR", tone: "good", title: "Screened, nothing found", copy: "Every source was read and nothing was found. Anything not screened is never reported as clear." },
 ];
 
 const AI_POINTS = [
@@ -79,17 +79,98 @@ const TEAM_POINTS = [
   { key: "AUDIT", title: "A tamper evident trail", copy: "Who did what is recorded in a chained log that never holds an applicant's name or CNIC." },
 ];
 
-function CardList({ items, className = "" }) {
+function Steps({ items }) {
   return (
-    <ul className={`lp-cards ${className}`}>
-      {items.map((p) => (
-        <li key={p.key} className="lp-card">
-          <span className="lp-label lp-label-gold">{p.key}</span>
+    <ol className="lp-steps">
+      {items.map((p, i) => (
+        <li key={p.key} className="lp-step">
+          <span className="lp-step-num" aria-hidden="true">{i + 1}</span>
           <h3>{p.title}</h3>
           <p>{p.copy}</p>
         </li>
       ))}
-    </ul>
+    </ol>
+  );
+}
+
+function VerdictTabs({ items }) {
+  const [i, setI] = useState(0);
+  const v = items[i];
+  return (
+    <div className="lp-verdicts">
+      <div role="tablist" aria-label="Verdicts" className="lp-vtabs">
+        {items.map((x, n) => (
+          <button
+            key={x.key}
+            type="button"
+            role="tab"
+            id={`lp-vtab-${n}`}
+            aria-selected={n === i}
+            aria-controls="lp-vpanel"
+            tabIndex={n === i ? 0 : -1}
+            className={`lp-vtab${n === i ? " is-on" : ""}`}
+            onClick={() => setI(n)}
+            onKeyDown={(e) => {
+              const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+              if (!d) return;
+              e.preventDefault();
+              const m = (n + d + items.length) % items.length;
+              setI(m);
+              document.getElementById(`lp-vtab-${m}`)?.focus();
+            }}
+          >
+            {x.key[0] + x.key.slice(1).toLowerCase()}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id="lp-vpanel" aria-labelledby={`lp-vtab-${i}`} className="lp-vpanel">
+        <span className={`stamp stamp-large stamp-${v.tone}`}>{v.key[0] + v.key.slice(1).toLowerCase()}</span>
+        <div>
+          <h3>{v.title}</h3>
+          <p>{v.copy}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Carousel({ items, label }) {
+  const track = useRef(null);
+  const move = (dir) => {
+    const el = track.current;
+    if (!el) return;
+    el.scrollBy?.({ left: dir * Math.max(280, el.clientWidth * 0.8), behavior: "smooth" });
+  };
+  return (
+    <div className="lp-carousel" role="region" aria-roledescription="carousel" aria-label={label}>
+      <div className="lp-car-nav">
+        <button type="button" className="lp-btn lp-btn-quiet lp-car-btn" onClick={() => move(-1)} aria-label="Previous">←</button>
+        <button type="button" className="lp-btn lp-btn-quiet lp-car-btn" onClick={() => move(1)} aria-label="Next">→</button>
+      </div>
+      <ul className="lp-track" ref={track} tabIndex={0} aria-label={`${label}, scroll sideways`}>
+        {items.map((p, n) => (
+          <li key={p.key} className="lp-slide">
+            <span className="lp-slide-n">{String(n + 1).padStart(2, "0")}</span>
+            <span className="lp-label lp-label-gold">{p.key}</span>
+            <h3>{p.title}</h3>
+            <p>{p.copy}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function Rows({ items }) {
+  return (
+    <dl className="lp-rows2">
+      {items.map((p) => (
+        <div key={p.key} className="lp-row2">
+          <dt>{p.title}</dt>
+          <dd>{p.copy}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -237,7 +318,7 @@ export default function LandingPage() {
               Every screening follows the same path, so every case can be read, checked and defended the same way.
             </p>
           </div>
-          <CardList items={STEPS} className="lp-cards-4" />
+          <Steps items={STEPS} />
         </section>
 
         <section className="lp-section" aria-labelledby="lp-verdicts-title">
@@ -248,7 +329,7 @@ export default function LandingPage() {
               <h2 id="lp-verdicts-title">What the result means.</h2>
             </div>
           </div>
-          <CardList items={VERDICTS} />
+          <VerdictTabs items={VERDICTS} />
         </section>
 
         <section id="ai" className="lp-section" aria-labelledby="lp-ai-title">
@@ -263,7 +344,7 @@ export default function LandingPage() {
               matches and news, searches the open web, and drafts the paperwork. It only suggests. A person decides.
             </p>
           </div>
-          <CardList items={AI_POINTS} />
+          <Carousel items={AI_POINTS} label="AI search features" />
         </section>
 
         <section className="lp-band" aria-labelledby="lp-ai-safe-title">
@@ -287,7 +368,7 @@ export default function LandingPage() {
               <h2 id="lp-team-title">More than a single search.</h2>
             </div>
           </div>
-          <CardList items={TEAM_POINTS} className="lp-cards-4" />
+          <Rows items={TEAM_POINTS} />
         </section>
 
         <section
