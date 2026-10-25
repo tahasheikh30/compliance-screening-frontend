@@ -630,6 +630,9 @@ input[type='range']:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px 
   line-height: 1.2;
   color: var(--text);
 }
+.ai-usage .tally { grid-template-columns: repeat(auto-fit, minmax(118px, 1fr)); }
+.ai-usage .tally > div { min-width: 0; padding: 12px 12px; }
+.ai-usage .tally dd { font-size: clamp(19px, 2.1vw, 24px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tally-bad { color: var(--tone-bad) !important; }
 .tally-warn { color: var(--tone-warn) !important; }
 
