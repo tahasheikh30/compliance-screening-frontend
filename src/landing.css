@@ -172,12 +172,14 @@ html:has(.landing) { scroll-behavior: smooth; }
 .lp-btn-quiet { color: var(--on-desk); border-color: rgba(232, 236, 238, 0.32); }
 .lp-btn-quiet:hover { border-color: var(--manila); color: var(--manila); }
 
-.lp-trust { display: flex; align-items: center; gap: 10px; margin-top: 24px; color: var(--on-desk-muted); font-size: 13.5px; }
+.lp-trust { display: flex; align-items: flex-start; gap: 12px; margin-top: 24px; color: var(--on-desk-muted); font-size: 13.5px; line-height: 1.5; }
 .lp-trust::before {
   content: "";
   flex: none;
   width: 7px;
   height: 7px;
+  /* sits on the middle of the FIRST line, so a note that wraps keeps its dot beside the first line of text */
+  margin-top: calc(0.75em - 3.5px);
   border-radius: 50%;
   background: var(--manila);
   box-shadow: 0 0 0 4px rgba(216, 190, 128, 0.14);

@@ -198,3 +198,18 @@
   .landing .info-verdict { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .landing .info-section { padding-top: 40px; }
 }
+
+/* compact definition rows and the AI split (How it works) */
+.landing .info-defs { margin: 0; display: grid; gap: 0; }
+.landing .info-defs > div { padding: 14px 0 14px 20px; border-top: 1px solid var(--lp-line); position: relative; }
+.landing .info-defs > div::before { content: ""; position: absolute; left: 0; top: 23px; width: 7px; height: 7px; border-radius: 50%; background: var(--manila); }
+.landing .info-defs dt { font-weight: 600; font-size: 16.5px; color: var(--on-desk); }
+.landing .info-defs dd { margin: 4px 0 0; color: var(--on-desk-muted); font-size: 15px; line-height: 1.6; }
+.landing .info-defs-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 48px; }
+.landing .info-split { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+.landing .info-guard { padding: 22px 24px; border: 1px solid rgba(216, 190, 128, 0.35); border-left: 4px solid var(--manila); border-radius: var(--radius); background: var(--lp-card); }
+.landing .info-guard h3 { margin: 0 0 12px; font-size: 17px; color: var(--on-desk); }
+.landing .info-guard ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.landing .info-guard li { position: relative; padding-left: 24px; color: #C9D3D8; font-size: 14.5px; line-height: 1.55; }
+.landing .info-guard li::before { content: ""; position: absolute; left: 2px; top: 5px; width: 10px; height: 6px; border-left: 2px solid var(--manila); border-bottom: 2px solid var(--manila); transform: rotate(-45deg); }
+@media (max-width: 860px) { .landing .info-split { grid-template-columns: minmax(0, 1fr); gap: 24px; } .landing .info-defs-2 { grid-template-columns: minmax(0, 1fr); } }
