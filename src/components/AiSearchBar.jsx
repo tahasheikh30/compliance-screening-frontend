@@ -40,6 +40,13 @@ export function aiUnavailableNotice(status) {
   return null
 }
 
+// The person's own calendar date, so "this week" is right in their time zone, not the server's.
+function localToday() {
+  const d = new Date()
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 // A few starting points under the bar. They only fill it in: nothing is sent until the person presses Ask.
 const SUGGESTIONS = [
   'Cases I escalated last month',
@@ -80,7 +87,7 @@ export default function AiSearchBar({ onOpen }) {
     setNotice(null)
     setBusy(true)
     try {
-      setAnswer(await askCopilot({ question: text }))
+      setAnswer(await askCopilot({ question: text, today: localToday() }))
     } catch (err) {
       if (err?.code === 'NOT_UNDERSTOOD') {
         // not a failure: the question just did not map onto what can be searched. Say so calmly and point to what works.

@@ -178,7 +178,7 @@ describe('AI search bar', () => {
     await act(async () => {})
     ask()
     expect(await screen.findByText(/Searched: escalated to compliance/)).toBeTruthy()
-    expect(api.askCopilot).toHaveBeenCalledWith({ question: 'what did I escalate?' })
+    expect(api.askCopilot).toHaveBeenCalledWith({ question: 'what did I escalate?', today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
     expect(screen.queryByText(/AI search is turned off/)).toBeNull()
   })
 })
