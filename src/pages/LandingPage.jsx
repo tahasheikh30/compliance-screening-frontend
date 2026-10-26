@@ -416,7 +416,7 @@ export default function LandingPage() {
           <div className="lp-divider" />
           <div className="lp-ai-head">
             <div>
-              <p className="lp-label lp-label-gold">AI search, optional</p>
+              <p className="lp-label lp-label-gold">AI search</p>
               <h2 id="lp-ai-title">Looks where the lists can’t.</h2>
               <p className="lp-intro-copy">
                 When an administrator switches it on, AI search goes beyond the published lists: it reads Urdu names,
