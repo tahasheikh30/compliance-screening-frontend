@@ -31,14 +31,12 @@ export default function HistoryTab() {
       heading="Past screenings"
       emptyText="You have not screened anyone yet. Run one from the Screening tab and it will appear here."
       canMonitor
-      lead={(
-        <div className="history-actions">
-          <button type="button" className="btn btn-quiet btn-small" onClick={download} disabled={busy}>
-            {busy ? 'Preparing...' : 'Download as CSV'}
-          </button>
-          <ErrorBanner error={error} onDismiss={() => setError(null)} />
-        </div>
+      actions={(
+        <button type="button" className="btn btn-quiet btn-small" onClick={download} disabled={busy}>
+          {busy ? 'Preparing...' : 'Download as CSV'}
+        </button>
       )}
+      lead={<ErrorBanner error={error} onDismiss={() => setError(null)} />}
       searchBar={(open) => <AiSearchBar onOpen={open} />}
     />
   )

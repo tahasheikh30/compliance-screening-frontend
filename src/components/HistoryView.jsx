@@ -42,8 +42,8 @@ const HistoryRow = memo(function HistoryRow({ row, on, onOpen }) {
         </button>
         <span className="row-sub">{fmtDateTime(row.submitted_at)}</span>
         <span className="row-sub mono">#{String(row.id).padStart(5, '0')}</span>
-        {row.review_decision && <span className="row-sub">Decision: {decisionLabel(row.review_decision)}</span>}
-        {row.monitored && <span className="row-sub">Under continuous monitoring</span>}
+        {row.review_decision && <span className="row-sub row-sub-tag">Decision: {decisionLabel(row.review_decision)}</span>}
+        {row.monitored && <span className="row-sub row-sub-tag">Under continuous monitoring</span>}
       </td>
       <td><Pill tone={info.tone}>{info.stamp}</Pill></td>
     </tr>
@@ -69,11 +69,12 @@ function dayOf(iso) {
  *   heading     the title of the list panel
  *   emptyText   what to say when there are no screenings at all
  *   canMonitor  show the monitoring switch on an opened case (only for the person's own screenings)
- *   lead        optional content above the search (a description or actions)
+ *   lead        optional content above the heading (a description or a message)
+ *   actions     optional content on the right of the heading (a download button)
  *   searchBar   optional (open) => node, shown across the top of the page; `open` opens a history row
  *   above       optional content above everything, left aligned with it (a back button)
  */
-export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyText, canMonitor = false, lead = null, searchBar = null, above = null }) {
+export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyText, canMonitor = false, lead = null, actions = null, searchBar = null, above = null }) {
   const [rows, setRows] = useState(() => peek(cacheKey))   // the last answer, shown at once while it refreshes
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
@@ -171,7 +172,10 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
       <section className="sheet history" aria-labelledby="history-heading">
         <div className="folder-tab">History</div>
         {lead}
-        <h1 id="history-heading">{heading}</h1>
+        <div className="history-head">
+          <h1 id="history-heading">{heading}</h1>
+          {actions && <div className="history-head-actions">{actions}</div>}
+        </div>
 
         <div className="history-tools">
           <div className="history-search-row">
@@ -232,6 +236,14 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
           </div>
         </div>
 
+        {rows && rows.length > 0 && (
+          <p className="history-count" aria-live="polite">
+            {matches.length === rows.length
+              ? `${rows.length} ${rows.length === 1 ? 'screening' : 'screenings'}`
+              : `${matches.length} of ${rows.length} screenings`}
+          </p>
+        )}
+
         <ErrorBanner error={error} onRetry={load} onDismiss={() => setError(null)} />
         {rows === null && !error && <p className="muted state-note">Loading...</p>}
         {rows && rows.length === 0 && <p className="muted state-note">{emptyText}</p>}
@@ -276,7 +288,14 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
           </>
         )}
         {!opening && !caseData && !caseError && (
-          <div className="empty"><h2>Open a case</h2><p>Select an applicant to see the full findings and download the evidence PDF.</p></div>
+          <div className="empty empty-case">
+            <svg className="empty-case-icon" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 7.5A1.5 1.5 0 0 1 5.5 6H10l2 2.5h6.5A1.5 1.5 0 0 1 20 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z" />
+            </svg>
+            <h2>Open a case</h2>
+            <p>Select an applicant to see the full findings and download the evidence PDF.</p>
+          </div>
         )}
       </div>
     </div>

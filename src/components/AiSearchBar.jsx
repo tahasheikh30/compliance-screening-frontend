@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { askCopilot } from '../api'
 import ErrorBanner from './ErrorBanner'
 import { Pill } from './ui'
@@ -40,6 +40,13 @@ export function aiUnavailableNotice(status) {
   return null
 }
 
+// A few starting points under the bar. They only fill it in: nothing is sent until the person presses Ask.
+const SUGGESTIONS = [
+  'Cases I escalated last month',
+  'Which cases still need review?',
+  'Anything cleared this week?',
+]
+
 /**
  * The AI search bar across the top of the History tab. Ask in words ("Which Punjab PEP cases did I escalate last
  * month?"): the question is turned into filters, shown back so you can see how it was understood, and the answer
@@ -56,6 +63,7 @@ export default function AiSearchBar({ onOpen }) {
   const [error, setError] = useState(null)
   const [answer, setAnswer] = useState(null)
   const [notice, setNotice] = useState(null)   // the "AI search is not available" message, also shown in the page
+  const input = useRef(null)
 
   async function ask(e) {
     e.preventDefault()
@@ -83,20 +91,36 @@ export default function AiSearchBar({ onOpen }) {
   return (
     <section className="ai-search" aria-label="AI search">
       <form onSubmit={ask} className="ai-search-bar" role="search">
+        <svg className="ai-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z" />
+          <path d="M19 15l.7 1.8L21.5 17.5l-1.8.7L19 20l-.7-1.8-1.8-.7 1.8-.7z" />
+        </svg>
         <label htmlFor="ai-search-q" className="visually-hidden">Ask AI search about your screenings</label>
         <input
+          ref={input}
           id="ai-search-q"
           type="search"
           value={question}
           maxLength={400}
           autoComplete="off"
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="AI search: ask about your screenings, e.g. Which Punjab PEP cases did I escalate last month?"
+          placeholder="Ask AI about your screenings"
         />
         <button type="submit" className="btn btn-primary btn-small" disabled={busy || !question.trim()}>
           {busy ? 'Searching...' : 'Ask'}
         </button>
       </form>
+
+      {!question && !answer && !notice && !error && (
+        <ul className="ai-suggestions" aria-label="Try asking">
+          {SUGGESTIONS.map((s) => (
+            <li key={s}>
+              <button type="button" className="ai-suggestion" onClick={() => { setQuestion(s); input.current?.focus() }}>{s}</button>
+            </li>
+          ))}
+        </ul>
+      )}
 
       {notice && (
         <div className="ai-search-notice" role="status">
