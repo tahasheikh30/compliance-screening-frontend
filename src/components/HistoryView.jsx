@@ -3,7 +3,7 @@ import { getApplicant } from '../api'
 import ErrorBanner from './ErrorBanner'
 import CaseReport from './CaseReport'
 import MonitorToggle from './MonitorToggle'
-import ReviewPanel, { decisionLabel } from './ReviewPanel'
+import ReviewPanel, { DECISIONS, decisionLabel } from './ReviewPanel'
 import { Pill } from './ui'
 import { fmtDateTime } from '../lib/format'
 import { overallInfo } from '../lib/status'
@@ -17,6 +17,18 @@ const FILTERS = [
   { id: 'ESCALATE_TO_COMPLIANCE', label: 'Escalated' },
   { id: 'MANUAL_REVIEW', label: 'Needs review' },
   { id: 'AUTO_CLEAR', label: 'Clear' },
+]
+
+const DECISION_FILTERS = [
+  { id: 'all', label: 'Any' },
+  { id: 'none', label: 'Not reviewed' },
+  ...DECISIONS.map((d) => ({ id: d.id, label: d.label })),
+]
+
+const MONITOR_FILTERS = [
+  { id: 'all', label: 'Any' },
+  { id: 'yes', label: 'Monitored' },
+  { id: 'no', label: 'Not monitored' },
 ]
 
 // One row. Memoised so a keystroke in the search box or selecting a case only redraws the rows that changed.
@@ -66,6 +78,8 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('all')
+  const [decision, setDecision] = useState('all')          // review decision: all, none (not reviewed yet) or a decision id
+  const [monitored, setMonitored] = useState('all')        // all, yes or no
   const [from, setFrom] = useState('')                     // date filter, YYYY-MM-DD, inclusive
   const [to, setTo] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
@@ -122,6 +136,8 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
     const q = deferredQuery.trim().toLowerCase()
     return (rows || []).filter((r) => {
       if (filter !== 'all' && r.overall_status !== filter) return false
+      if (decision === 'none' ? r.review_decision : decision !== 'all' && r.review_decision !== decision) return false
+      if (monitored !== 'all' && !!r.monitored !== (monitored === 'yes')) return false
       if (q && !r.full_name.toLowerCase().includes(q)) return false
       if (from || to) {
         const day = dayOf(r.submitted_at)
@@ -130,12 +146,12 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
       }
       return true
     })
-  }, [rows, deferredQuery, filter, from, to])
+  }, [rows, deferredQuery, filter, decision, monitored, from, to])
   const shown = useMemo(() => matches.slice(0, limit), [matches, limit])
 
   // how many filters are set, shown on the Filter button so a closed panel still says the list is narrowed
-  const activeFilters = (filter !== 'all' ? 1 : 0) + (from ? 1 : 0) + (to ? 1 : 0)
-  const clearFilters = () => { setFilter('all'); setFrom(''); setTo('') }
+  const activeFilters = [filter !== 'all', decision !== 'all', monitored !== 'all', !!from, !!to].filter(Boolean).length
+  const clearFilters = () => { setFilter('all'); setDecision('all'); setMonitored('all'); setFrom(''); setTo('') }
 
   // keep the row's monitoring flag in step when it is switched from the open case
   const onMonitoring = useCallback((id, monitored) => {
@@ -176,22 +192,28 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
           </div>
 
           <div id="history-filters" className="filter-panel" role="group" aria-label="Filters" hidden={!filtersOpen}>
-            <div className="field">
-              <span className="field-label" id="filter-outcome-label">Outcome</span>
-              <div className="filter-group" role="group" aria-labelledby="filter-outcome-label">
-                {FILTERS.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    className={`filter-btn ${filter === f.id ? 'filter-btn-on' : ''}`}
-                    aria-pressed={filter === f.id}
-                    onClick={() => setFilter(f.id)}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+            {[
+              ['outcome', 'Outcome', FILTERS, filter, setFilter],
+              ['decision', 'Review decision', DECISION_FILTERS, decision, setDecision],
+              ['monitoring', 'Monitoring', MONITOR_FILTERS, monitored, setMonitored],
+            ].map(([key, label, options, value, setValue]) => (
+              <div className="field" key={key}>
+                <span className="field-label" id={`filter-${key}-label`}>{label}</span>
+                <div className="filter-group" role="group" aria-labelledby={`filter-${key}-label`}>
+                  {options.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className={`filter-btn ${value === f.id ? 'filter-btn-on' : ''}`}
+                      aria-pressed={value === f.id}
+                      onClick={() => setValue(f.id)}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ))}
             <div className="field-row">
               <label className="field" htmlFor="filter-from">
                 <span className="field-label">From</span>

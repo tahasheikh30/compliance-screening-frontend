@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { render, screen, cleanup, waitFor, fireEvent, act } from '@testing-library/react'
+import { render, screen, cleanup, waitFor, fireEvent, act, within } from '@testing-library/react'
 
 vi.mock('../api', async () => ({ ...(await import('./aiMocks')).aiApi,
   listApplicants: vi.fn(),
@@ -82,10 +82,10 @@ describe('history layout', () => {
     expect(await screen.findByText('Clear One')).toBeTruthy()
     const toggle = screen.getByRole('button', { name: 'Filter' })
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByRole('button', { name: 'Escalated' })).toBeNull()            // closed: filters are tucked away
+    expect(screen.queryByRole('button', { name: 'Not reviewed' })).toBeNull()         // closed: filters are tucked away
     fireEvent.click(toggle)
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
-    fireEvent.click(screen.getByRole('button', { name: 'Escalated' }))
+    fireEvent.click(within(screen.getByRole('group', { name: 'Outcome' })).getByRole('button', { name: 'Escalated' }))
     await waitFor(() => expect(screen.queryByText('Clear One')).toBeNull())
     expect(screen.getByText('Escalated One')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Filter.*1 applied/ })).toBeTruthy()    // a closed panel still shows it is narrowed
@@ -94,6 +94,28 @@ describe('history layout', () => {
     fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-10-01' } })
     await waitFor(() => expect(screen.queryByText('Clear One')).toBeNull())
     expect(screen.getByText('Escalated One')).toBeTruthy()
+  })
+
+  it('also filters by review decision and monitoring', async () => {
+    listApplicants.mockResolvedValue([
+      { ...row(1, 'Reviewed One', 'MANUAL_REVIEW'), review_decision: 'cleared' },
+      { ...row(2, 'Watched One', 'AUTO_CLEAR'), monitored: true },
+      row(3, 'Plain One'),
+    ])
+    render(<HistoryTab />)
+    expect(await screen.findByText('Plain One')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Filter' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cleared' }))
+    await waitFor(() => expect(screen.queryByText('Plain One')).toBeNull())
+    expect(screen.getByText('Reviewed One')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Monitored' }))
+    await waitFor(() => expect(screen.queryByText('Plain One')).toBeNull())
+    expect(screen.getByText('Watched One')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Not reviewed' }))
+    await waitFor(() => expect(screen.queryByText('Reviewed One')).toBeNull())
+    expect(screen.getByText('Plain One')).toBeTruthy()
   })
 
   it('has the AI search bar above the list and the case panel', async () => {
