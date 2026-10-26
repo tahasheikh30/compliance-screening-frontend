@@ -1919,22 +1919,21 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 
 /* AI search bar: a centred, compact bar above the two panels */
 .history-top { max-width: 720px; margin: 4px auto 30px; }
-.ai-search {
-  position: relative;
+.ai-search { position: relative; }
+/* the pill is only the input and the button, so the button has the same gap on the top, right and bottom */
+.ai-search-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 6px 6px 18px;
   background: linear-gradient(160deg, rgba(44, 58, 67, 0.7), rgba(24, 33, 39, 0.78));
   border: 1px solid var(--line-strong);
   border-radius: 999px;
-  padding: 6px 6px 6px 18px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
-.ai-search:hover { border-color: rgba(232, 236, 238, 0.34); }
-.ai-search:focus-within { border-color: var(--gold-line); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28), 0 0 0 4px rgba(216, 190, 128, 0.14); }
-.ai-search:has(.ai-search-notice, .copilot-answer, .error-banner) { border-radius: var(--radius-lg); padding: 6px 6px 16px 18px; }
-.ai-search:has(.ai-suggestions) { border-radius: 26px; padding-bottom: 12px; }
-.ai-search-bar { display: flex; align-items: center; gap: 10px; }
+.ai-search-bar:hover { border-color: rgba(232, 236, 238, 0.34); }
+.ai-search-bar:focus-within { border-color: var(--gold-line); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.28), 0 0 0 4px rgba(216, 190, 128, 0.14); }
 .ai-search-icon { flex: 0 0 auto; color: var(--gold); }
 .ai-search-bar input {
   flex: 1 1 auto; min-width: 0; height: 40px; padding: 0 4px;
@@ -1942,16 +1941,16 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 }
 .ai-search-bar input::-webkit-search-cancel-button { filter: invert(0.8); cursor: pointer; }
 .ai-search-bar input:focus-visible { outline: none; box-shadow: none; }
-.ai-search-bar .btn { border-radius: 999px; min-height: 38px; padding: 6px 20px; }
-.ai-suggestions { list-style: none; margin: 8px 12px 0 0; padding: 0 0 0 28px; display: flex; flex-wrap: wrap; gap: 8px; }
+.ai-search-bar .btn { flex: 0 0 auto; border-radius: 999px; min-height: 40px; padding: 6px 22px; }
+.ai-suggestions { list-style: none; margin: 14px 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
 .ai-suggestion {
   font: inherit; font-size: 13px; color: var(--text-soft); background: transparent;
   border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; cursor: pointer;
   transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
 }
 .ai-suggestion:hover { color: var(--gold-hi); background: var(--gold-soft); border-color: var(--gold-line); }
-.ai-search-notice { margin: 10px 12px 0 0; padding: 10px 14px; border: 1px solid var(--gold-line); border-radius: var(--radius); background: var(--gold-soft); color: var(--gold-hi); font-size: 14px; line-height: 1.5; }
-.ai-search .error-banner, .copilot-answer { margin: 12px 12px 0 0; }
+.ai-search-notice { margin: 12px 0 0; padding: 10px 14px; border: 1px solid var(--gold-line); border-radius: var(--radius); background: var(--gold-soft); color: var(--gold-hi); font-size: 14px; line-height: 1.5; }
+.ai-search .error-banner, .copilot-answer { margin: 12px 0 0; }
 .copilot-answer { padding: 12px 14px; border: 1px solid var(--line); border-left: 4px solid var(--gold-line); border-radius: var(--radius); background: rgba(0, 0, 0, 0.12); }
 
 /* Past screenings: heading row, search with a Filter button, count, rows */
@@ -1989,7 +1988,7 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 .empty-case p { max-width: 40ch; }
 @media (max-width: 560px) {
   .history-search-row { flex-wrap: wrap; }
-  .ai-suggestions { padding-left: 4px; }
+  .ai-suggestions { justify-content: flex-start; }
 }
 
 /* People tab: the status and the administrator role sit side by side, aligned, instead of the role dangling under the pill */
