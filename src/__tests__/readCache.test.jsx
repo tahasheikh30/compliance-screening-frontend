@@ -70,6 +70,40 @@ describe('HistoryTab', () => {
   })
 })
 
+describe('history layout', () => {
+  const dated = (id, name, status, day) => ({ ...row(id, name, status), submitted_at: `${day}T12:00:00+00:00` })
+
+  it('keeps every filter inside a collapsible Filter button and narrows the list', async () => {
+    listApplicants.mockResolvedValue([
+      dated(1, 'Clear One', 'AUTO_CLEAR', '2026-09-01'),
+      dated(2, 'Escalated One', 'ESCALATE_TO_COMPLIANCE', '2026-10-10'),
+    ])
+    render(<HistoryTab />)
+    expect(await screen.findByText('Clear One')).toBeTruthy()
+    const toggle = screen.getByRole('button', { name: 'Filter' })
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('button', { name: 'Escalated' })).toBeNull()            // closed: filters are tucked away
+    fireEvent.click(toggle)
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Escalated' }))
+    await waitFor(() => expect(screen.queryByText('Clear One')).toBeNull())
+    expect(screen.getByText('Escalated One')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Filter.*1 applied/ })).toBeTruthy()    // a closed panel still shows it is narrowed
+    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+    expect(await screen.findByText('Clear One')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-10-01' } })
+    await waitFor(() => expect(screen.queryByText('Clear One')).toBeNull())
+    expect(screen.getByText('Escalated One')).toBeTruthy()
+  })
+
+  it('has the AI search bar above the list and the case panel', async () => {
+    listApplicants.mockResolvedValue([row(1, 'Own Screening')])
+    render(<HistoryTab />)
+    expect(await screen.findByLabelText('Ask AI search about your screenings')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Open a case' })).toBeTruthy()
+  })
+})
+
 describe('a person\'s history (People tab)', () => {
   const user = { id: 'u-ana', email: 'ana@example.com' }
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { listApplicants, exportHistory } from '../../api'
 import ErrorBanner from '../../components/ErrorBanner'
 import HistoryView from '../../components/HistoryView'
-import CopilotPanel from '../../components/CopilotPanel'
+import AiSearchBar from '../../components/AiSearchBar'
 
 /**
  * The signed in person's own screenings. An administrator sees only their own here too: they read another
@@ -39,7 +39,7 @@ export default function HistoryTab() {
           <ErrorBanner error={error} onDismiss={() => setError(null)} />
         </div>
       )}
-      tools={(open) => <CopilotPanel onOpen={open} />}
+      searchBar={(open) => <AiSearchBar onOpen={open} />}
     />
   )
 }

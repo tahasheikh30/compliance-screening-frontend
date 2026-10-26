@@ -38,24 +38,37 @@ const HistoryRow = memo(function HistoryRow({ row, on, onOpen }) {
   )
 })
 
+// The calendar day of a stored timestamp, as YYYY-MM-DD in the person's own time zone: what a date filter compares.
+function dayOf(iso) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 /**
- * A list of screenings with search, an outcome filter and a case view beside it. Shared by the History tab (the
- * signed in person's own screenings) and the page an administrator opens for one person from the People tab.
+ * The page: an optional AI search bar across the top, then two panels side by side. On the left the past
+ * screenings, with a search by name and one collapsible Filter button holding every filter; on the right the
+ * case that is open. Shared by the History tab (the signed in person's own screenings) and the page an
+ * administrator opens for one person from the People tab.
  *
  *   load        () => Promise<rows>   how to fetch the list
  *   cacheKey    where the last answer is remembered, so reopening shows it at once (cleared on sign out)
- *   heading     the page title
+ *   heading     the title of the list panel
  *   emptyText   what to say when there are no screenings at all
  *   canMonitor  show the monitoring switch on an opened case (only for the person's own screenings)
- *   lead        optional content above the tools (a description)
- *   tools       optional (open) => node, shown above the case in the wide column; `open` opens a history row
- *   above       optional content above the whole card, left aligned with it (a back button)
+ *   lead        optional content above the search (a description or actions)
+ *   searchBar   optional (open) => node, shown across the top of the page; `open` opens a history row
+ *   above       optional content above everything, left aligned with it (a back button)
  */
-export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyText, canMonitor = false, lead = null, tools = null, above = null }) {
+export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyText, canMonitor = false, lead = null, searchBar = null, above = null }) {
   const [rows, setRows] = useState(() => peek(cacheKey))   // the last answer, shown at once while it refreshes
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('all')
+  const [from, setFrom] = useState('')                     // date filter, YYYY-MM-DD, inclusive
+  const [to, setTo] = useState('')
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [limit, setLimit] = useState(PAGE_SIZE)
   const [selected, setSelected] = useState(null)           // list row being viewed
   const [caseData, setCaseData] = useState(null)
@@ -107,10 +120,22 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
   const deferredQuery = useDeferredValue(query)            // typing stays responsive; the table catches up
   const matches = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase()
-    return (rows || []).filter((r) =>
-      (filter === 'all' || r.overall_status === filter) && (!q || r.full_name.toLowerCase().includes(q)))
-  }, [rows, deferredQuery, filter])
+    return (rows || []).filter((r) => {
+      if (filter !== 'all' && r.overall_status !== filter) return false
+      if (q && !r.full_name.toLowerCase().includes(q)) return false
+      if (from || to) {
+        const day = dayOf(r.submitted_at)
+        if (from && day < from) return false
+        if (to && day > to) return false
+      }
+      return true
+    })
+  }, [rows, deferredQuery, filter, from, to])
   const shown = useMemo(() => matches.slice(0, limit), [matches, limit])
+
+  // how many filters are set, shown on the Filter button so a closed panel still says the list is narrowed
+  const activeFilters = (filter !== 'all' ? 1 : 0) + (from ? 1 : 0) + (to ? 1 : 0)
+  const clearFilters = () => { setFilter('all'); setFrom(''); setTo('') }
 
   // keep the row's monitoring flag in step when it is switched from the open case
   const onMonitoring = useCallback((id, monitored) => {
@@ -125,6 +150,7 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
   return (
     <>
     {above && <div className="page-back">{above}</div>}
+    {searchBar && <div className="history-top">{searchBar(open)}</div>}
     <div className="workspace workspace-history">
       <section className="sheet history" aria-labelledby="history-heading">
         <div className="folder-tab">History</div>
@@ -132,22 +158,55 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
         <h1 id="history-heading">{heading}</h1>
 
         <div className="history-tools">
-          <label className="field" htmlFor="history-search">
-            <span className="field-label">Search by name</span>
-            <input id="history-search" type="search" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
-          </label>
-          <div className="filter-group" role="group" aria-label="Filter by outcome">
-            {FILTERS.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className={`filter-btn ${filter === f.id ? 'filter-btn-on' : ''}`}
-                aria-pressed={filter === f.id}
-                onClick={() => setFilter(f.id)}
-              >
-                {f.label}
+          <div className="history-search-row">
+            <label className="field history-search" htmlFor="history-search">
+              <span className="visually-hidden">Search by name</span>
+              <input id="history-search" type="search" value={query} placeholder="Search by name"
+                onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
+            </label>
+            <button
+              type="button"
+              className={`btn btn-quiet btn-small filter-toggle ${filtersOpen ? 'filter-toggle-open' : ''}`}
+              aria-expanded={filtersOpen}
+              aria-controls="history-filters"
+              onClick={() => setFiltersOpen((v) => !v)}
+            >
+              Filter{activeFilters > 0 && <span className="filter-count" aria-label={`, ${activeFilters} applied`}>{activeFilters}</span>}
+            </button>
+          </div>
+
+          <div id="history-filters" className="filter-panel" role="group" aria-label="Filters" hidden={!filtersOpen}>
+            <div className="field">
+              <span className="field-label" id="filter-outcome-label">Outcome</span>
+              <div className="filter-group" role="group" aria-labelledby="filter-outcome-label">
+                {FILTERS.map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    className={`filter-btn ${filter === f.id ? 'filter-btn-on' : ''}`}
+                    aria-pressed={filter === f.id}
+                    onClick={() => setFilter(f.id)}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="field-row">
+              <label className="field" htmlFor="filter-from">
+                <span className="field-label">From</span>
+                <input id="filter-from" type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
+              </label>
+              <label className="field" htmlFor="filter-to">
+                <span className="field-label">To</span>
+                <input id="filter-to" type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+              </label>
+            </div>
+            <div className="filter-panel-actions">
+              <button type="button" className="btn btn-quiet btn-small" onClick={clearFilters} disabled={activeFilters === 0}>
+                Clear filters
               </button>
-            ))}
+            </div>
           </div>
         </div>
 
@@ -180,7 +239,6 @@ export default function HistoryView({ load: fetchRows, cacheKey, heading, emptyT
       </section>
 
       <div className="outcome" aria-live="polite">
-        {tools && tools(open)}
         <ErrorBanner error={caseError} onRetry={selected ? () => open(selected) : undefined} onDismiss={() => setCaseError(null)} />
         {opening && <p className="muted state-note">Opening case...</p>}
         {caseData && (

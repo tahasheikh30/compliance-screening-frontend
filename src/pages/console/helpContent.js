@@ -313,7 +313,7 @@ export const SECTIONS = [
         { title: 'Download it.', text: '**Download memo PDF** saves the memo with the case reference, the system outcome, the evidence list and the approval line.' },
       ] },
       { t: 'h', text: 'Search your screenings and the digest' },
-      { t: 'p', text: 'On the **History** tab, open **Search your screenings**. Filter by outcome, name and dates, or, with AI search on, ask in words such as **Which cases needed attention this month?** The filters actually used are shown back so you can see how the question was understood, and only your own cases are searched. The **Digest** on the **Monitoring** tab gives exact counts of recent alerts for 7, 30 or 90 days, with a short written summary when AI search is on.' },
+      { t: 'p', text: 'On the **History** tab, search your past screenings by name and open **Filter** to narrow them by outcome and dates. Across the top, the **AI search** bar lets you ask in words, such as **Which cases needed attention this month?** The filters actually used are shown back so you can see how the question was understood, and only your own cases are searched. If AI search is off or has no key on the server, searching tells you so and everything else keeps working. The **Digest** on the **Monitoring** tab gives exact counts of recent alerts for 7, 30 or 90 days, with a short written summary when AI search is on.' },
       { t: 'h', text: 'For administrators', admin: true },
       { t: 'list', admin: true, items: [
         'Open the **AI** tab. The **AI search** switch turns the whole feature on or off. Without the provider key on the server it stays off and says so.',

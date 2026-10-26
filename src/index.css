@@ -1910,26 +1910,40 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 .memo-section { margin-top: 12px; }
 .memo-section h5 { margin: 0 0 4px; }
 .memo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
-.memo-edit textarea, .memo-edit input, .memo-edit select, .copilot input, .copilot select { width: 100%; }
-.copilot-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; align-items: end; margin-top: 10px; }
+.memo-edit textarea, .memo-edit input, .memo-edit select { width: 100%; }
 .copilot-rows { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
 .ai-features { border: 0; padding: 0; margin: 12px 0; }
 .ai-usage { margin-top: 18px; }
 .ai-usage h3 { margin: 18px 0 8px; }
 .ai-panel-head .filter-group { margin-left: auto; }
 
-/* Search your screenings: a quiet, collapsed row in the wide column; opens to a one line filter bar */
-.copilot { margin: 0 0 18px; background: var(--inset-2); border: 1px solid var(--line); border-radius: var(--radius); }
-.copilot > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 12px 16px; cursor: pointer; list-style: none; }
-.copilot > summary::-webkit-details-marker { display: none; }
-.copilot > summary::before { content: '+'; color: var(--gold); font-weight: 700; width: 12px; }
-.copilot[open] > summary::before { content: '\2212'; }
-.copilot-title { font-weight: 700; }
-.copilot > :not(summary) { margin-left: 16px; margin-right: 16px; }
-.copilot > :last-child { margin-bottom: 16px; }
-.copilot-ask { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
-.copilot-ask .field { flex: 1 1 280px; }
-.copilot-filters .btn { align-self: end; }
+/* AI search bar: one wide bar across the top of the History tab, above the two panels */
+.history-top { max-width: 1200px; margin: 0 auto 24px; }
+.ai-search { background: var(--inset-2); border: 1px solid var(--line); border-radius: 999px; padding: 6px 8px 6px 20px; }
+.ai-search:has(.ai-search-notice, .copilot-answer, .error-banner) { border-radius: var(--radius-lg); padding: 8px 8px 16px 20px; }
+.ai-search-bar { display: flex; align-items: center; gap: 10px; }
+.ai-search-bar input { flex: 1 1 auto; min-width: 0; border: 0; background: transparent; box-shadow: none; padding: 8px 4px; font-size: 15px; text-align: center; }
+.ai-search-bar input:focus-visible { outline-offset: 4px; border-radius: 999px; }
+.ai-search-notice { margin: 10px 12px 0 0; padding: 10px 14px; border: 1px solid var(--gold-line); border-radius: var(--radius); background: var(--gold-soft); color: var(--gold-hi); font-size: 14px; line-height: 1.5; }
+.ai-search .error-banner, .copilot-answer { margin: 12px 12px 0 0; }
+.copilot-answer { padding: 12px 14px; border: 1px solid var(--line); border-left: 4px solid var(--gold-line); border-radius: var(--radius); background: rgba(0, 0, 0, 0.12); }
+
+/* Past screenings: name search with a Filter button that opens every filter */
+.history-search-row { display: flex; align-items: center; gap: 10px; }
+.history-search { flex: 1 1 auto; }
+.history-search input { width: 100%; }
+.filter-toggle { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 8px; }
+.filter-toggle::after { content: ''; width: 7px; height: 7px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform 160ms ease; }
+.filter-toggle-open::after { transform: translateY(1px) rotate(-135deg); }
+.filter-count { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--gold-soft); color: var(--gold-hi); border: 1px solid var(--gold-line); font-size: 12px; font-weight: 700; }
+.filter-panel { display: flex; flex-direction: column; gap: 14px; padding: 14px 16px; background: var(--inset-2); border: 1px solid var(--line); border-radius: var(--radius); }
+.filter-panel[hidden] { display: none; }
+.filter-panel .filter-group { flex-wrap: wrap; overflow: visible; }
+.filter-panel-actions { display: flex; justify-content: flex-end; }
+@media (max-width: 560px) {
+  .ai-search-bar input { text-align: left; }
+  .history-search-row { flex-wrap: wrap; }
+}
 
 /* People tab: the status and the administrator role sit side by side, aligned, instead of the role dangling under the pill */
 .status-cell { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }

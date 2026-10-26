@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-library/react'
 
 const api = vi.hoisted(() => ({}))
 vi.mock('../api', async () => {
@@ -13,7 +13,7 @@ import AiChip from '../components/AiChip'
 import AiInsights from '../components/AiInsights'
 import MemoPanel from '../components/MemoPanel'
 import AiAdminPanel from '../components/AiAdminPanel'
-import CopilotPanel from '../components/CopilotPanel'
+import AiSearchBar from '../components/AiSearchBar'
 import { resetAiStatus } from '../lib/ai'
 
 const ON = { state: 'on', configured: true, enabled: true, available: true, message: 'AI search is on.',
@@ -127,24 +127,47 @@ describe('admin AI switch', () => {
   })
 })
 
-describe('copilot', () => {
-  it('works with filters when AI search is off, and says questions are unavailable', async () => {
-    api.askCopilot.mockResolvedValue({ filters: { overall_status: ['MANUAL_REVIEW'] }, described: 'outcome manual review', explanation: '', summary: '1 case match: 1 in manual review.', total: 1,
-      rows: [{ id: 3, case_ref: 'CS-20261001-00003', full_name: 'Some Person', submitted_at: '2026-10-01T00:00:00Z', overall_status: 'MANUAL_REVIEW', review_decision: null }] })
-    render(<CopilotPanel />)
-    expect(await screen.findByText(/AI search is off, so questions in words are not available/)).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Outcome'), { target: { value: 'MANUAL_REVIEW' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Filter' }))
-    expect(await screen.findByText('1 case match: 1 in manual review.')).toBeTruthy()
-    expect(api.askCopilot).toHaveBeenCalledWith({ filters: { overall_status: ['MANUAL_REVIEW'] } })
+describe('AI search bar', () => {
+  const ask = (text = 'what did I escalate?') => {
+    fireEvent.change(screen.getByLabelText('Ask AI search about your screenings'), { target: { value: text } })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  }
+
+  it('tells the person when an administrator has turned AI search off, and does not call the server', async () => {
+    render(<ToastProvider><AiSearchBar /></ToastProvider>)
+    await waitFor(() => expect(api.getAiStatus).toHaveBeenCalled())
+    ask()
+    expect((await screen.findAllByText(/AI search is turned off/)).length).toBeGreaterThan(0)   // toast and note
+    expect(api.askCopilot).not.toHaveBeenCalled()
+  })
+  it('tells the person when the server has no AI API key', async () => {
+    api.getAiStatus.mockResolvedValue({ ...ON, state: 'unconfigured', configured: false, enabled: false, available: false, features: {} })
+    render(<ToastProvider><AiSearchBar /></ToastProvider>)
+    await waitFor(() => expect(api.getAiStatus).toHaveBeenCalled())
+    await act(async () => {})
+    ask()
+    expect((await screen.findAllByText(/AI search is not set up/)).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/No AI API key is configured/).length).toBeGreaterThan(0)
+    expect(api.askCopilot).not.toHaveBeenCalled()
+  })
+  it('says so when only the question feature is switched off', async () => {
+    api.getAiStatus.mockResolvedValue({ ...ON, features: { ...ON.features, copilot: false } })
+    render(<ToastProvider><AiSearchBar /></ToastProvider>)
+    await waitFor(() => expect(api.getAiStatus).toHaveBeenCalled())
+    await act(async () => {})
+    ask()
+    expect((await screen.findAllByText(/Asking questions is turned off/)).length).toBeGreaterThan(0)
+    expect(api.askCopilot).not.toHaveBeenCalled()
   })
   it('sends a question in words when AI search is on and shows the filters it used', async () => {
     api.getAiStatus.mockResolvedValue(ON)
     api.askCopilot.mockResolvedValue({ filters: {}, described: 'escalated to compliance', explanation: 'Escalated.', summary: 'No cases match.', total: 0, rows: [] })
-    render(<CopilotPanel />)
-    fireEvent.change(await screen.findByLabelText('Ask a question'), { target: { value: 'what did I escalate?' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    render(<ToastProvider><AiSearchBar /></ToastProvider>)
+    await waitFor(() => expect(api.getAiStatus).toHaveBeenCalled())
+    await act(async () => {})
+    ask()
     expect(await screen.findByText(/Searched: escalated to compliance/)).toBeTruthy()
     expect(api.askCopilot).toHaveBeenCalledWith({ question: 'what did I escalate?' })
+    expect(screen.queryByText(/AI search is turned off/)).toBeNull()
   })
 })
