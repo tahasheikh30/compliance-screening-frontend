@@ -159,6 +159,17 @@ describe('AI search bar', () => {
     expect((await screen.findAllByText(/Asking questions is turned off/)).length).toBeGreaterThan(0)
     expect(api.askCopilot).not.toHaveBeenCalled()
   })
+  it('treats a question that cannot become filters as a hint, not a failure', async () => {
+    api.getAiStatus.mockResolvedValue(ON)
+    api.askCopilot.mockRejectedValue(Object.assign(new Error('Too vague to search.'), { code: 'NOT_UNDERSTOOD' }))
+    render(<ToastProvider><AiSearchBar /></ToastProvider>)
+    await waitFor(() => expect(api.getAiStatus).toHaveBeenCalled())
+    await act(async () => {})
+    ask('hmm')
+    expect(await screen.findByText(/could not be turned into a search/)).toBeTruthy()
+    expect(screen.getByText(/Too vague to search/)).toBeTruthy()
+    expect(screen.queryByText('Something went wrong')).toBeNull()
+  })
   it('sends a question in words when AI search is on and shows the filters it used', async () => {
     api.getAiStatus.mockResolvedValue(ON)
     api.askCopilot.mockResolvedValue({ filters: {}, described: 'escalated to compliance', explanation: 'Escalated.', summary: 'No cases match.', total: 0, rows: [] })

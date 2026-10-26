@@ -43,8 +43,8 @@ export function aiUnavailableNotice(status) {
 // A few starting points under the bar. They only fill it in: nothing is sent until the person presses Ask.
 const SUGGESTIONS = [
   'Cases I escalated last month',
-  'Which cases still need review?',
-  'Anything cleared this week?',
+  'Which cases are in manual review?',
+  'Cases screened this week',
 ]
 
 /**
@@ -82,7 +82,15 @@ export default function AiSearchBar({ onOpen }) {
     try {
       setAnswer(await askCopilot({ question: text }))
     } catch (err) {
-      setError(err)
+      if (err?.code === 'NOT_UNDERSTOOD') {
+        // not a failure: the question just did not map onto what can be searched. Say so calmly and point to what works.
+        setNotice({
+          title: 'That question could not be turned into a search',
+          message: `${err.message || ''} Try naming an outcome, a decision or a time, such as "escalated last month", or use Filter on the list.`.trim(),
+        })
+      } else {
+        setError(err)
+      }
     } finally {
       setBusy(false)
     }
