@@ -56,7 +56,7 @@ const STATS = [
   { n: "7", label: "sources in every screening" },
   { n: "3", label: "clear verdicts" },
   { n: "500", label: "applicants in one file" },
-  { n: "30 min", label: "idle sign out" },
+  { n: "0", label: "cases cleared by AI" },
 ];
 
 const FAQ = [
