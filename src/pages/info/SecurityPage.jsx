@@ -6,7 +6,7 @@ const ICONS = {
   approve: <><path d="M12 3l7 3v5c0 4.4-2.9 8.3-7 9.5C7.9 19.3 5 15.4 5 11V6z" /><path d="M9 12l2.2 2.2L15.5 10" /></>,
   records: <><path d="M4 7.5A1.5 1.5 0 0 1 5.5 6H10l2 2.5h6.5A1.5 1.5 0 0 1 20 10v7.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z" /><path d="M10 14.5h4" /></>,
   clock: <><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></>,
-  check: <><path d="M4 6.5l1.6 1.6L8.5 5" /><path d="M4 12.5l1.6 1.6L8.5 11" /><path d="M4 18.5l1.6 1.6L8.5 17" /><path d="M12 6.5h8M12 12.5h8M12 18.5h8" /></>,
+  check: <><path d="M5 12.5l4.2 4.2L19 7" /><path d="M3.5 5.5h6M3.5 18.5h6" /></>,
   trail: <><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1.2" /><circle cx="4.5" cy="12" r="1.2" /><circle cx="4.5" cy="18" r="1.2" /></>,
   fingerprint: <><path d="M6.5 10.5a5.5 5.5 0 0 1 11 0v2" /><path d="M9 20c.8-1.6 1-3 1-5v-4.5a2 2 0 0 1 4 0V15c0 2 .4 3.4 1.2 5" /><path d="M4.5 14.5v-2" /><path d="M19.5 14.5v-2" /></>,
   nolog: <><path d="M5 5h14v14H5z" /><path d="M8.5 9.5h7M8.5 13h4" /><path d="M3.5 20.5l17-17" /></>,
