@@ -1909,6 +1909,8 @@ input[type='file']::file-selector-button:hover { border-color: var(--gold-line);
 .notice-good { color: var(--green-dark); background: rgba(143, 209, 174, 0.1); }
 .memo-section { margin-top: 12px; }
 .memo-section h5 { margin: 0 0 4px; }
+.memo-empty { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.memo-empty > p { margin: 0; }
 .memo-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
 .memo-edit textarea, .memo-edit input, .memo-edit select { width: 100%; }
 .copilot-rows { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
