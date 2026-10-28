@@ -56,7 +56,7 @@ const STATS = [
   { n: "7", label: "sources in every screening" },
   { n: "3", label: "clear verdicts" },
   { n: "500", label: "applicants in one file" },
-  { n: "0", label: "cases cleared by AI" },
+  { n: "1", label: "evidence PDF for every screening" },
 ];
 
 const FAQ = [
