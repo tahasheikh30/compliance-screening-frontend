@@ -553,7 +553,7 @@ export const SECTIONS = [
         items: [
           { term: 'A card says Not screened.', text: 'That list could not be read at the time. The card says why. It is never a clearance. Check the Lists tab, then screen again once it shows Ready.' },
           { term: 'Why Review when no name matched?', text: 'Review also means a possible PEP, a news lead, or a list that was incomplete. The next step under the verdict names which.' },
-          { term: 'A screening is slow.', text: 'It usually takes 20 to 40 seconds because the lists are read live. The first request after a quiet period can take longer while the server wakes up.' },
+          { term: 'A screening is slow.', text: 'It usually takes 20 to 40 seconds because the lists are read live. The first request after a quiet period can take longer while the server connects.' },
           { term: 'I was signed out.', text: 'Sessions end after a period with no activity. Sign in again. You can lengthen or shorten it in Settings, Security.' },
           { term: 'I cannot see a colleague\'s screening.', text: 'History is private to the person who ran it. An administrator can read it from the People tab.' },
           { term: 'A list shows as Switched off.', text: 'You turned it off in Settings, Lists. Turn it back on there and screen again.' },
