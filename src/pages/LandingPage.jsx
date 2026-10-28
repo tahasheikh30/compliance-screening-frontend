@@ -56,7 +56,7 @@ const STATS = [
   { n: "7", label: "sources in every screening" },
   { n: "3", label: "clear verdicts" },
   { n: "500", label: "applicants in one file" },
-  { n: "20 to 40 s", label: "per screening, read live from the lists" },
+  { n: "Live", label: "lists read at screening time" },
 ];
 
 const FAQ = [
