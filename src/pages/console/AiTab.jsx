@@ -133,9 +133,14 @@ export default function AiTab() {
                 </div>
               )}
               {usage.daily.length === 0 && <p className="field-hint">No AI calls in this period.</p>}
-              <p className="field-hint">
-                Calls made before this page existed are not broken down by feature or cost. OpenRouter's figures above cover everything on the key.
-              </p>
+              {usage.today && usage.limits && (
+                <p className="field-hint">
+                  Today (UTC): {fmtNum(usage.today.calls)} of {usage.limits.daily_calls ? fmtNum(usage.limits.daily_calls) : 'unlimited'} daily AI calls used.
+                  {usage.limits.daily_calls > 0 && usage.today.calls >= usage.limits.daily_calls
+                    ? ' The limit has been reached, so AI is paused until the next UTC day. Screenings still run without it.'
+                    : ' Once the limit is reached, AI pauses until the next UTC day and screenings carry on without it.'}
+                </p>
+              )}
             </>
           )}
         </section>
