@@ -28,6 +28,12 @@ describe('AI tab', () => {
     expect(screen.getByText('memo')).toBeTruthy()
     expect(screen.getAllByText('3,400').length).toBeGreaterThan(0)
   })
+  it('shows today\'s calls against the daily limit instead of a note about older calls', async () => {
+    getAiUsage.mockResolvedValue(usage({ today: { calls: 120, failures: 0 }, limits: { daily_calls: 15000 } }))
+    render(<ToastProvider><AiTab /></ToastProvider>)
+    expect(await screen.findByText(/120 of 15,000 daily AI calls used/)).toBeTruthy()
+    expect(screen.queryByText(/before this page existed/)).toBeNull()
+  })
   it('still shows this app\'s counts when OpenRouter cannot be reached, and asks for another range', async () => {
     getAiUsage.mockResolvedValue(usage({ openrouter: { ok: false, error: 'timeout' } }))
     render(<ToastProvider><AiTab /></ToastProvider>)
